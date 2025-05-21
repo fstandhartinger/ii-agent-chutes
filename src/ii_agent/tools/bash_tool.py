@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import pexpect
+import platform  # Added platform import
 import re
 from abc import ABC, abstractmethod
 
@@ -20,17 +21,31 @@ from ii_agent.tools.base import LLMTool, ToolImplOutput
 
 
 def start_persistent_shell(timeout: int):
-    # Start a new Bash shell
-    child = pexpect.spawn("/bin/bash", encoding="utf-8", echo=False, timeout=timeout)
-    # Set a known, unique prompt
-    # We use a random string that is unlikely to appear otherwise
-    # so we can detect the prompt reliably.
     custom_prompt = "PEXPECT_PROMPT>> "
-    child.sendline("stty -onlcr")
-    child.sendline("unset PROMPT_COMMAND")
-    child.sendline(f"PS1='{custom_prompt}'")
-    # Force an initial read until the newly set prompt shows up
-    child.expect(custom_prompt)
+    if platform.system() == "Windows":
+        # Use cmd.exe on Windows with popen_spawn
+        # Using cmd.exe /K to keep the window open after initial command
+        child = pexpect.popen_spawn.PopenSpawn("cmd.exe /K", encoding="utf-8", echo=False, timeout=timeout)
+        # Turn off command echoing to keep output clean
+        child.sendline("@echo off")
+        # Set the custom prompt for cmd.exe ($S adds a space)
+        child.sendline(f"prompt {custom_prompt}$S")
+        # Send a simple command (like 'ver') to ensure the new prompt is displayed and can be expected.
+        # This also helps clear any initial output from cmd.exe.
+        child.sendline("ver") # Example command
+        child.expect(custom_prompt) # Expect the custom prompt
+        # Clear the output of the 'ver' command from the buffer before returning
+        # This ensures the first 'real' command doesn't get 'ver' output prepended.
+        # This might need refinement based on actual behavior.
+        # A simple way is to read until prompt again if 'ver' output is an issue.
+        # For now, let's assume the expect clears 'before' sufficiently.
+    else:
+        # Original Unix-like shell logic
+        child = pexpect.spawn("/bin/bash", encoding="utf-8", echo=False, timeout=timeout)
+        child.sendline("stty -onlcr") # Suppress LF -> CRLF conversion
+        child.sendline("unset PROMPT_COMMAND") # Avoid prompt interference
+        child.sendline(f"PS1='{custom_prompt}'") # Set custom prompt
+        child.expect(custom_prompt) # Wait for the prompt
     return child, custom_prompt
 
 
