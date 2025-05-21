@@ -693,9 +693,9 @@ export default function Home() {
     // Connect to WebSocket when the component mounts
     const connectWebSocket = () => {
       const params = new URLSearchParams({ device_id: deviceId });
-      const ws = new WebSocket(
-        `${process.env.NEXT_PUBLIC_API_URL}/ws?${params.toString()}`
-      );
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
+      const wsUrl = `${apiUrl.replace(/^http/, 'ws')}/ws?${params.toString()}`;
+      const ws = new WebSocket(wsUrl);
 
       ws.onopen = () => {
         console.log("WebSocket connection established");
@@ -773,7 +773,7 @@ export default function Home() {
       {!isInChatView && (
         <Image
           src="/logo-only.png"
-          alt="II-Agent Logo"
+          alt="Fucking Best Agent Logo"
           width={80}
           height={80}
           className="rounded-sm"
@@ -795,13 +795,13 @@ export default function Home() {
           {isInChatView && (
             <Image
               src="/logo-only.png"
-              alt="II-Agent Logo"
+              alt="Fucking Best Agent Logo"
               width={40}
               height={40}
               className="rounded-sm"
             />
           )}
-          {`II-Agent`}
+          {`Fucking Best Agent`}
         </motion.h1>
         {isInChatView ? (
           <div className="flex gap-x-2">
@@ -830,7 +830,7 @@ export default function Home() {
           <AnimatePresence mode="wait">
             {!isInChatView ? (
               <QuestionInput
-                placeholder="Give II-Agent a task to work on..."
+                placeholder="Give Fucking Best Agent a task to work on..."
                 value={currentQuestion}
                 setValue={setCurrentQuestion}
                 handleKeyDown={handleKeyDown}

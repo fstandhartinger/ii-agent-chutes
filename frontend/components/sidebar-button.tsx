@@ -129,7 +129,7 @@ const SidebarButton = ({ className, workspaceInfo }: SidebarButtonProps) => {
                 <div className="flex items-center gap-2">
                   <Image
                     src="/logo-only.png"
-                    alt="Logo"
+                    alt="Fucking Best Agent Logo"
                     width={24}
                     height={24}
                     className="rounded-sm"
@@ -137,7 +137,7 @@ const SidebarButton = ({ className, workspaceInfo }: SidebarButtonProps) => {
                   <span
                     className={`text-white text-lg font-serif ${orbitron.className}`}
                   >
-                    II-Agent
+                    Fucking Best Agent
                   </span>
                 </div>
               </div>
