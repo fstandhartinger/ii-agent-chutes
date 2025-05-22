@@ -183,19 +183,51 @@ class ChutesOpenAIClient(LLMClient):
             choice = response.choices[0]
             message = choice.message
             
+            # Log the raw response for debugging
+            logging.info(f"[CHUTES DEBUG] Raw response message: {message}")
+            logging.info(f"[CHUTES DEBUG] Message content: {message.content}")
+            logging.info(f"[CHUTES DEBUG] Message tool_calls: {message.tool_calls}")
+            
             if message.content:
                 internal_messages.append(TextResult(text=message.content))
             
             if message.tool_calls:
-                for tool_call in message.tool_calls:
+                logging.info(f"[CHUTES DEBUG] Processing {len(message.tool_calls)} tool calls")
+                for i, tool_call in enumerate(message.tool_calls):
+                    logging.info(f"[CHUTES DEBUG] Tool call {i}: id={tool_call.id}, name={tool_call.function.name}")
+                    logging.info(f"[CHUTES DEBUG] Tool call {i} arguments type: {type(tool_call.function.arguments)}")
+                    logging.info(f"[CHUTES DEBUG] Tool call {i} arguments raw: {tool_call.function.arguments}")
+                    
+                    # Parse the tool arguments properly
+                    try:
+                        # Try to parse as JSON if it's a string
+                        if isinstance(tool_call.function.arguments, str):
+                            import json
+                            tool_input = json.loads(tool_call.function.arguments)
+                            logging.info(f"[CHUTES DEBUG] Tool call {i} parsed JSON: {tool_input}")
+                        else:
+                            tool_input = tool_call.function.arguments
+                            logging.info(f"[CHUTES DEBUG] Tool call {i} using direct arguments: {tool_input}")
+                    except (json.JSONDecodeError, TypeError) as e:
+                        # If parsing fails, wrap the string in a dict
+                        tool_input = {"arguments": str(tool_call.function.arguments)}
+                        logging.error(f"[CHUTES DEBUG] Tool call {i} JSON parsing failed: {e}, wrapped in dict: {tool_input}")
+                    
+                    # Apply recursively_remove_invoke_tag and log the result
+                    final_tool_input = recursively_remove_invoke_tag(tool_input)
+                    logging.info(f"[CHUTES DEBUG] Tool call {i} final tool_input after recursively_remove_invoke_tag: {final_tool_input}")
+                    logging.info(f"[CHUTES DEBUG] Tool call {i} final tool_input type: {type(final_tool_input)}")
+                    
                     internal_messages.append(
                         ToolCall(
                             tool_call_id=tool_call.id,
                             tool_name=tool_call.function.name,
-                            tool_input=recursively_remove_invoke_tag(tool_call.function.arguments),
+                            tool_input=final_tool_input,
                         )
                     )
 
+        logging.info(f"[CHUTES DEBUG] Final internal_messages: {internal_messages}")
+        
         message_metadata = {
             "raw_response": response,
             "input_tokens": response.usage.prompt_tokens if response else 0,
