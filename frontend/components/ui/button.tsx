@@ -1,9 +1,9 @@
 import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
-import { Inter } from "next/font/google";
+import { Orbitron } from "next/font/google";
 
-const inter = Inter({
+const orbitron = Orbitron({
   subsets: ["latin"],
 });
 
@@ -56,7 +56,7 @@ function Button({
       data-slot="button"
       className={cn(
         buttonVariants({ variant, size, className }),
-        inter.className
+        orbitron.className
       )}
       {...props}
     />

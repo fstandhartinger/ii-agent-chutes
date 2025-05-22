@@ -87,21 +87,6 @@ const QuestionInput = ({
     }, 5000);
   };
 
-  // const removeFile = (fileName: string) => {
-  //   setFiles((prev) => {
-  //     // Find the file to remove
-  //     const fileToRemove = prev.find((file) => file.name === fileName);
-
-  //     // Revoke object URL if it exists
-  //     if (fileToRemove?.preview) {
-  //       URL.revokeObjectURL(fileToRemove.preview);
-  //     }
-
-  //     // Filter out the file
-  //     return prev.filter((file) => file.name !== fileName);
-  //   });
-  // };
-
   return (
     <motion.div
       key="input-view"
@@ -135,12 +120,6 @@ const QuestionInput = ({
                         className="w-full h-full object-cover"
                       />
                     </div>
-                    {/* <button
-                      onClick={() => removeFile(file.name)}
-                      className="absolute -top-2 -right-2 bg-black rounded-full p-1 hover:bg-gray-700"
-                    >
-                      <X className="size-4 text-white" />
-                    </button> */}
                     {file.loading && (
                       <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-xl">
                         <Loader2 className="size-5 text-white animate-spin" />
@@ -174,37 +153,31 @@ const QuestionInput = ({
                     </span>
                     <span className="text-xs text-gray-500">{label}</span>
                   </div>
-                  {/* <button
-                    onClick={() => removeFile(file.name)}
-                    className="ml-2 rounded-full p-1 hover:bg-gray-700"
-                  >
-                    <X className="size-4" />
-                  </button> */}
                 </div>
               );
             })}
           </div>
         )}
         <Textarea
-          className={`w-full p-4 pb-[72px] rounded-xl !text-lg focus:ring-0 resize-none !placeholder-gray-400 !bg-[#35363a] border-[#ffffff0f] shadow-[0px_0px_10px_0px_rgba(0,0,0,0.02)] ${
+          className={`w-full p-4 pb-[72px] rounded-xl !text-lg focus:ring-0 resize-none !placeholder-gray-400 !bg-[#27282b] border-[#3a3b3f] shadow-lg ${
             files.length > 0 ? "pt-24 h-60" : "h-50"
           } ${textareaClassName}`}
           placeholder={
             placeholder ||
-            "Enter your research query or complex question for in-depth analysis..."
+            "What can I help you with today?"
           }
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={handleKeyDown}
         />
-        <div className="flex justify-between items-center absolute bottom-0 py-4 m-px w-[calc(100%-4px)] rounded-b-xl bg-[#35363a]  px-4">
+        <div className="flex justify-between items-center absolute bottom-0 py-4 m-px w-[calc(100%-4px)] rounded-b-xl bg-[#27282b] px-4">
           <div className="flex items-center gap-x-3">
             {handleFileUpload && (
               <label htmlFor="file-upload" className="cursor-pointer">
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="hover:bg-gray-700/50 size-10 rounded-full cursor-pointer border border-[#ffffff0f] shadow-sm"
+                  className="hover:bg-gray-700/50 size-10 rounded-full cursor-pointer border border-[#3a3b3f] shadow-sm"
                   onClick={() =>
                     document.getElementById("file-upload")?.click()
                   }
@@ -232,7 +205,7 @@ const QuestionInput = ({
                 className={`h-10 cursor-pointer shadow-sm ${
                   isUseDeepResearch
                     ? "bg-gradient-skyblue-lavender !text-black"
-                    : "border !border-[#ffffff0f] bg-transparent"
+                    : "border !border-[#3a3b3f] bg-transparent"
                 }`}
                 onClick={() => setIsUseDeepResearch?.(!isUseDeepResearch)}
               >
@@ -244,7 +217,7 @@ const QuestionInput = ({
           <Button
             disabled={!value.trim() || isDisabled}
             onClick={() => handleSubmit(value)}
-            className="cursor-pointer !border !border-red p-4 size-10 font-bold bg-gradient-skyblue-lavender rounded-full hover:scale-105 active:scale-95 transition-transform shadow-[0_4px_10px_rgba(0,0,0,0.2)]"
+            className="cursor-pointer border-none p-4 size-10 font-bold bg-gradient-skyblue-lavender rounded-full hover:scale-105 active:scale-95 transition-transform shadow-lg"
           >
             <ArrowUp className="size-5" />
           </Button>

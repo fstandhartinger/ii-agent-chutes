@@ -15,15 +15,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { cloneDeep, debounce } from "lodash";
 import dynamic from "next/dynamic";
-import { Inter } from "next/font/google";
 import Cookies from "js-cookie";
 import { v4 as uuidv4 } from "uuid";
 import { useRouter, useSearchParams } from "next/navigation";
 import SidebarButton from "@/components/sidebar-button";
-
-const inter = Inter({
-  subsets: ["latin"],
-});
 
 import Browser from "@/components/browser";
 import CodeEditor from "@/components/code-editor";
@@ -762,61 +757,61 @@ export default function Home() {
   }, [messages?.length]);
 
   return (
-    <div className={`flex flex-col items-center justify-center min-h-screen bg-[#0c0c0e] ${inter.className}`}>
+    <div className="flex flex-col items-center justify-center min-h-screen bg-[#191E1B]">
       <SidebarButton />
-      
-      {/* Top header with agent name */}
-      <div className="w-full flex justify-center py-6">
-        <h1 className="text-3xl font-medium text-white">
-          Fucking Best Agent in the Cloud
-        </h1>
-      </div>
-      
       {!isInChatView && (
-        <div className="mb-8">
+        <div className="flex flex-col items-center mb-6">
           <Image
             src="/logo-only.png"
-            alt="Fucking Best Agent Logo"
-            width={80}
-            height={80}
+            alt="fucking best agent in the cloud Logo"
+            width={300}
+            height={216}
             className="rounded-sm"
           />
+          <h1 className="text-gray-400 text-xl mt-4">fucking best agent in the cloud</h1>
         </div>
       )}
-      
       <div
         className={`flex justify-between w-full ${
           !isInChatView ? "pt-0 pb-8" : "p-4"
         }`}
       >
-        {!isInChatView ? <div /> : (
-          <div className="flex items-center gap-x-2">
+        {!isInChatView && <div />}
+        <motion.h1
+          className={`font-medium text-center ${
+            isInChatView ? "flex items-center gap-x-2 text-2xl" : "text-3xl"
+          }`}
+          layout
+          layoutId="page-title"
+        >
+          {isInChatView && (
             <Image
               src="/logo-only.png"
-              alt="Fucking Best Agent Logo"
+              alt="fucking best agent in the cloud Logo"
               width={40}
               height={40}
               className="rounded-sm"
             />
-          </div>
-        )}
-        
-        {isInChatView && (
+          )}
+          {isInChatView ? "fucking best agent in the cloud" : "How can I help you today?"}
+        </motion.h1>
+        {isInChatView ? (
           <div className="flex gap-x-2">
             <Button
               className="cursor-pointer h-10"
               variant="outline"
               onClick={handleShare}
             >
-              <Share className="mr-2" /> Share
+              <Share /> Share
             </Button>
             <Button className="cursor-pointer" onClick={resetChat}>
               <X className="size-5" />
             </Button>
           </div>
+        ) : (
+          <div />
         )}
       </div>
-      
       {isLoadingSession ? (
         <div className="flex flex-col items-center justify-center p-8">
           <Loader2 className="h-8 w-8 text-white animate-spin mb-4" />
@@ -827,7 +822,7 @@ export default function Home() {
           <AnimatePresence mode="wait">
             {!isInChatView ? (
               <QuestionInput
-                placeholder="How can I help you today?"
+                placeholder="Give fucking best agent in the cloud a task to work on..."
                 value={currentQuestion}
                 setValue={setCurrentQuestion}
                 handleKeyDown={handleKeyDown}
@@ -837,8 +832,6 @@ export default function Home() {
                 isUseDeepResearch={isUseDeepResearch}
                 setIsUseDeepResearch={setIsUseDeepResearch}
                 isDisabled={!socket || socket.readyState !== WebSocket.OPEN}
-                className="max-w-3xl"
-                textareaClassName="!bg-[#1a1a1d] text-white"
               />
             ) : (
               <motion.div
@@ -852,7 +845,7 @@ export default function Home() {
                   damping: 30,
                   mass: 1,
                 }}
-                className="w-full grid grid-cols-10 write-report overflow-hidden flex-1 pr-4 pb-4"
+                className="w-full grid grid-cols-10 write-report overflow-hidden flex-1 pr-4 pb-4 "
               >
                 <ChatMessage
                   messages={messages}
@@ -871,57 +864,44 @@ export default function Home() {
                   handleFileUpload={handleFileUpload}
                 />
 
-                <div className="col-span-6 bg-[#1a1a1d] border border-gray-800 p-4 rounded-2xl">
-                  <div className="pb-4 flex items-center justify-between">
+                <div className="col-span-6 bg-[#1e1f23] border border-[#3A3B3F] p-4 rounded-2xl">
+                  <div className="pb-4 bg-neutral-850 flex items-center justify-between">
                     <div className="flex gap-x-4">
                       <Button
-                        className={`cursor-pointer hover:bg-gray-800 ${
+                        className={`cursor-pointer hover:!bg-black ${
                           activeTab === TAB.BROWSER
-                            ? "bg-gray-800 text-white"
-                            : "bg-transparent text-gray-400"
+                            ? "bg-gradient-skyblue-lavender !text-black"
+                            : ""
                         }`}
-                        variant="ghost"
+                        variant="outline"
                         onClick={() => setActiveTab(TAB.BROWSER)}
                       >
-                        <Globe className="size-4 mr-2" /> Browser
+                        <Globe className="size-4" /> Browser
                       </Button>
                       <Button
-                        className={`cursor-pointer hover:bg-gray-800 ${
+                        className={`cursor-pointer hover:!bg-black ${
                           activeTab === TAB.CODE
-                            ? "bg-gray-800 text-white"
-                            : "bg-transparent text-gray-400"
+                            ? "bg-gradient-skyblue-lavender !text-black"
+                            : ""
                         }`}
-                        variant="ghost"
+                        variant="outline"
                         onClick={() => setActiveTab(TAB.CODE)}
                       >
-                        <Code className="size-4 mr-2" /> Code
+                        <Code className="size-4" /> Code
                       </Button>
                       <Button
-                        className={`cursor-pointer hover:bg-gray-800 ${
+                        className={`cursor-pointer hover:!bg-black ${
                           activeTab === TAB.TERMINAL
-                            ? "bg-gray-800 text-white"
-                            : "bg-transparent text-gray-400"
+                            ? "bg-gradient-skyblue-lavender !text-black"
+                            : ""
                         }`}
-                        variant="ghost"
+                        variant="outline"
                         onClick={() => setActiveTab(TAB.TERMINAL)}
                       >
-                        <TerminalIcon className="size-4 mr-2" /> Terminal
+                        <TerminalIcon className="size-4" /> Terminal
                       </Button>
                     </div>
-                    {/* TODO: Implement VS Code integration in a more elegant way 
-                    <Button
-                      className="cursor-pointer"
-                      variant="outline"
-                      onClick={handleOpenVSCode}
-                    >
-                      <Image
-                        src={"/vscode.png"}
-                        alt="VS Code"
-                        width={20}
-                        height={20}
-                      />{" "}
-                      Open with VS Code
-                    </Button> */}
+                    {/* TODO: Implement a way to open VS Code if needed in the future */}
                   </div>
                   <Browser
                     className={

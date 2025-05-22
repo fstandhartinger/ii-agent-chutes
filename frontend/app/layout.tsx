@@ -1,10 +1,16 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import Providers from "@/providers";
+import { Inter } from "next/font/google";
+
+const inter = Inter({ 
+  subsets: ["latin"],
+  variable: "--font-inter"
+});
 
 export const metadata: Metadata = {
-  title: "Fucking Best Agent",
-  description: "Fucking Best Agent (fubea.cloud) is a tool for in-depth analysis and research.",
+  title: "fucking best agent in the cloud",
+  description: "fucking best agent in the cloud (fubea.cloud) is a tool for in-depth analysis and research.",
 };
 
 export default function RootLayout({
@@ -34,7 +40,7 @@ export default function RootLayout({
         />
         <link rel="manifest" href="/favicon/site.webmanifest" />
       </head>
-      <body className={`antialiased`}>
+      <body className={`antialiased ${inter.variable} font-inter`}>
         <Providers>{children}</Providers>
       </body>
     </html>

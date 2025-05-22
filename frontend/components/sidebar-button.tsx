@@ -11,11 +11,6 @@ import { useSearchParams } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Orbitron } from "next/font/google";
-
-const orbitron = Orbitron({
-  subsets: ["latin"],
-});
 
 interface SidebarButtonProps {
   className?: string;
@@ -129,15 +124,15 @@ const SidebarButton = ({ className, workspaceInfo }: SidebarButtonProps) => {
                 <div className="flex items-center gap-2">
                   <Image
                     src="/logo-only.png"
-                    alt="Fucking Best Agent Logo"
+                    alt="fubea Logo"
                     width={24}
                     height={24}
                     className="rounded-sm"
                   />
                   <span
-                    className={`text-white text-lg font-serif ${orbitron.className}`}
+                    className="text-white text-lg font-medium"
                   >
-                    Fucking Best Agent
+                    fubea
                   </span>
                 </div>
               </div>
