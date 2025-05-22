@@ -19,6 +19,7 @@ import Cookies from "js-cookie";
 import { v4 as uuidv4 } from "uuid";
 import { useRouter, useSearchParams } from "next/navigation";
 import SidebarButton from "@/components/sidebar-button";
+import { useChutes } from "@/providers/chutes-provider";
 
 import Browser from "@/components/browser";
 import CodeEditor from "@/components/code-editor";
@@ -66,6 +67,7 @@ export default function Home() {
   const [browserUrl, setBrowserUrl] = useState("");
 
   const isReplayMode = useMemo(() => !!searchParams.get("id"), [searchParams]);
+  const { useChutesLLM, toggleChutesLLM } = useChutes();
 
   // Get session ID from URL params
   useEffect(() => {
@@ -678,48 +680,57 @@ export default function Home() {
     toast.success("Copied to clipboard");
   };
 
-  useEffect(() => {
+  const connectWebSocket = () => {
     // Connect to WebSocket when the component mounts
-    const connectWebSocket = () => {
-      const params = new URLSearchParams({ device_id: deviceId });
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
-      const wsUrl = `${apiUrl.replace(/^http/, 'ws')}/ws?${params.toString()}`;
-      const ws = new WebSocket(wsUrl);
+    let wsUrl = `${process.env.NEXT_PUBLIC_API_URL}/ws`.replace("http://", "ws://").replace("https://", "wss://");
 
-      ws.onopen = () => {
-        console.log("WebSocket connection established");
-        // Request workspace info immediately after connection
-        ws.send(
-          JSON.stringify({
-            type: "workspace_info",
-            content: {},
-          })
-        );
-      };
+    // Append device ID if available
+    if (deviceId) {
+      wsUrl += `?device_id=${deviceId}`;
 
-      ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          handleEvent({ ...data, id: Date.now().toString() });
-        } catch (error) {
-          console.error("Error parsing WebSocket data:", error);
-        }
-      };
+      // Append useChutesLLM flag if true
+      if (useChutesLLM) {
+        wsUrl += `&use_chutes=true`;
+      }
+    }
 
-      ws.onerror = (error) => {
-        console.log("WebSocket error:", error);
-        toast.error("WebSocket connection error");
-      };
+    const ws = new WebSocket(wsUrl);
 
-      ws.onclose = () => {
-        console.log("WebSocket connection closed");
-        setSocket(null);
-      };
-
-      setSocket(ws);
+    ws.onopen = () => {
+      console.log("WebSocket connection established");
+      // Request workspace info immediately after connection
+      ws.send(
+        JSON.stringify({
+          type: "workspace_info",
+          content: {},
+        })
+      );
     };
 
-    // Only connect if we have a device ID AND we're not viewing a session history
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        handleEvent({ ...data, id: Date.now().toString() });
+      } catch (error) {
+        console.error("Error parsing WebSocket data:", error);
+      }
+    };
+
+    ws.onerror = (error) => {
+      console.log("WebSocket error:", error);
+      toast.error("WebSocket connection error");
+    };
+
+    ws.onclose = () => {
+      console.log("WebSocket connection closed");
+      setSocket(null);
+    };
+
+    setSocket(ws);
+  };
+
+  // Only connect if we have a device ID AND we're not viewing a session history
+  useEffect(() => {
     if (deviceId && !isReplayMode) {
       connectWebSocket();
     }
@@ -767,8 +778,7 @@ export default function Home() {
             width={300}
             height={216}
             className="rounded-sm"
-          />
-          <h1 className="text-gray-400 text-xl mt-4">fubea</h1>
+          />          
         </div>
       )}
       <div
@@ -821,18 +831,40 @@ export default function Home() {
         <LayoutGroup>
           <AnimatePresence mode="wait">
             {!isInChatView ? (
-              <QuestionInput
-                placeholder="Give fubea a task to work on..."
-                value={currentQuestion}
-                setValue={setCurrentQuestion}
-                handleKeyDown={handleKeyDown}
-                handleSubmit={handleQuestionSubmit}
-                handleFileUpload={handleFileUpload}
-                isUploading={isUploading}
-                isUseDeepResearch={isUseDeepResearch}
-                setIsUseDeepResearch={setIsUseDeepResearch}
-                isDisabled={!socket || socket.readyState !== WebSocket.OPEN}
-              />
+              <div className="flex items-center justify-center py-8 flex-col gap-4 flex-grow relative">
+                <div 
+                  className="flex items-center justify-center cursor-pointer" 
+                  onDoubleClick={toggleChutesLLM}
+                >
+                  <Image
+                    src="/logo.png"
+                    width={100}
+                    height={100}
+                    alt="Logo"
+                    className="rounded-full shadow-md"
+                  />
+                </div>
+                <QuestionInput
+                  placeholder="Give fubea a task to work on..."
+                  value={currentQuestion}
+                  setValue={setCurrentQuestion}
+                  handleKeyDown={handleKeyDown}
+                  handleSubmit={handleQuestionSubmit}
+                  handleFileUpload={handleFileUpload}
+                  isUploading={isUploading}
+                  isUseDeepResearch={isUseDeepResearch}
+                  setIsUseDeepResearch={setIsUseDeepResearch}
+                  isDisabled={!socket || socket.readyState !== WebSocket.OPEN}
+                />
+                <a 
+                  href="https://chutes.ai" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="absolute bottom-4 right-4 text-sm text-gray-400 hover:text-gray-300 transition-colors"
+                >
+                  powered by Chutes
+                </a>
+              </div>
             ) : (
               <motion.div
                 key="chat-view"

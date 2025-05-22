@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { ArrowUp, Loader2, Paperclip } from "lucide-react";
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { getFileIconAndColor } from "@/utils/file-utils";
 
 interface FileUploadStatus {
@@ -43,6 +43,7 @@ const QuestionInput = ({
   isDisabled,
 }: QuestionInputProps) => {
   const [files, setFiles] = useState<FileUploadStatus[]>([]);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Clean up object URLs when component unmounts
   useEffect(() => {
@@ -85,6 +86,68 @@ const QuestionInput = ({
     setTimeout(() => {
       setFiles((prev) => prev.map((file) => ({ ...file, loading: false })));
     }, 5000);
+  };
+
+  // Handle clipboard paste events (CTRL+V)
+  const handlePaste = async (e: React.ClipboardEvent) => {
+    if (!handleFileUpload || isUploading) return;
+    
+    const clipboardItems = e.clipboardData.items;
+    const imageItems = Array.from(clipboardItems).filter(item => 
+      item.type.indexOf('image') !== -1
+    );
+    
+    if (imageItems.length === 0) return; // No images in clipboard
+    
+    e.preventDefault(); // Prevent the default paste behavior for images
+    
+    // Process pasted images
+    const files: File[] = [];
+    
+    for (const item of imageItems) {
+      const blob = item.getAsFile();
+      if (!blob) continue;
+      
+      // Create a file with a meaningful name from the blob
+      const timestamp = new Date().toISOString().replace(/[-:.]/g, '');
+      const extension = blob.type.split('/')[1] || 'png';
+      const fileName = `pasted_image_${timestamp}.${extension}`;
+      
+      // Create a new file with the generated name
+      const file = new File([blob], fileName, { type: blob.type });
+      files.push(file);
+      
+      // Create preview
+      const preview = URL.createObjectURL(blob);
+      
+      // Add to files state immediately for visual feedback
+      setFiles(prev => [...prev, {
+        name: fileName,
+        loading: true,
+        isImage: true,
+        preview
+      }]);
+    }
+    
+    if (files.length > 0) {
+      // Create a fake event to reuse the existing file upload handler
+      const dataTransfer = new DataTransfer();
+      files.forEach(file => dataTransfer.items.add(file));
+      
+      const fakeEvent = {
+        target: {
+          files: dataTransfer.files
+        }
+      } as unknown as React.ChangeEvent<HTMLInputElement>;
+      
+      // Call the parent handler
+      handleFileUpload(fakeEvent);
+      
+      // After a delay, mark files as not loading
+      setTimeout(() => {
+        setFiles((prev) => prev.map((file) => ({ ...file, loading: false })));
+      }, 5000);
+    }
   };
 
   return (
@@ -159,6 +222,7 @@ const QuestionInput = ({
           </div>
         )}
         <Textarea
+          ref={textareaRef}
           className={`w-full p-4 pb-[72px] rounded-xl !text-lg focus:ring-0 resize-none !placeholder-gray-400 !bg-[#27282b] border-[#3a3b3f] shadow-lg ${
             files.length > 0 ? "pt-24 h-60" : "h-50"
           } ${textareaClassName}`}
@@ -169,6 +233,7 @@ const QuestionInput = ({
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={handleKeyDown}
+          onPaste={handlePaste}
         />
         <div className="flex justify-between items-center absolute bottom-0 py-4 m-px w-[calc(100%-4px)] rounded-b-xl bg-[#27282b] px-4">
           <div className="flex items-center gap-x-3">

@@ -118,6 +118,8 @@ STATIC_FILE_BASE_URL=http://localhost:8000/
 
 #If you are using Anthropic client
 ANTHROPIC_API_KEY=
+#If you are using Chutes LLM provider (hidden feature)
+CHUTES_API_KEY=
 #If you are using Goolge Vertex (recommended if you have permission extra throughput)
 #GOOGLE_APPLICATION_CREDENTIALS=
 ```

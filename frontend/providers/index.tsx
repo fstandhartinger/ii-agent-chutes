@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/sonner";
 import "../app/github-markdown.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { ChutesProvider } from "./chutes-provider";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   return (
@@ -16,13 +17,15 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       disableTransitionOnChange
     >
       <TooltipProvider>
-        <ProgressBar
-          height="2px"
-          color="#BAE9F4"
-          options={{ showSpinner: false }}
-          shallowRouting
-        />
-        {children}
+        <ChutesProvider>
+          <ProgressBar
+            height="2px"
+            color="#BAE9F4"
+            options={{ showSpinner: false }}
+            shallowRouting
+          />
+          {children}
+        </ChutesProvider>
       </TooltipProvider>
       <Toaster richColors />
     </ThemeProvider>

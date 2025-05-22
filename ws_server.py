@@ -87,6 +87,7 @@ global_args = None
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
+    """WebSocket endpoint for real-time communication with the client."""
     await websocket.accept()
     active_connections.add(websocket)
 
@@ -96,6 +97,9 @@ async def websocket_endpoint(websocket: WebSocket):
     print(f"Workspace manager created: {workspace_manager}")
 
     try:
+        # Check if we should use Chutes LLM instead of Anthropic
+        use_chutes = websocket.query_params.get("use_chutes", "false").lower() == "true"
+        
         # Initial connection message with session info
         await websocket.send_json(
             RealtimeEvent(
@@ -318,6 +322,8 @@ def create_agent_for_connection(
     """Create a new agent instance for a websocket connection."""
     global global_args
     device_id = websocket.query_params.get("device_id")
+    use_chutes = websocket.query_params.get("use_chutes", "false").lower() == "true"
+    
     # Setup logging
     logger_for_agent_logs = logging.getLogger(f"agent_logs_{id(websocket)}")
     logger_for_agent_logs.setLevel(logging.DEBUG)
@@ -344,13 +350,21 @@ def create_agent_for_connection(
     )
 
     # Initialize LLM client
-    client = get_client(
-        "anthropic-direct",
-        model_name=DEFAULT_MODEL,
-        use_caching=False,
-        project_id=global_args.project_id,
-        region=global_args.region,
-    )
+    if use_chutes:
+        logger_for_agent_logs.info("Using Chutes LLM provider")
+        client = get_client(
+            "chutes-openai",
+            model_name="deepseek-ai/DeepSeek-V3-0324",
+            use_caching=False,
+        )
+    else:
+        client = get_client(
+            "anthropic-direct",
+            model_name=DEFAULT_MODEL,
+            use_caching=False,
+            project_id=global_args.project_id,
+            region=global_args.region,
+        )
 
     # Initialize token counter
     token_counter = TokenCounter()
