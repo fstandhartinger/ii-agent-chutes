@@ -763,12 +763,12 @@ export default function Home() {
         <div className="flex flex-col items-center mb-6">
           <Image
             src="/logo-only.png"
-            alt="fucking best agent in the cloud Logo"
+            alt="fubea Logo"
             width={300}
             height={216}
             className="rounded-sm"
           />
-          <h1 className="text-gray-400 text-xl mt-4">fucking best agent in the cloud</h1>
+          <h1 className="text-gray-400 text-xl mt-4">fubea</h1>
         </div>
       )}
       <div
@@ -787,13 +787,13 @@ export default function Home() {
           {isInChatView && (
             <Image
               src="/logo-only.png"
-              alt="fucking best agent in the cloud Logo"
+              alt="fubea Logo"
               width={40}
               height={40}
               className="rounded-sm"
             />
           )}
-          {isInChatView ? "fucking best agent in the cloud" : "How can I help you today?"}
+          {isInChatView ? "fubea" : "How can I help you today?"}
         </motion.h1>
         {isInChatView ? (
           <div className="flex gap-x-2">
@@ -822,7 +822,7 @@ export default function Home() {
           <AnimatePresence mode="wait">
             {!isInChatView ? (
               <QuestionInput
-                placeholder="Give fucking best agent in the cloud a task to work on..."
+                placeholder="Give fubea a task to work on..."
                 value={currentQuestion}
                 setValue={setCurrentQuestion}
                 handleKeyDown={handleKeyDown}

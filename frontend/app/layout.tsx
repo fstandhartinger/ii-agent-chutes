@@ -9,8 +9,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "fucking best agent in the cloud",
-  description: "fucking best agent in the cloud (fubea.cloud) is a tool for in-depth analysis and research.",
+  title: "fubea",
+  description: "fubea (fubea.cloud) is a tool for in-depth analysis and research.",
 };
 
 export default function RootLayout({
