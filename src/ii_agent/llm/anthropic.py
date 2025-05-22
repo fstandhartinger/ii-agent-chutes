@@ -1,4 +1,5 @@
 import os
+import logging
 
 import random
 import time
@@ -89,6 +90,8 @@ class AnthropicDirectClient(LLMClient):
         self.use_caching = use_caching
         self.prompt_caching_headers = {"anthropic-beta": "prompt-caching-2024-07-31"}
         self.thinking_tokens = thinking_tokens
+        # Log provider info
+        logging.info(f"Using Anthropic LLM provider with model: {model_name}")
 
     def generate(
         self,
@@ -113,6 +116,8 @@ class AnthropicDirectClient(LLMClient):
         Returns:
             A generated response.
         """
+        # Log each LLM call
+        logging.info(f"[ANTHROPIC LLM CALL] model={self.model_name}, max_tokens={max_tokens}, temperature={temperature}")
 
         # Turn GeneralContentBlock into Anthropic message format
         anthropic_messages = []

@@ -772,7 +772,7 @@ export default function Home() {
       <SidebarButton />
       {!isInChatView && (
         <motion.h1
-          className="text-3xl font-medium text-center mb-6"
+          className="text-3xl font-medium text-center"
           layout
           layoutId="page-title"
         >
@@ -788,7 +788,7 @@ export default function Home() {
               className="rounded-sm"
             />
           </div>
-          How can I help you today?
+          <div className="mb-3">How can I help you today?</div>
         </motion.h1>
       )}
       <div

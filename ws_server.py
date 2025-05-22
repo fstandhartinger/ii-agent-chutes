@@ -351,13 +351,20 @@ def create_agent_for_connection(
 
     # Initialize LLM client
     if use_chutes:
-        logger_for_agent_logs.info("Using Chutes LLM provider")
+        logger_for_agent_logs.info("=========================================")
+        logger_for_agent_logs.info("USING CHUTES LLM PROVIDER")
+        logger_for_agent_logs.info("Model: deepseek-ai/DeepSeek-V3-0324")
+        logger_for_agent_logs.info("=========================================")
         client = get_client(
             "chutes-openai",
             model_name="deepseek-ai/DeepSeek-V3-0324",
             use_caching=False,
         )
     else:
+        logger_for_agent_logs.info("=========================================")
+        logger_for_agent_logs.info("USING ANTHROPIC LLM PROVIDER")
+        logger_for_agent_logs.info(f"Model: {DEFAULT_MODEL}")
+        logger_for_agent_logs.info("=========================================")
         client = get_client(
             "anthropic-direct",
             model_name=DEFAULT_MODEL,

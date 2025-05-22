@@ -1,6 +1,7 @@
 import os
 import random
 import time
+import logging
 from typing import Any, Tuple, cast, Dict, List, Optional
 
 from openai import OpenAI
@@ -46,6 +47,8 @@ class ChutesOpenAIClient(LLMClient):
         self.model_name = model_name
         self.max_retries = max_retries
         self.use_caching = use_caching
+        # Log provider info
+        logging.info(f"=== Using CHUTES LLM provider with model: {model_name} ===")
 
     def generate(
         self,
@@ -71,6 +74,9 @@ class ChutesOpenAIClient(LLMClient):
         Returns:
             A generated response.
         """
+        # Log each LLM call
+        logging.info(f"[CHUTES LLM CALL] model={self.model_name}, max_tokens={max_tokens}, temperature={temperature}")
+        
         # Convert messages to OpenAI format
         openai_messages = []
         
