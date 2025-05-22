@@ -79,7 +79,7 @@ const ChatMessage = ({
                     return (
                       <div
                         key={`${message.id}-file-${fileIndex}`}
-                        className="inline-block ml-auto rounded-3xl overflow-hidden max-w-[320px]"
+                        className="inline-block ml-auto rounded-2xl overflow-hidden max-w-[320px]"
                       >
                         <div className="w-40 h-40 rounded-xl overflow-hidden">
                           <img
@@ -99,7 +99,7 @@ const ChatMessage = ({
                   return (
                     <div
                       key={`${message.id}-file-${fileIndex}`}
-                      className="inline-block ml-auto bg-[#35363a] text-white rounded-2xl px-4 py-3 border border-gray-700 shadow-sm"
+                      className="inline-block ml-auto bg-[#1a1a1d] text-white rounded-xl px-4 py-3 border border-gray-800 shadow-sm"
                     >
                       <div className="flex items-center gap-3">
                         <div
@@ -111,7 +111,7 @@ const ChatMessage = ({
                           <span className="text-base font-medium">
                             {fileName}
                           </span>
-                          <span className="text-left text-sm text-gray-500">
+                          <span className="text-left text-sm text-gray-400">
                             {label}
                           </span>
                         </div>
@@ -124,9 +124,9 @@ const ChatMessage = ({
 
             {message.content && (
               <motion.div
-                className={`inline-block text-left rounded-lg ${
+                className={`inline-block text-left rounded-xl ${
                   message.role === "user"
-                    ? "bg-[#35363a] p-3 text-white max-w-[80%] border border-[#3A3B3F] shadow-sm"
+                    ? "bg-[#1a1a1d] p-3 text-white max-w-[80%] border border-gray-800 shadow-sm"
                     : "text-white"
                 }`}
                 initial={{ scale: 0.9 }}
@@ -175,7 +175,7 @@ const ChatMessage = ({
             }}
           >
             <motion.div
-              className="inline-block p-3 text-left rounded-lg bg-neutral-800/90 text-white backdrop-blur-sm"
+              className="inline-block p-3 text-left rounded-xl bg-[#1a1a1d] text-white backdrop-blur-sm border border-gray-800"
               initial={{ scale: 0.95 }}
               animate={{ scale: 1 }}
               transition={{
@@ -196,7 +196,7 @@ const ChatMessage = ({
         )}
 
         {isCompleted && (
-          <div className="flex gap-x-2 items-center bg-[#25BA3B1E] text-green-600 text-sm p-2 rounded-full">
+          <div className="flex gap-x-2 items-center bg-[#10312A] text-green-400 text-sm p-2 rounded-full">
             <Check className="size-4" />
             <span>II-Agent has completed the current task.</span>
           </div>
@@ -212,7 +212,7 @@ const ChatMessage = ({
       >
         <QuestionInput
           className="p-4 pb-0 w-full max-w-none"
-          textareaClassName="h-30 w-full"
+          textareaClassName="!bg-[#1a1a1d] h-30 w-full"
           placeholder="Ask me anything..."
           value={currentQuestion}
           setValue={setCurrentQuestion}
