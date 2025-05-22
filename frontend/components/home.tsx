@@ -768,18 +768,28 @@ export default function Home() {
   }, [messages?.length]);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-[#191E1B]">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-[#191E1B] relative">
       <SidebarButton />
       {!isInChatView && (
-        <div className="flex flex-col items-center mb-6">
-          <Image
-            src="/logo-only.png"
-            alt="fubea Logo"
-            width={300}
-            height={216}
-            className="rounded-sm"
-          />          
-        </div>
+        <motion.h1
+          className="text-3xl font-medium text-center mb-6"
+          layout
+          layoutId="page-title"
+        >
+          <div 
+            className="flex items-center justify-center mb-6 cursor-pointer"
+            onDoubleClick={toggleChutesLLM}
+          >
+            <Image
+              src="/logo-only.png"
+              alt="fubea Logo"
+              width={300}
+              height={216}
+              className="rounded-sm"
+            />
+          </div>
+          How can I help you today?
+        </motion.h1>
       )}
       <div
         className={`flex justify-between w-full ${
@@ -787,9 +797,9 @@ export default function Home() {
         }`}
       >
         {!isInChatView && <div />}
-        <motion.h1
+        <motion.div
           className={`font-medium text-center ${
-            isInChatView ? "flex items-center gap-x-2 text-2xl" : "text-3xl"
+            isInChatView ? "flex items-center gap-x-2 text-2xl ml-12" : "hidden"
           }`}
           layout
           layoutId="page-title"
@@ -803,8 +813,8 @@ export default function Home() {
               className="rounded-sm"
             />
           )}
-          {isInChatView ? "fubea" : "How can I help you today?"}
-        </motion.h1>
+          {isInChatView ? "fubea" : ""}
+        </motion.div>
         {isInChatView ? (
           <div className="flex gap-x-2">
             <Button
@@ -831,19 +841,7 @@ export default function Home() {
         <LayoutGroup>
           <AnimatePresence mode="wait">
             {!isInChatView ? (
-              <div className="flex items-center justify-center py-8 flex-col gap-4 flex-grow relative">
-                <div 
-                  className="flex items-center justify-center cursor-pointer" 
-                  onDoubleClick={toggleChutesLLM}
-                >
-                  <Image
-                    src="/logo.png"
-                    width={100}
-                    height={100}
-                    alt="Logo"
-                    className="rounded-full shadow-md"
-                  />
-                </div>
+              <div className="flex items-center justify-center py-8 flex-col gap-4 flex-grow w-full max-w-3xl">
                 <QuestionInput
                   placeholder="Give fubea a task to work on..."
                   value={currentQuestion}
@@ -855,15 +853,8 @@ export default function Home() {
                   isUseDeepResearch={isUseDeepResearch}
                   setIsUseDeepResearch={setIsUseDeepResearch}
                   isDisabled={!socket || socket.readyState !== WebSocket.OPEN}
+                  className="w-full"
                 />
-                <a 
-                  href="https://chutes.ai" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="absolute bottom-4 right-4 text-sm text-gray-400 hover:text-gray-300 transition-colors"
-                >
-                  powered by Chutes
-                </a>
               </div>
             ) : (
               <motion.div
@@ -1001,6 +992,14 @@ export default function Home() {
           </AnimatePresence>
         </LayoutGroup>
       )}
+      <a 
+        href="https://chutes.ai" 
+        target="_blank" 
+        rel="noopener noreferrer"
+        className="absolute bottom-4 right-4 text-sm text-gray-400 hover:text-gray-300 transition-colors"
+      >
+        powered by Chutes
+      </a>
     </div>
   );
 }
