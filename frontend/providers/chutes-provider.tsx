@@ -26,7 +26,12 @@ export function ChutesProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("useChutesLLM", JSON.stringify(newValue));
     
     // Show alert notification
-    alert(newValue ? "Chutes LLM provider activated!" : "Anthropic LLM provider activated!");
+    alert(newValue ? "Chutes LLM provider activated! Page will reload to apply changes." : "Anthropic LLM provider activated! Page will reload to apply changes.");
+    
+    // Reload the page to re-establish WebSocket connection with the new setting
+    setTimeout(() => {
+      window.location.reload();
+    }, 500);
   };
 
   return (

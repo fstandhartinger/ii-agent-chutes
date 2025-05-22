@@ -741,7 +741,8 @@ export default function Home() {
         socket.close();
       }
     };
-  }, [deviceId, isReplayMode]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deviceId, isReplayMode, useChutesLLM]);
 
   const isBrowserTool = useMemo(
     () =>
