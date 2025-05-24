@@ -44,13 +44,18 @@ class OpenRouterOpenAIClient(LLMClient):
         api_key = os.getenv("OPENROUTER_API_KEY")
         if not api_key:
             raise ValueError("OPENROUTER_API_KEY environment variable must be set")
-            
+        
+        # Log API key presence (but not the actual key)
+        logging.info(f"[OPENROUTER] API key found: {len(api_key)} characters")
+        
+        # Initialize the OpenAI client with OpenRouter's base URL
         self.client = OpenAI(
             api_key=api_key,
             base_url="https://openrouter.ai/api/v1",
             max_retries=1,
             timeout=60 * 5,
         )
+        
         self.model_name = model_name
         self.max_retries = max_retries
         self.use_caching = use_caching
@@ -77,7 +82,8 @@ class OpenRouterOpenAIClient(LLMClient):
             "no available targets" in error_str or
             "all targets exhausted" in error_str or
             "rate limit" in error_str or
-            "quota exceeded" in error_str
+            "quota exceeded" in error_str or
+            "no endpoints found" in error_str
         )
 
     def _get_backoff_time(self, retry: int, base_delay: float = 10.0) -> float:
@@ -203,11 +209,13 @@ class OpenRouterOpenAIClient(LLMClient):
             # Retry logic for current model
             for retry in range(self.max_retries):
                 try:
-                    # Add OpenRouter specific headers
+                    # Create extra headers for OpenRouter
                     extra_headers = {
-                        "HTTP-Referer": "https://fubea.ai",
-                        "X-Title": "fubea.ai Agent"
+                        "HTTP-Referer": "https://fubea.ai",  # Optional but recommended
+                        "X-Title": "fubea.ai Agent",  # Optional but recommended
                     }
+                    
+                    logging.info(f"[OPENROUTER] Attempting request to model: {current_model}")
                     
                     response = self.client.chat.completions.create(
                         model=current_model,
@@ -218,6 +226,9 @@ class OpenRouterOpenAIClient(LLMClient):
                         tool_choice=openai_tool_choice,
                         extra_headers=extra_headers,
                     )
+                    
+                    logging.info(f"[OPENROUTER] Successfully received response from model: {current_model}")
+                    
                     # Success! Update the model name to reflect which one worked
                     if model_idx > 0:
                         logging.info(f"[OPENROUTER] Successfully used fallback model: {current_model}")
@@ -225,6 +236,7 @@ class OpenRouterOpenAIClient(LLMClient):
                     break
                     
                 except OpenAI_InternalServerError as e:
+                    logging.error(f"[OPENROUTER] Internal server error for model {current_model}: {e}")
                     if self._is_target_exhausted_error(e):
                         backoff_time = self._get_backoff_time(retry)
                         logging.warning(
@@ -250,6 +262,7 @@ class OpenRouterOpenAIClient(LLMClient):
                             break
                             
                 except (OpenAI_APIConnectionError, OpenAI_RateLimitError) as e:
+                    logging.error(f"[OPENROUTER] Connection/Rate limit error for model {current_model}: {e}")
                     if retry < self.max_retries - 1:
                         backoff_time = self._get_backoff_time(retry)
                         logging.warning(
@@ -262,9 +275,28 @@ class OpenRouterOpenAIClient(LLMClient):
                     else:
                         logging.error(f"[OPENROUTER] Model {current_model} failed with {type(e).__name__}")
                         break
+                
+                except OpenAI_BadRequestError as e:
+                    # Handle specific authentication/authorization errors
+                    if "no auth credentials found" in str(e).lower() or "401" in str(e):
+                        logging.error(f"[OPENROUTER] Authentication error for model {current_model}: {e}")
+                        logging.error("[OPENROUTER] Please check your OPENROUTER_API_KEY environment variable")
+                        # Don't retry auth errors
+                        break
+                    elif "404" in str(e) or "no endpoints found" in str(e).lower():
+                        logging.error(f"[OPENROUTER] Model not found or no endpoints available: {current_model}")
+                        logging.error("[OPENROUTER] This might be due to privacy settings or model availability")
+                        # Don't retry 404 errors
+                        break
+                    else:
+                        logging.error(f"[OPENROUTER] Bad request error for model {current_model}: {e}")
+                        break
                         
                 except Exception as e:
                     logging.error(f"[OPENROUTER] Unexpected error for model {current_model}: {e}")
+                    # Log the full error for debugging
+                    import traceback
+                    logging.error(f"[OPENROUTER] Full traceback: {traceback.format_exc()}")
                     break
             
             # If we got a response, break out of the model loop
@@ -275,6 +307,10 @@ class OpenRouterOpenAIClient(LLMClient):
         if not response:
             error_msg = f"All models failed: {models_to_try}"
             logging.error(f"[OPENROUTER] {error_msg}")
+            logging.error("[OPENROUTER] Please check:")
+            logging.error("1. OPENROUTER_API_KEY environment variable is set correctly")
+            logging.error("2. Your OpenRouter account has sufficient credits")
+            logging.error("3. Your privacy settings allow free models: https://openrouter.ai/settings/privacy")
             raise Exception(error_msg)
 
         # Convert response back to internal format
