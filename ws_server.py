@@ -323,6 +323,7 @@ def create_agent_for_connection(
     global global_args
     device_id = websocket.query_params.get("device_id")
     use_chutes = websocket.query_params.get("use_chutes", "false").lower() == "true"
+    model_id = websocket.query_params.get("model_id", "deepseek-ai/DeepSeek-V3-0324")
     
     # Setup logging
     logger_for_agent_logs = logging.getLogger(f"agent_logs_{id(websocket)}")
@@ -353,11 +354,11 @@ def create_agent_for_connection(
     if use_chutes:
         logger_for_agent_logs.info("=========================================")
         logger_for_agent_logs.info("USING CHUTES LLM PROVIDER")
-        logger_for_agent_logs.info("Model: deepseek-ai/DeepSeek-V3-0324")
+        logger_for_agent_logs.info(f"Model: {model_id}")
         logger_for_agent_logs.info("=========================================")
         client = get_client(
             "chutes-openai",
-            model_name="deepseek-ai/DeepSeek-V3-0324",
+            model_name=model_id,
             use_caching=False,
         )
     else:

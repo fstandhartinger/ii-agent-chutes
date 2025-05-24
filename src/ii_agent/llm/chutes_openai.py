@@ -5,6 +5,12 @@ import logging
 from typing import Any, Tuple, cast, Dict, List, Optional
 
 from openai import OpenAI
+from openai import (
+    APIConnectionError as OpenAI_APIConnectionError,
+    InternalServerError as OpenAI_InternalServerError,
+    RateLimitError as OpenAI_RateLimitError,
+    BadRequestError as OpenAI_BadRequestError,
+)
 from openai.types.chat import ChatCompletion, ChatCompletionMessage, ChatCompletionChunk
 from openai.types.chat import ChatCompletionToolChoiceOptionParam as ToolChoice
 from openai.types.chat import ChatCompletionToolParam as Tool
@@ -30,8 +36,9 @@ class ChutesOpenAIClient(LLMClient):
     def __init__(
         self,
         model_name="deepseek-ai/DeepSeek-V3-0324",
-        max_retries=2,
+        max_retries=3,
         use_caching=True,
+        fallback_models=None,
     ):
         """Initialize the Chutes OpenAI-compatible client."""
         api_key = os.getenv("CHUTES_API_KEY")
@@ -47,8 +54,37 @@ class ChutesOpenAIClient(LLMClient):
         self.model_name = model_name
         self.max_retries = max_retries
         self.use_caching = use_caching
+        
+        # Default fallback models for different scenarios
+        if fallback_models is None:
+            self.fallback_models = [
+                "chutesai/Llama-4-Maverick-17B-128E-Instruct-FP8",
+                "Qwen/Qwen2.5-VL-32B-Instruct",
+                "ArliAI/QwQ-32B-ArliAI-RpR-v1",
+            ]
+        else:
+            self.fallback_models = fallback_models
+            
         # Log provider info
         logging.info(f"=== Using CHUTES LLM provider with model: {model_name} ===")
+        logging.info(f"=== Fallback models: {self.fallback_models} ===")
+
+    def _is_target_exhausted_error(self, error: Exception) -> bool:
+        """Check if the error is related to exhausted targets."""
+        error_str = str(error).lower()
+        return (
+            "exhausted all available targets" in error_str or
+            "no available targets" in error_str or
+            "all targets exhausted" in error_str
+        )
+
+    def _get_backoff_time(self, retry: int, base_delay: float = 30.0) -> float:
+        """Calculate exponential backoff time with jitter."""
+        # Exponential backoff: base_delay * 2^retry with jitter
+        delay = base_delay * (2 ** retry)
+        # Add jitter to avoid thundering herd
+        jitter = random.uniform(0.8, 1.2)
+        return delay * jitter
 
     def generate(
         self,
@@ -155,27 +191,82 @@ class ChutesOpenAIClient(LLMClient):
                 )
 
         response = None
+        models_to_try = [self.model_name] + self.fallback_models
         
-        # Retry logic
-        for retry in range(self.max_retries):
-            try:
-                response = self.client.chat.completions.create(
-                    model=self.model_name,
-                    messages=openai_messages,
-                    max_tokens=max_tokens,
-                    temperature=temperature,
-                    tools=openai_tools if tools else None,
-                    tool_choice=openai_tool_choice,
-                )
+        # Try each model with its own retry logic
+        for model_idx, current_model in enumerate(models_to_try):
+            if model_idx > 0:
+                logging.warning(f"[CHUTES] Falling back to model: {current_model}")
+            
+            # Retry logic for current model
+            for retry in range(self.max_retries):
+                try:
+                    response = self.client.chat.completions.create(
+                        model=current_model,
+                        messages=openai_messages,
+                        max_tokens=max_tokens,
+                        temperature=temperature,
+                        tools=openai_tools if tools else None,
+                        tool_choice=openai_tool_choice,
+                    )
+                    # Success! Update the model name to reflect which one worked
+                    if model_idx > 0:
+                        logging.info(f"[CHUTES] Successfully used fallback model: {current_model}")
+                        self.model_name = current_model
+                    break
+                    
+                except OpenAI_InternalServerError as e:
+                    if self._is_target_exhausted_error(e):
+                        backoff_time = self._get_backoff_time(retry)
+                        logging.warning(
+                            f"[CHUTES] Target exhausted error for model {current_model} "
+                            f"(attempt {retry + 1}/{self.max_retries}). "
+                            f"Waiting {backoff_time:.1f}s before retry..."
+                        )
+                        if retry < self.max_retries - 1:
+                            time.sleep(backoff_time)
+                            continue
+                        else:
+                            logging.error(f"[CHUTES] Model {current_model} exhausted after {self.max_retries} retries")
+                            break
+                    else:
+                        # For other internal server errors, use shorter backoff
+                        if retry < self.max_retries - 1:
+                            backoff_time = 10 * random.uniform(0.8, 1.2)
+                            logging.warning(f"[CHUTES] Internal server error, retrying in {backoff_time:.1f}s...")
+                            time.sleep(backoff_time)
+                            continue
+                        else:
+                            logging.error(f"[CHUTES] Model {current_model} failed with internal server error")
+                            break
+                            
+                except (OpenAI_APIConnectionError, OpenAI_RateLimitError) as e:
+                    if retry < self.max_retries - 1:
+                        backoff_time = 15 * random.uniform(0.8, 1.2)
+                        logging.warning(
+                            f"[CHUTES] {type(e).__name__} for model {current_model} "
+                            f"(attempt {retry + 1}/{self.max_retries}). "
+                            f"Retrying in {backoff_time:.1f}s..."
+                        )
+                        time.sleep(backoff_time)
+                        continue
+                    else:
+                        logging.error(f"[CHUTES] Model {current_model} failed with {type(e).__name__}")
+                        break
+                        
+                except Exception as e:
+                    logging.error(f"[CHUTES] Unexpected error for model {current_model}: {e}")
+                    break
+            
+            # If we got a response, break out of the model loop
+            if response:
                 break
-            except Exception as e:
-                if retry == self.max_retries - 1:
-                    print(f"Failed Chutes OpenAI request after {retry + 1} retries")
-                    raise e
-                else:
-                    print(f"Retrying LLM request: {retry + 1}/{self.max_retries}")
-                    # Sleep 12-18 seconds with jitter to avoid thundering herd
-                    time.sleep(15 * random.uniform(0.8, 1.2))
+        
+        # If all models failed, raise the last error
+        if not response:
+            error_msg = f"All models failed: {models_to_try}"
+            logging.error(f"[CHUTES] {error_msg}")
+            raise Exception(error_msg)
 
         # Convert response back to internal format
         internal_messages = []

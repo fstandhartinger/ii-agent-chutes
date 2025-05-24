@@ -20,6 +20,7 @@ import { v4 as uuidv4 } from "uuid";
 import { useRouter, useSearchParams } from "next/navigation";
 import SidebarButton from "@/components/sidebar-button";
 import { useChutes } from "@/providers/chutes-provider";
+import ModelSelector from "@/components/model-selector";
 
 import Browser from "@/components/browser";
 import CodeEditor from "@/components/code-editor";
@@ -67,7 +68,7 @@ export default function Home() {
   const [browserUrl, setBrowserUrl] = useState("");
 
   const isReplayMode = useMemo(() => !!searchParams.get("id"), [searchParams]);
-  const { useChutesLLM, toggleChutesLLM } = useChutes();
+  const { toggleChutesLLM, selectedModel } = useChutes();
 
   // Get session ID from URL params
   useEffect(() => {
@@ -688,9 +689,9 @@ export default function Home() {
     if (deviceId) {
       wsUrl += `?device_id=${deviceId}`;
 
-      // Append useChutesLLM flag if true
-      if (useChutesLLM) {
-        wsUrl += `&use_chutes=true`;
+      // Append model information
+      if (selectedModel.provider === "chutes") {
+        wsUrl += `&use_chutes=true&model_id=${encodeURIComponent(selectedModel.id)}`;
       }
     }
 
@@ -742,7 +743,7 @@ export default function Home() {
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [deviceId, isReplayMode, useChutesLLM]);
+  }, [deviceId, isReplayMode, selectedModel]);
 
   const isBrowserTool = useMemo(
     () =>
@@ -797,7 +798,11 @@ export default function Home() {
           !isInChatView ? "pt-0 pb-8" : "p-4"
         }`}
       >
-        {!isInChatView && <div />}
+        {!isInChatView && (
+          <div className="flex justify-center w-full">
+            <ModelSelector />
+          </div>
+        )}
         <motion.div
           className={`font-medium text-center ${
             isInChatView ? "flex items-center gap-x-2 text-2xl ml-12" : "hidden"
@@ -818,6 +823,7 @@ export default function Home() {
         </motion.div>
         {isInChatView ? (
           <div className="flex gap-x-2">
+            <ModelSelector />
             <Button
               className="cursor-pointer h-10"
               variant="outline"
