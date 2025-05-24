@@ -30,24 +30,24 @@ from ii_agent.llm.base import (
 from ii_agent.utils.constants import DEFAULT_MODEL
 
 
-class ChutesOpenAIClient(LLMClient):
-    """Use Chutes models via OpenAI-compatible API."""
+class OpenRouterOpenAIClient(LLMClient):
+    """Use OpenRouter models via OpenAI-compatible API."""
 
     def __init__(
         self,
-        model_name="deepseek-ai/DeepSeek-V3-0324",
+        model_name="deepseek/deepseek-chat-v3-0324:free",
         max_retries=3,
         use_caching=True,
         fallback_models=None,
     ):
-        """Initialize the Chutes OpenAI-compatible client."""
-        api_key = os.getenv("CHUTES_API_KEY")
+        """Initialize the OpenRouter OpenAI-compatible client."""
+        api_key = os.getenv("OPENROUTER_API_KEY")
         if not api_key:
-            raise ValueError("CHUTES_API_KEY environment variable must be set")
+            raise ValueError("OPENROUTER_API_KEY environment variable must be set")
             
         self.client = OpenAI(
             api_key=api_key,
-            base_url="https://llm.chutes.ai/v1",
+            base_url="https://openrouter.ai/api/v1",
             max_retries=1,
             timeout=60 * 5,
         )
@@ -58,30 +58,32 @@ class ChutesOpenAIClient(LLMClient):
         # Default fallback models for different scenarios
         if fallback_models is None:
             self.fallback_models = [
-                "chutesai/Llama-4-Maverick-17B-128E-Instruct-FP8",
-                "Qwen/Qwen2.5-VL-32B-Instruct",
-                "deepseek-ai/DeepSeek-R1",
+                "meta-llama/llama-4-maverick:free",
+                "qwen/qwen2.5-vl-32b-instruct:free",
+                "deepseek/deepseek-r1:free",
             ]
         else:
             self.fallback_models = fallback_models
             
         # Log provider info
-        logging.info(f"=== Using CHUTES LLM provider with model: {model_name} ===")
+        logging.info(f"=== Using OPENROUTER LLM provider with model: {model_name} ===")
         logging.info(f"=== Fallback models: {self.fallback_models} ===")
 
     def _is_target_exhausted_error(self, error: Exception) -> bool:
-        """Check if the error is related to exhausted targets."""
+        """Check if the error is related to exhausted targets or rate limits."""
         error_str = str(error).lower()
         return (
             "exhausted all available targets" in error_str or
             "no available targets" in error_str or
-            "all targets exhausted" in error_str
+            "all targets exhausted" in error_str or
+            "rate limit" in error_str or
+            "quota exceeded" in error_str
         )
 
-    def _get_backoff_time(self, retry: int, base_delay: float = 30.0) -> float:
+    def _get_backoff_time(self, retry: int, base_delay: float = 10.0) -> float:
         """Calculate exponential backoff time with jitter."""
-        # Exponential backoff: base_delay * 2^retry with jitter
-        delay = base_delay * (2 ** retry)
+        # Shorter backoff for OpenRouter free tier
+        delay = base_delay * (1.5 ** retry)
         # Add jitter to avoid thundering herd
         jitter = random.uniform(0.8, 1.2)
         return delay * jitter
@@ -96,7 +98,7 @@ class ChutesOpenAIClient(LLMClient):
         tool_choice: dict[str, str] | None = None,
         thinking_tokens: int | None = None,
     ) -> Tuple[list[AssistantContentBlock], dict[str, Any]]:
-        """Generate responses using Chutes OpenAI-compatible API.
+        """Generate responses using OpenRouter OpenAI-compatible API.
 
         Args:
             messages: A list of messages.
@@ -111,7 +113,7 @@ class ChutesOpenAIClient(LLMClient):
             A generated response.
         """
         # Log each LLM call
-        logging.info(f"[CHUTES LLM CALL] model={self.model_name}, max_tokens={max_tokens}, temperature={temperature}")
+        logging.info(f"[OPENROUTER LLM CALL] model={self.model_name}, max_tokens={max_tokens}, temperature={temperature}")
         
         # Convert messages to OpenAI format
         openai_messages = []
@@ -196,11 +198,17 @@ class ChutesOpenAIClient(LLMClient):
         # Try each model with its own retry logic
         for model_idx, current_model in enumerate(models_to_try):
             if model_idx > 0:
-                logging.warning(f"[CHUTES] Falling back to model: {current_model}")
+                logging.warning(f"[OPENROUTER] Falling back to model: {current_model}")
             
             # Retry logic for current model
             for retry in range(self.max_retries):
                 try:
+                    # Add OpenRouter specific headers
+                    extra_headers = {
+                        "HTTP-Referer": "https://fubea.ai",
+                        "X-Title": "fubea.ai Agent"
+                    }
+                    
                     response = self.client.chat.completions.create(
                         model=current_model,
                         messages=openai_messages,
@@ -208,10 +216,11 @@ class ChutesOpenAIClient(LLMClient):
                         temperature=temperature,
                         tools=openai_tools if tools else None,
                         tool_choice=openai_tool_choice,
+                        extra_headers=extra_headers,
                     )
                     # Success! Update the model name to reflect which one worked
                     if model_idx > 0:
-                        logging.info(f"[CHUTES] Successfully used fallback model: {current_model}")
+                        logging.info(f"[OPENROUTER] Successfully used fallback model: {current_model}")
                         self.model_name = current_model
                     break
                     
@@ -219,7 +228,7 @@ class ChutesOpenAIClient(LLMClient):
                     if self._is_target_exhausted_error(e):
                         backoff_time = self._get_backoff_time(retry)
                         logging.warning(
-                            f"[CHUTES] Target exhausted error for model {current_model} "
+                            f"[OPENROUTER] Rate limit/exhausted error for model {current_model} "
                             f"(attempt {retry + 1}/{self.max_retries}). "
                             f"Waiting {backoff_time:.1f}s before retry..."
                         )
@@ -227,35 +236,35 @@ class ChutesOpenAIClient(LLMClient):
                             time.sleep(backoff_time)
                             continue
                         else:
-                            logging.error(f"[CHUTES] Model {current_model} exhausted after {self.max_retries} retries")
+                            logging.error(f"[OPENROUTER] Model {current_model} exhausted after {self.max_retries} retries")
                             break
                     else:
                         # For other internal server errors, use shorter backoff
                         if retry < self.max_retries - 1:
-                            backoff_time = 10 * random.uniform(0.8, 1.2)
-                            logging.warning(f"[CHUTES] Internal server error, retrying in {backoff_time:.1f}s...")
+                            backoff_time = 5 * random.uniform(0.8, 1.2)
+                            logging.warning(f"[OPENROUTER] Internal server error, retrying in {backoff_time:.1f}s...")
                             time.sleep(backoff_time)
                             continue
                         else:
-                            logging.error(f"[CHUTES] Model {current_model} failed with internal server error")
+                            logging.error(f"[OPENROUTER] Model {current_model} failed with internal server error")
                             break
                             
                 except (OpenAI_APIConnectionError, OpenAI_RateLimitError) as e:
                     if retry < self.max_retries - 1:
-                        backoff_time = 15 * random.uniform(0.8, 1.2)
+                        backoff_time = self._get_backoff_time(retry)
                         logging.warning(
-                            f"[CHUTES] {type(e).__name__} for model {current_model} "
+                            f"[OPENROUTER] {type(e).__name__} for model {current_model} "
                             f"(attempt {retry + 1}/{self.max_retries}). "
                             f"Retrying in {backoff_time:.1f}s..."
                         )
                         time.sleep(backoff_time)
                         continue
                     else:
-                        logging.error(f"[CHUTES] Model {current_model} failed with {type(e).__name__}")
+                        logging.error(f"[OPENROUTER] Model {current_model} failed with {type(e).__name__}")
                         break
                         
                 except Exception as e:
-                    logging.error(f"[CHUTES] Unexpected error for model {current_model}: {e}")
+                    logging.error(f"[OPENROUTER] Unexpected error for model {current_model}: {e}")
                     break
             
             # If we got a response, break out of the model loop
@@ -265,7 +274,7 @@ class ChutesOpenAIClient(LLMClient):
         # If all models failed, raise the last error
         if not response:
             error_msg = f"All models failed: {models_to_try}"
-            logging.error(f"[CHUTES] {error_msg}")
+            logging.error(f"[OPENROUTER] {error_msg}")
             raise Exception(error_msg)
 
         # Convert response back to internal format
@@ -275,19 +284,19 @@ class ChutesOpenAIClient(LLMClient):
             message = choice.message
             
             # Log the raw response for debugging
-            logging.info(f"[CHUTES DEBUG] Raw response message: {message}")
-            logging.info(f"[CHUTES DEBUG] Message content: {message.content}")
-            logging.info(f"[CHUTES DEBUG] Message tool_calls: {message.tool_calls}")
+            logging.info(f"[OPENROUTER DEBUG] Raw response message: {message}")
+            logging.info(f"[OPENROUTER DEBUG] Message content: {message.content}")
+            logging.info(f"[OPENROUTER DEBUG] Message tool_calls: {message.tool_calls}")
             
             if message.content:
                 internal_messages.append(TextResult(text=message.content))
             
             if message.tool_calls:
-                logging.info(f"[CHUTES DEBUG] Processing {len(message.tool_calls)} tool calls")
+                logging.info(f"[OPENROUTER DEBUG] Processing {len(message.tool_calls)} tool calls")
                 for i, tool_call in enumerate(message.tool_calls):
-                    logging.info(f"[CHUTES DEBUG] Tool call {i}: id={tool_call.id}, name={tool_call.function.name}")
-                    logging.info(f"[CHUTES DEBUG] Tool call {i} arguments type: {type(tool_call.function.arguments)}")
-                    logging.info(f"[CHUTES DEBUG] Tool call {i} arguments raw: {tool_call.function.arguments}")
+                    logging.info(f"[OPENROUTER DEBUG] Tool call {i}: id={tool_call.id}, name={tool_call.function.name}")
+                    logging.info(f"[OPENROUTER DEBUG] Tool call {i} arguments type: {type(tool_call.function.arguments)}")
+                    logging.info(f"[OPENROUTER DEBUG] Tool call {i} arguments raw: {tool_call.function.arguments}")
                     
                     # Parse the tool arguments properly
                     try:
@@ -295,19 +304,19 @@ class ChutesOpenAIClient(LLMClient):
                         if isinstance(tool_call.function.arguments, str):
                             import json
                             tool_input = json.loads(tool_call.function.arguments)
-                            logging.info(f"[CHUTES DEBUG] Tool call {i} parsed JSON: {tool_input}")
+                            logging.info(f"[OPENROUTER DEBUG] Tool call {i} parsed JSON: {tool_input}")
                         else:
                             tool_input = tool_call.function.arguments
-                            logging.info(f"[CHUTES DEBUG] Tool call {i} using direct arguments: {tool_input}")
+                            logging.info(f"[OPENROUTER DEBUG] Tool call {i} using direct arguments: {tool_input}")
                     except (json.JSONDecodeError, TypeError) as e:
                         # If parsing fails, wrap the string in a dict
                         tool_input = {"arguments": str(tool_call.function.arguments)}
-                        logging.error(f"[CHUTES DEBUG] Tool call {i} JSON parsing failed: {e}, wrapped in dict: {tool_input}")
+                        logging.error(f"[OPENROUTER DEBUG] Tool call {i} JSON parsing failed: {e}, wrapped in dict: {tool_input}")
                     
                     # Apply recursively_remove_invoke_tag and log the result
                     final_tool_input = recursively_remove_invoke_tag(tool_input)
-                    logging.info(f"[CHUTES DEBUG] Tool call {i} final tool_input after recursively_remove_invoke_tag: {final_tool_input}")
-                    logging.info(f"[CHUTES DEBUG] Tool call {i} final tool_input type: {type(final_tool_input)}")
+                    logging.info(f"[OPENROUTER DEBUG] Tool call {i} final tool_input after recursively_remove_invoke_tag: {final_tool_input}")
+                    logging.info(f"[OPENROUTER DEBUG] Tool call {i} final tool_input type: {type(final_tool_input)}")
                     
                     internal_messages.append(
                         ToolCall(
@@ -317,7 +326,7 @@ class ChutesOpenAIClient(LLMClient):
                         )
                     )
 
-        logging.info(f"[CHUTES DEBUG] Final internal_messages: {internal_messages}")
+        logging.info(f"[OPENROUTER DEBUG] Final internal_messages: {internal_messages}")
         
         message_metadata = {
             "raw_response": response,

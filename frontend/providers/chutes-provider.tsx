@@ -5,7 +5,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from "react
 export interface LLMModel {
   id: string;
   name: string;
-  provider: "anthropic" | "chutes";
+  provider: "anthropic" | "chutes" | "openrouter";
   description?: string;
 }
 
@@ -41,16 +41,40 @@ export const AVAILABLE_MODELS: LLMModel[] = [
     description: "Reasoning-optimized model"
   },
   {
-    id: "ArliAI/QwQ-32B-ArliAI-RpR-v1",
-    name: "QwQ 32B ArliAI",
-    provider: "chutes",
-    description: "Question-answering specialist"
-  },
-  {
     id: "Qwen/Qwen2.5-VL-32B-Instruct",
     name: "Qwen 2.5 VL 32B",
     provider: "chutes",
     description: "Vision-language model"
+  },
+  {
+    id: "deepseek/deepseek-chat-v3-0324:free",
+    name: "DeepSeek V3 (OpenRouter)",
+    provider: "openrouter",
+    description: "Free tier - Advanced reasoning model"
+  },
+  {
+    id: "meta-llama/llama-4-maverick:free",
+    name: "Llama 4 Maverick (OpenRouter)",
+    provider: "openrouter",
+    description: "Free tier - Instruction-following model"
+  },
+  {
+    id: "qwen/qwen3-235b-a22b:free",
+    name: "Qwen 3 235B (OpenRouter)",
+    provider: "openrouter",
+    description: "Free tier - Large-scale reasoning model"
+  },
+  {
+    id: "deepseek/deepseek-r1:free",
+    name: "DeepSeek R1 (OpenRouter)",
+    provider: "openrouter",
+    description: "Free tier - Reasoning-optimized model"
+  },
+  {
+    id: "qwen/qwen2.5-vl-32b-instruct:free",
+    name: "Qwen 2.5 VL 32B (OpenRouter)",
+    provider: "openrouter",
+    description: "Free tier - Vision-language model"
   }
 ];
 

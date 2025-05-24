@@ -692,6 +692,8 @@ export default function Home() {
       // Append model information
       if (selectedModel.provider === "chutes") {
         wsUrl += `&use_chutes=true&model_id=${encodeURIComponent(selectedModel.id)}`;
+      } else if (selectedModel.provider === "openrouter") {
+        wsUrl += `&use_openrouter=true&model_id=${encodeURIComponent(selectedModel.id)}`;
       }
     }
 
