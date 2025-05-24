@@ -62,17 +62,36 @@ class OpenRouterOpenAIClient(LLMClient):
         
         # Default fallback models for different scenarios
         if fallback_models is None:
-            self.fallback_models = [
+            # Free models (don't support tools)
+            self.free_fallback_models = [
                 "meta-llama/llama-4-maverick:free",
                 "qwen/qwen2.5-vl-32b-instruct:free",
                 "deepseek/deepseek-r1:free",
             ]
+            
+            # Paid models that support tools (affordable options)
+            self.tool_capable_models = [
+                "openai/gpt-4o-mini",  # Most affordable GPT model with tools
+                "anthropic/claude-3-haiku",  # Fast and affordable Claude with tools
+                "google/gemini-flash-1.5",  # Google's fast model with tools
+                "mistralai/mistral-7b-instruct",  # Affordable Mistral with tools
+            ]
         else:
-            self.fallback_models = fallback_models
+            self.free_fallback_models = fallback_models
+            self.tool_capable_models = fallback_models
+        
+        # Determine if the primary model supports tools
+        self.primary_supports_tools = not self._is_free_model(model_name)
             
         # Log provider info
         logging.info(f"=== Using OPENROUTER LLM provider with model: {model_name} ===")
-        logging.info(f"=== Fallback models: {self.fallback_models} ===")
+        logging.info(f"=== Primary model supports tools: {self.primary_supports_tools} ===")
+        logging.info(f"=== Free fallback models: {self.free_fallback_models} ===")
+        logging.info(f"=== Tool-capable models: {self.tool_capable_models} ===")
+
+    def _is_free_model(self, model_name: str) -> bool:
+        """Check if a model is a free model (doesn't support tools)."""
+        return ":free" in model_name.lower()
 
     def _is_target_exhausted_error(self, error: Exception) -> bool:
         """Check if the error is related to exhausted targets or rate limits."""
@@ -84,6 +103,15 @@ class OpenRouterOpenAIClient(LLMClient):
             "rate limit" in error_str or
             "quota exceeded" in error_str or
             "no endpoints found" in error_str
+        )
+
+    def _is_tool_not_supported_error(self, error: Exception) -> bool:
+        """Check if the error is related to tool calling not being supported."""
+        error_str = str(error).lower()
+        return (
+            "no endpoints found that support tool use" in error_str or
+            "tool use" in error_str or
+            "function calling" in error_str
         )
 
     def _get_backoff_time(self, retry: int, base_delay: float = 10.0) -> float:
@@ -120,6 +148,22 @@ class OpenRouterOpenAIClient(LLMClient):
         """
         # Log each LLM call
         logging.info(f"[OPENROUTER LLM CALL] model={self.model_name}, max_tokens={max_tokens}, temperature={temperature}")
+        logging.info(f"[OPENROUTER] Tools requested: {len(tools) > 0}")
+        
+        # Choose the right models based on whether tools are needed
+        if tools and len(tools) > 0:
+            # Tools are needed - use tool-capable models
+            if self.primary_supports_tools:
+                models_to_try = [self.model_name] + self.tool_capable_models
+            else:
+                # Primary model doesn't support tools, use tool-capable models first
+                models_to_try = self.tool_capable_models + [self.model_name]
+                logging.warning("[OPENROUTER] Tools requested but primary model is free - using paid models")
+        else:
+            # No tools needed - can use free models
+            models_to_try = [self.model_name] + self.free_fallback_models
+        
+        logging.info(f"[OPENROUTER] Models to try: {models_to_try}")
         
         # Convert messages to OpenAI format
         openai_messages = []
@@ -199,12 +243,19 @@ class OpenRouterOpenAIClient(LLMClient):
                 )
 
         response = None
-        models_to_try = [self.model_name] + self.fallback_models
         
         # Try each model with its own retry logic
         for model_idx, current_model in enumerate(models_to_try):
             if model_idx > 0:
                 logging.warning(f"[OPENROUTER] Falling back to model: {current_model}")
+            
+            # Check if this model supports tools when tools are needed
+            model_supports_tools = not self._is_free_model(current_model)
+            tools_to_use = openai_tools if (tools and model_supports_tools) else None
+            tool_choice_to_use = openai_tool_choice if (tool_choice and model_supports_tools) else None
+            
+            if tools and not model_supports_tools:
+                logging.warning(f"[OPENROUTER] Model {current_model} doesn't support tools - trying without tools")
             
             # Retry logic for current model
             for retry in range(self.max_retries):
@@ -215,15 +266,15 @@ class OpenRouterOpenAIClient(LLMClient):
                         "X-Title": "fubea.ai Agent",  # Optional but recommended
                     }
                     
-                    logging.info(f"[OPENROUTER] Attempting request to model: {current_model}")
+                    logging.info(f"[OPENROUTER] Attempting request to model: {current_model} (tools: {tools_to_use is not None})")
                     
                     response = self.client.chat.completions.create(
                         model=current_model,
                         messages=openai_messages,
                         max_tokens=max_tokens,
                         temperature=temperature,
-                        tools=openai_tools if tools else None,
-                        tool_choice=openai_tool_choice,
+                        tools=tools_to_use,
+                        tool_choice=tool_choice_to_use,
                         extra_headers=extra_headers,
                     )
                     
@@ -284,10 +335,15 @@ class OpenRouterOpenAIClient(LLMClient):
                         # Don't retry auth errors
                         break
                     elif "404" in str(e) or "no endpoints found" in str(e).lower():
-                        logging.error(f"[OPENROUTER] Model not found or no endpoints available: {current_model}")
-                        logging.error("[OPENROUTER] This might be due to privacy settings or model availability")
-                        # Don't retry 404 errors
-                        break
+                        if self._is_tool_not_supported_error(e):
+                            logging.error(f"[OPENROUTER] Model {current_model} doesn't support tool calling")
+                            # Don't retry tool support errors - try next model
+                            break
+                        else:
+                            logging.error(f"[OPENROUTER] Model not found or no endpoints available: {current_model}")
+                            logging.error("[OPENROUTER] This might be due to privacy settings or model availability")
+                            # Don't retry 404 errors
+                            break
                     else:
                         logging.error(f"[OPENROUTER] Bad request error for model {current_model}: {e}")
                         break
@@ -311,6 +367,9 @@ class OpenRouterOpenAIClient(LLMClient):
             logging.error("1. OPENROUTER_API_KEY environment variable is set correctly")
             logging.error("2. Your OpenRouter account has sufficient credits")
             logging.error("3. Your privacy settings allow free models: https://openrouter.ai/settings/privacy")
+            if tools and len(tools) > 0:
+                logging.error("4. For tool calling, you need paid models with sufficient credits")
+                logging.error("5. Free models (:free) don't support function calling")
             raise Exception(error_msg)
 
         # Convert response back to internal format

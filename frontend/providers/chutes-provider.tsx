@@ -48,33 +48,57 @@ export const AVAILABLE_MODELS: LLMModel[] = [
   },
   {
     id: "deepseek/deepseek-chat-v3-0324:free",
-    name: "DeepSeek V3 (OpenRouter)",
+    name: "DeepSeek V3 (OpenRouter Free)",
     provider: "openrouter",
-    description: "Free tier - Advanced reasoning model"
+    description: "Free tier - No tool calling"
   },
   {
     id: "meta-llama/llama-4-maverick:free",
-    name: "Llama 4 Maverick (OpenRouter)",
+    name: "Llama 4 Maverick (OpenRouter Free)",
     provider: "openrouter",
-    description: "Free tier - Instruction-following model"
+    description: "Free tier - No tool calling"
   },
   {
     id: "qwen/qwen3-235b-a22b:free",
-    name: "Qwen 3 235B (OpenRouter)",
+    name: "Qwen 3 235B (OpenRouter Free)",
     provider: "openrouter",
-    description: "Free tier - Large-scale reasoning model"
+    description: "Free tier - No tool calling"
   },
   {
     id: "deepseek/deepseek-r1:free",
-    name: "DeepSeek R1 (OpenRouter)",
+    name: "DeepSeek R1 (OpenRouter Free)",
     provider: "openrouter",
-    description: "Free tier - Reasoning-optimized model"
+    description: "Free tier - No tool calling"
   },
   {
     id: "qwen/qwen2.5-vl-32b-instruct:free",
-    name: "Qwen 2.5 VL 32B (OpenRouter)",
+    name: "Qwen 2.5 VL 32B (OpenRouter Free)",
     provider: "openrouter",
-    description: "Free tier - Vision-language model"
+    description: "Free tier - No tool calling"
+  },
+  {
+    id: "openai/gpt-4o-mini",
+    name: "GPT-4o Mini (OpenRouter)",
+    provider: "openrouter",
+    description: "Affordable GPT with tool calling"
+  },
+  {
+    id: "anthropic/claude-3-haiku",
+    name: "Claude 3 Haiku (OpenRouter)",
+    provider: "openrouter",
+    description: "Fast and affordable with tool calling"
+  },
+  {
+    id: "google/gemini-flash-1.5",
+    name: "Gemini Flash 1.5 (OpenRouter)",
+    provider: "openrouter",
+    description: "Google's fast model with tool calling"
+  },
+  {
+    id: "mistralai/mistral-7b-instruct",
+    name: "Mistral 7B Instruct (OpenRouter)",
+    provider: "openrouter",
+    description: "Affordable Mistral with tool calling"
   }
 ];
 
