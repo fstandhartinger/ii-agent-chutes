@@ -55,7 +55,7 @@ const Terminal = (
         term.open(container);
         fitAddon.fit();
 
-        term.writeln("Welcome to II-Agent!");
+        term.writeln("Welcome to fubea!");
         prompt(term);
 
         term.onKey(({ key, domEvent }) => {

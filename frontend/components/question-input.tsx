@@ -44,6 +44,7 @@ const QuestionInput = ({
 }: QuestionInputProps) => {
   const [files, setFiles] = useState<FileUploadStatus[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [textareaHeight, setTextareaHeight] = useState<number>(50);
 
   // Clean up object URLs when component unmounts
   useEffect(() => {
@@ -53,6 +54,31 @@ const QuestionInput = ({
       });
     };
   }, [files]);
+
+  // Auto-resize textarea based on content
+  useEffect(() => {
+    if (textareaRef.current) {
+      const textarea = textareaRef.current;
+      // Reset height to auto to get the correct scrollHeight
+      textarea.style.height = 'auto';
+      const scrollHeight = textarea.scrollHeight;
+      
+      // Set minimum height to 50px and maximum to 200px
+      const minHeight = 50;
+      const maxHeight = 200;
+      const newHeight = Math.min(Math.max(scrollHeight, minHeight), maxHeight);
+      
+      setTextareaHeight(newHeight);
+      textarea.style.height = `${newHeight}px`;
+      
+      // Enable/disable scrolling based on whether we've hit the max height
+      if (scrollHeight > maxHeight) {
+        textarea.style.overflowY = 'auto';
+      } else {
+        textarea.style.overflowY = 'hidden';
+      }
+    }
+  }, [value]);
 
   const isImageFile = (fileName: string): boolean => {
     const ext = fileName.split(".").pop()?.toLowerCase() || "";
@@ -224,8 +250,13 @@ const QuestionInput = ({
         <Textarea
           ref={textareaRef}
           className={`w-full p-4 pb-[72px] rounded-xl !text-lg focus:ring-0 resize-none !placeholder-gray-400 !bg-[#27282b] border-[#3a3b3f] shadow-lg ${
-            files.length > 0 ? "pt-24 h-60" : "h-50"
+            files.length > 0 ? "pt-24" : ""
           } ${textareaClassName}`}
+          style={{ 
+            height: `${textareaHeight}px`,
+            minHeight: '50px',
+            maxHeight: '200px'
+          }}
           placeholder={
             placeholder ||
             "What can I help you with today?"

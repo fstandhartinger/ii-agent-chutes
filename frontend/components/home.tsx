@@ -1021,14 +1021,16 @@ export default function Home() {
           </AnimatePresence>
         </LayoutGroup>
       )}
-      <a 
-        href="https://chutes.ai" 
-        target="_blank" 
-        rel="noopener noreferrer"
-        className="absolute bottom-4 right-4 text-sm text-gray-400 hover:text-gray-300 transition-colors"
-      >
-        powered by Chutes
-      </a>
+      {!isInChatView && (
+        <a 
+          href="https://chutes.ai" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="absolute bottom-4 right-4 text-sm text-gray-400 hover:text-gray-300 transition-colors"
+        >
+          powered by Chutes
+        </a>
+      )}
     </div>
   );
 }

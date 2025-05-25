@@ -198,7 +198,7 @@ const ChatMessage = ({
         {isCompleted && (
           <div className="flex gap-x-2 items-center bg-[#25BA3B1E] text-green-600 text-sm p-2 rounded-full">
             <Check className="size-4" />
-            <span>II-Agent has completed the current task.</span>
+            <span>fubea has completed the current task.</span>
           </div>
         )}
 
