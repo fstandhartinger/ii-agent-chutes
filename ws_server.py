@@ -1044,6 +1044,16 @@ async def download_zip_endpoint(request: Request):
 async def run_gaia_benchmark(request: Request):
     """API endpoint to run GAIA benchmark evaluation."""
     try:
+        # Check if GAIA dependencies are available
+        try:
+            import datasets
+            import huggingface_hub
+        except ImportError as e:
+            return {
+                "status": "error", 
+                "message": f"GAIA dependencies not installed. Missing: {str(e)}. Please install with: pip install datasets huggingface-hub"
+            }
+        
         data = await request.json()
         set_to_run = data.get("set_to_run", "validation")
         run_name = data.get("run_name", f"api-run-{uuid.uuid4()}")

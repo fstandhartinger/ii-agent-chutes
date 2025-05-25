@@ -140,10 +140,10 @@ export default function GaiaPage() {
                 <select
                   value={setToRun}
                   onChange={(e) => setSetToRun(e.target.value as "validation" | "test")}
-                  className="w-full p-3 bg-glass border border-white/20 rounded-lg text-white"
+                  className="w-full p-3 bg-black/50 border border-white/20 rounded-lg text-white [&>option]:bg-black [&>option]:text-white"
                 >
-                  <option value="validation">Validation Set</option>
-                  <option value="test">Test Set</option>
+                  <option value="validation" className="bg-black text-white">Validation Set</option>
+                  <option value="test" className="bg-black text-white">Test Set</option>
                 </select>
               </div>
               <div>
@@ -154,7 +154,7 @@ export default function GaiaPage() {
                   max="20"
                   value={maxTasks}
                   onChange={(e) => setMaxTasks(parseInt(e.target.value) || 5)}
-                  className="w-full p-3 bg-glass border border-white/20 rounded-lg text-white"
+                  className="w-full p-3 bg-black/50 border border-white/20 rounded-lg text-white placeholder-white/50"
                 />
               </div>
             </div>
@@ -235,7 +235,15 @@ export default function GaiaPage() {
 
               {results.message && (
                 <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 mb-4">
-                  <p className="text-red-400">{results.message}</p>
+                  <p className="text-red-400 whitespace-pre-wrap">{results.message}</p>
+                  {results.message.includes("GAIA dependencies not installed") && (
+                    <div className="mt-3 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+                      <p className="text-yellow-400 text-sm">
+                        <strong>Note:</strong> The GAIA benchmark requires additional Python dependencies. 
+                        Please contact the administrator to install the required packages.
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
