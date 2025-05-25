@@ -4,6 +4,7 @@ import { ActionStep, TOOL } from "@/typings/agent";
 import {
   AudioLines,
   ChevronDown,
+  ChevronRight,
   ChevronUp,
   Code,
   Copy,
@@ -316,6 +317,11 @@ const Action = ({ workspaceInfo, type, value, onClick }: ActionProps) => {
           <span className="text-neutral-400 font-medium truncate group-hover:text-neutral-300 max-w-full">
             {step_value}
           </span>
+        </div>
+        
+        {/* Mobile Right Arrow Indicator */}
+        <div className="md:hidden flex items-center justify-center">
+          <ChevronRight className="w-4 h-4 text-neutral-400 group-hover:text-neutral-300" />
         </div>
       </div>
     </div>
