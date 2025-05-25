@@ -54,8 +54,8 @@ from ii_agent.utils import WorkspaceManager
 from ii_agent.llm import get_client
 from ii_agent.llm.context_manager.standard import StandardContextManager
 from ii_agent.llm.token_counter import TokenCounter
-from ii_agent.utils.constants import DEFAULT_MODEL, UPLOAD_FOLDER_NAME
-from utils import parse_common_args
+from ii_agent.utils.constants import DEFAULT_MODEL, UPLOAD_FOLDER_NAME, PERSISTENT_DATA_ROOT
+from utils import parse_common_args, get_persistent_path
 from ii_agent.db.manager import DatabaseManager
 from ii_agent.core.event import RealtimeEvent, EventType
 from ii_agent.tools.youtube_transcript_tool import YoutubeTranscriptTool
@@ -187,11 +187,18 @@ async def answer_single_question(
     container_workspace: bool,
 ) -> None:
     """Process a single GAIA question using the agent."""
-    # Create workspace using task_id
+    # Create workspace using task_id with persistent storage support
     task_id = example["task_id"]
-    workspace_path = Path("workspace") / task_id
+    base_workspace = get_persistent_path("workspace", f"{PERSISTENT_DATA_ROOT}/workspace")
+    workspace_path = Path(base_workspace) / task_id
     workspace_path.mkdir(parents=True, exist_ok=True)
     logger.info(f"Created workspace directory for task {task_id}: {workspace_path}")
+    
+    # Log storage type
+    if str(workspace_path).startswith(PERSISTENT_DATA_ROOT):
+        logger.info(f"Using persistent storage for GAIA task {task_id}")
+    else:
+        logger.info(f"Using local storage for GAIA task {task_id}")
 
     # Initialize database manager
     db_manager = DatabaseManager()

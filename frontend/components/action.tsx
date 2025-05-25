@@ -6,6 +6,8 @@ import {
   ChevronDown,
   ChevronUp,
   Code,
+  Copy,
+  Check,
   FileAudio,
   FileText,
   Globe,
@@ -21,7 +23,9 @@ import {
   Video,
   Presentation,
 } from "lucide-react";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 
 interface ActionProps {
   workspaceInfo: string;
@@ -33,11 +37,23 @@ interface ActionProps {
 const Action = ({ workspaceInfo, type, value, onClick }: ActionProps) => {
   // Use a ref to track if this component has already been animated
   const hasAnimated = useRef(false);
+  const [copiedActionId, setCopiedActionId] = useState<string | null>(null);
 
   // Set hasAnimated to true after first render
   useEffect(() => {
     hasAnimated.current = true;
   }, []);
+
+  const copyToClipboard = async (text: string, actionId: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedActionId(actionId);
+      toast.success("Copied to clipboard");
+      setTimeout(() => setCopiedActionId(null), 2000);
+    } catch {
+      toast.error("Failed to copy to clipboard");
+    }
+  };
 
   const step_icon = useMemo(() => {
     const className = "h-4 w-4 text-neutral-100 flex-shrink-0 mt-[2px]";
@@ -259,10 +275,12 @@ const Action = ({ workspaceInfo, type, value, onClick }: ActionProps) => {
   )
     return null;
 
+  const actionId = `${type}-${step_value}`;
+  const copyText = `${step_title}: ${step_value}`;
+
   return (
     <div
-      onClick={onClick}
-      className={`group cursor-pointer flex items-start gap-3 px-4 py-3 bg-[#35363a] rounded-xl backdrop-blur-sm 
+      className={`group relative cursor-pointer flex items-start gap-3 px-4 py-3 bg-[#35363a] rounded-xl backdrop-blur-sm 
       shadow-sm
       transition-all duration-200 ease-out
       hover:bg-neutral-800
@@ -271,14 +289,34 @@ const Action = ({ workspaceInfo, type, value, onClick }: ActionProps) => {
       active:scale-[0.98] overflow-hidden
       ${hasAnimated.current ? "animate-none" : "animate-fadeIn"}`}
     >
-      {step_icon}
-      <div className="flex flex-col gap-2 text-sm min-w-0 flex-1">
-        <span className="text-neutral-100 font-medium group-hover:text-white">
-          {step_title}
-        </span>
-        <span className="text-neutral-400 font-medium truncate group-hover:text-neutral-300 max-w-full">
-          {step_value}
-        </span>
+      {/* Copy Button */}
+      <Button
+        variant="ghost"
+        size="sm"
+        className="absolute top-1 right-1 z-10 bg-black/30 hover:bg-black/50 border border-white/20 p-1 h-6 w-6 rounded-md transition-all-smooth hover-lift message-copy-button"
+        onClick={(e) => {
+          e.stopPropagation();
+          copyToClipboard(copyText, actionId);
+        }}
+        title="Copy action details"
+      >
+        {copiedActionId === actionId ? (
+          <Check className="w-3 h-3 text-green-400" />
+        ) : (
+          <Copy className="w-3 h-3 text-white/80" />
+        )}
+      </Button>
+
+      <div onClick={onClick} className="flex items-start gap-3 flex-1">
+        {step_icon}
+        <div className="flex flex-col gap-2 text-sm min-w-0 flex-1 pr-8">
+          <span className="text-neutral-100 font-medium group-hover:text-white">
+            {step_title}
+          </span>
+          <span className="text-neutral-400 font-medium truncate group-hover:text-neutral-300 max-w-full">
+            {step_value}
+          </span>
+        </div>
       </div>
     </div>
   );

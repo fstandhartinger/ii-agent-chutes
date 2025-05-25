@@ -64,7 +64,7 @@ const ChatMessage = ({
     <div className="flex flex-col h-full bg-glass-dark rounded-2xl border border-white/10 overflow-hidden">
       {/* Messages Container */}
       <motion.div
-        className="flex-1 p-4 md:p-6 overflow-y-auto space-y-4 md:space-y-6 mobile-chat-messages"
+        className="flex-1 p-4 md:p-6 overflow-y-auto space-y-4 md:space-y-6 mobile-chat-messages chat-messages-container"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.2, duration: 0.3 }}
@@ -102,6 +102,20 @@ const ChatMessage = ({
                             />
                           </div>
                           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all-smooth rounded-xl" />
+                          {/* Copy button for image */}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="absolute top-1 right-1 z-10 bg-black/50 hover:bg-black/70 border border-white/20 p-1 h-6 w-6 rounded-md transition-all-smooth hover-lift message-copy-button"
+                            onClick={() => copyToClipboard(fileName, `${message.id}-file-${fileIndex}`)}
+                            title="Copy filename"
+                          >
+                            {copiedMessageId === `${message.id}-file-${fileIndex}` ? (
+                              <Check className="w-3 h-3 text-green-400" />
+                            ) : (
+                              <Copy className="w-3 h-3 text-white/80" />
+                            )}
+                          </Button>
                         </motion.div>
                       );
                     }
@@ -111,7 +125,7 @@ const ChatMessage = ({
                     return (
                       <motion.div
                         key={`${message.id}-file-${fileIndex}`}
-                        className="flex items-center gap-3 bg-glass border border-white/20 rounded-xl px-3 py-2 shadow-lg backdrop-blur-sm max-w-xs"
+                        className="relative flex items-center gap-3 bg-glass border border-white/20 rounded-xl px-3 py-2 shadow-lg backdrop-blur-sm max-w-xs"
                         initial={{ opacity: 0, scale: 0.8 }}
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ delay: 0.1 * fileIndex }}
@@ -119,12 +133,26 @@ const ChatMessage = ({
                         <div className={`flex items-center justify-center w-8 h-8 ${bgColor} rounded-lg shadow-sm`}>
                           <IconComponent className="w-4 h-4 text-white" />
                         </div>
-                        <div className="flex flex-col min-w-0">
+                        <div className="flex flex-col min-w-0 pr-6">
                           <span className="text-sm font-medium text-white truncate">
                             {fileName}
                           </span>
                           <span className="text-xs text-muted-foreground">{label}</span>
                         </div>
+                        {/* Copy button for file */}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="absolute top-1 right-1 z-10 bg-black/30 hover:bg-black/50 border border-white/20 p-1 h-6 w-6 rounded-md transition-all-smooth hover-lift message-copy-button"
+                          onClick={() => copyToClipboard(fileName, `${message.id}-file-${fileIndex}`)}
+                          title="Copy filename"
+                        >
+                          {copiedMessageId === `${message.id}-file-${fileIndex}` ? (
+                            <Check className="w-3 h-3 text-green-400" />
+                          ) : (
+                            <Copy className="w-3 h-3 text-white/80" />
+                          )}
+                        </Button>
                       </motion.div>
                     );
                   })}
@@ -134,10 +162,10 @@ const ChatMessage = ({
               {/* Text Content */}
               {message.content && (
                 <motion.div
-                  className={`inline-block max-w-full md:max-w-[85%] relative ${
+                  className={`relative ${
                     message.role === "user"
-                      ? "bg-gradient-to-br from-blue-500/20 to-purple-500/20 backdrop-blur-sm border border-blue-500/30 rounded-2xl p-3 md:p-4 text-white shadow-lg ml-auto"
-                      : "text-white"
+                      ? "flex justify-end"
+                      : "flex justify-start"
                   }`}
                   initial={{ scale: 0.95, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
@@ -148,27 +176,36 @@ const ChatMessage = ({
                     delay: 0.1
                   }}
                 >
-                  {/* Copy Button */}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/20 hover:bg-black/40 border border-white/20 p-1 h-auto"
-                    onClick={() => copyToClipboard(message.content || "", message.id)}
+                  <div
+                    className={`relative max-w-full md:max-w-[85%] ${
+                      message.role === "user"
+                        ? "bg-gradient-to-br from-blue-500/20 to-purple-500/20 backdrop-blur-sm border border-blue-500/30 rounded-2xl p-3 md:p-4 text-white shadow-lg"
+                        : "text-white"
+                    }`}
                   >
-                    {copiedMessageId === message.id ? (
-                      <Check className="w-3 h-3 text-green-400" />
-                    ) : (
-                      <Copy className="w-3 h-3 text-white" />
-                    )}
-                  </Button>
+                    {/* Copy Button - Always visible, positioned at top-right */}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="absolute top-1 right-1 z-10 bg-black/30 hover:bg-black/50 border border-white/20 p-1 h-6 w-6 rounded-md transition-all-smooth hover-lift message-copy-button"
+                      onClick={() => copyToClipboard(message.content || "", message.id)}
+                      title="Copy message"
+                    >
+                      {copiedMessageId === message.id ? (
+                        <Check className="w-3 h-3 text-green-400" />
+                      ) : (
+                        <Copy className="w-3 h-3 text-white/80" />
+                      )}
+                    </Button>
 
-                  {message.role === "user" ? (
-                    <div className="text-sm md:text-base leading-relaxed pr-8">{message.content}</div>
-                  ) : (
-                    <div className="prose prose-invert prose-sm md:prose-base max-w-none pr-8">
-                      <Markdown>{message.content}</Markdown>
-                    </div>
-                  )}
+                    {message.role === "user" ? (
+                      <div className="text-sm md:text-base leading-relaxed pr-8">{message.content}</div>
+                    ) : (
+                      <div className="prose prose-invert prose-sm md:prose-base max-w-none pr-8">
+                        <Markdown>{message.content}</Markdown>
+                      </div>
+                    )}
+                  </div>
                 </motion.div>
               )}
 

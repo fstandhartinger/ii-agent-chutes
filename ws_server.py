@@ -35,8 +35,8 @@ from sqlalchemy import asc, text
 
 from ii_agent.core.event import RealtimeEvent, EventType
 from ii_agent.db.models import Event
-from ii_agent.utils.constants import DEFAULT_MODEL, UPLOAD_FOLDER_NAME
-from utils import parse_common_args, create_workspace_manager_for_connection
+from ii_agent.utils.constants import DEFAULT_MODEL, UPLOAD_FOLDER_NAME, PERSISTENT_DATA_ROOT, PERSISTENT_WORKSPACE_ROOT
+from utils import parse_common_args, create_workspace_manager_for_connection, get_persistent_path
 from ii_agent.agents.anthropic_fc import AnthropicFC
 from ii_agent.agents.base import BaseAgent
 from ii_agent.utils import WorkspaceManager
@@ -434,12 +434,27 @@ def create_agent_for_connection(
 
 
 def setup_workspace(app, workspace_path):
+    """Setup workspace directory for static file serving.
+    
+    Uses persistent storage if available, otherwise falls back to local storage.
+    """
+    # Ensure the workspace directory exists
+    os.makedirs(workspace_path, exist_ok=True)
+    
     try:
         app.mount(
             "/workspace",
             StaticFiles(directory=workspace_path, html=True),
             name="workspace",
         )
+        logger.info(f"Workspace mounted at: {workspace_path}")
+        
+        # Log whether we're using persistent storage
+        if workspace_path.startswith(PERSISTENT_DATA_ROOT):
+            logger.info("Using persistent storage for workspace files")
+        else:
+            logger.info("Using local storage for workspace files")
+            
     except RuntimeError:
         # Directory might not exist yet
         os.makedirs(workspace_path, exist_ok=True)

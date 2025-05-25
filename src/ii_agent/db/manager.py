@@ -1,22 +1,36 @@
 from contextlib import contextmanager
 from typing import Optional, Generator
 import uuid
+import os
 from pathlib import Path
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session as DBSession
 from ii_agent.db.models import Base, Session, Event
 from ii_agent.core.event import RealtimeEvent
+from ii_agent.utils.constants import PERSISTENT_DATA_ROOT, PERSISTENT_DB_PATH
+
+
+def get_default_db_path() -> str:
+    """Get the appropriate database path based on persistent storage availability."""
+    if os.path.exists(PERSISTENT_DATA_ROOT):
+        # Ensure the persistent directory exists
+        os.makedirs(PERSISTENT_DATA_ROOT, exist_ok=True)
+        return PERSISTENT_DB_PATH
+    return "events.db"
 
 
 class DatabaseManager:
     """Manager class for database operations."""
 
-    def __init__(self, db_path: str = "events.db"):
+    def __init__(self, db_path: Optional[str] = None):
         """Initialize the database manager.
 
         Args:
-            db_path: Path to the SQLite database file
+            db_path: Path to the SQLite database file. If None, uses default persistent path.
         """
+        if db_path is None:
+            db_path = get_default_db_path()
+            
         self.engine = create_engine(f"sqlite:///{db_path}")
         self.SessionFactory = sessionmaker(bind=self.engine)
 

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-CLI interface for the Agent.
+CLI for interacting with the Agent.
 
-This script provides a command-line interface for interacting with the Agent.
-It instantiates an Agent and prompts the user for input, which is then passed to the Agent.
+This script provides a command-line interface for interacting with the Agent,
+allowing users to send queries and receive responses in a terminal environment.
 """
 
 import os
@@ -11,14 +11,16 @@ import argparse
 import logging
 import asyncio
 from dotenv import load_dotenv
+from pathlib import Path
 
 load_dotenv()
 
 from ii_agent.core.event import RealtimeEvent, EventType
-from ii_agent.utils.constants import DEFAULT_MODEL
+from ii_agent.utils.constants import DEFAULT_MODEL, PERSISTENT_DATA_ROOT
 from utils import parse_common_args, create_workspace_manager_for_connection
 from rich.console import Console
 from rich.panel import Panel
+from rich.markdown import Markdown
 
 from ii_agent.tools import get_system_tools
 from ii_agent.prompts.system_prompt import SYSTEM_PROMPT
@@ -55,7 +57,7 @@ async def async_main():
     # Initialize console
     console = Console()
 
-    # Initialize database manager
+    # Initialize database manager (will use persistent storage if available)
     db_manager = DatabaseManager()
 
     # Create a new workspace manager for the CLI session
@@ -71,6 +73,12 @@ async def async_main():
     logger_for_agent_logs.info(
         f"Created new session {session_id} with workspace at {workspace_manager.root}"
     )
+
+    # Log storage type
+    if str(workspace_manager.root).startswith(PERSISTENT_DATA_ROOT):
+        console.print(f"[green]Using persistent storage at: {workspace_manager.root}[/green]")
+    else:
+        console.print(f"[yellow]Using local storage at: {workspace_manager.root}[/yellow]")
 
     # Print welcome message
     if not args.minimize_stdout_logs:

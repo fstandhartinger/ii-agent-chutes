@@ -947,7 +947,7 @@ export default function Home() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.6 }}
               >
-                Your AI assistant powered by advanced language models
+                World Leading Deep Research Agent. For Free.
               </motion.p>
             </div>
           </motion.div>
@@ -1001,7 +1001,7 @@ export default function Home() {
                   className="w-full h-full flex flex-col md:grid md:grid-cols-10 gap-4 px-4 pb-4 mobile-safe-area"
                 >
                   {/* Chat Messages Panel */}
-                  <div className={`${isMobileDetailPaneOpen ? 'hidden' : 'flex'} md:flex md:order-1 md:col-span-4 flex-col h-[calc(100vh-200px)] md:h-auto`}>
+                  <div className={`${isMobileDetailPaneOpen ? 'hidden' : 'flex'} md:flex md:order-1 md:col-span-4 flex-col h-[calc(100vh-200px)] md:h-[calc(100vh-120px)]`}>
                     <ChatMessage
                       messages={messages}
                       isLoading={isLoading}
@@ -1185,17 +1185,44 @@ export default function Home() {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.8, delay: 1 }}
         >
-          <a 
-            href="https://chutes.ai" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors hover-lift inline-flex items-center gap-2"
-          >
-            <span>powered by</span>
-            <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent font-semibold">
-              Chutes
-            </span>
-          </a>
+          <div className="text-sm text-muted-foreground space-y-2">
+            <div className="flex flex-wrap items-center justify-center gap-1">
+              <span>fubea is</span>
+              <a 
+                href="https://github.com/fstandhartinger/ii-agent-chutes/tree/main" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-blue-400 hover:text-blue-300 transition-colors hover-lift underline"
+              >
+                open source
+              </a>
+              <span>and free</span>
+            </div>
+            <div className="flex flex-wrap items-center justify-center gap-1">
+              <span>based on the amazing</span>
+              <a 
+                href="https://github.com/Intelligent-Internet/ii-agent" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-blue-400 hover:text-blue-300 transition-colors hover-lift underline"
+              >
+                ii-agent
+              </a>
+            </div>
+            <div className="flex items-center justify-center gap-2">
+              <span>powered by</span>
+              <a 
+                href="https://chutes.ai" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="hover:text-foreground transition-colors hover-lift inline-flex items-center gap-1"
+              >
+                <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent font-semibold">
+                  Chutes
+                </span>
+              </a>
+            </div>
+          </div>
         </motion.footer>
       )}
     </div>

@@ -334,6 +334,35 @@
   animation: fadeIn 0.3s ease-out;
 }
 
+/* Chat messages container */
+.chat-messages-container {
+  /* Ensure proper scrolling behavior */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+  /* Smooth scrolling */
+  scroll-behavior: smooth;
+}
+
+/* Desktop chat messages height constraint */
+@media (min-width: 768px) {
+  .chat-messages-container {
+    max-height: calc(100vh - 280px);
+    min-height: 200px;
+    /* Ensure scrollbar is always visible when needed */
+    overflow-y: auto;
+  }
+}
+
+/* Ensure copy buttons are always accessible */
+.message-copy-button {
+  opacity: 0.7;
+  transition: opacity 0.2s ease-in-out;
+}
+
+.message-copy-button:hover {
+  opacity: 1;
+}
+
 /* Mobile-specific styles */
 @media (max-width: 640px) {
   .mobile-chat-layout {

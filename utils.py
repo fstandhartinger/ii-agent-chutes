@@ -1,20 +1,48 @@
 from argparse import ArgumentParser
 import uuid
+import os
 from pathlib import Path
 from ii_agent.utils import WorkspaceManager
+from ii_agent.utils.constants import (
+    PERSISTENT_DATA_ROOT,
+    PERSISTENT_WORKSPACE_ROOT,
+    PERSISTENT_DB_PATH,
+    PERSISTENT_LOGS_PATH,
+)
+
+
+def get_persistent_path(default_path: str, persistent_path: str) -> str:
+    """Get the appropriate path based on whether persistent storage is available.
+    
+    Args:
+        default_path: The default local path
+        persistent_path: The persistent storage path
+        
+    Returns:
+        The path to use (persistent if available, otherwise default)
+    """
+    if os.path.exists(PERSISTENT_DATA_ROOT):
+        # Ensure the persistent directory exists
+        os.makedirs(os.path.dirname(persistent_path), exist_ok=True)
+        return persistent_path
+    return default_path
 
 
 def parse_common_args(parser: ArgumentParser):
+    # Determine workspace path based on persistent storage availability
+    default_workspace = get_persistent_path("./workspace", PERSISTENT_WORKSPACE_ROOT)
+    default_logs = get_persistent_path("agent_logs.txt", PERSISTENT_LOGS_PATH)
+    
     parser.add_argument(
         "--workspace",
         type=str,
-        default="./workspace",
+        default=default_workspace,
         help="Path to the workspace",
     )
     parser.add_argument(
         "--logs-path",
         type=str,
-        default="agent_logs.txt",
+        default=default_logs,
         help="Path to save logs",
     )
     parser.add_argument(
