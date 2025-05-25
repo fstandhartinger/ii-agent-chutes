@@ -41,6 +41,7 @@ import {
 } from "@/typings/agent";
 import ChatMessage from "./chat-message";
 import ImageBrowser from "./image-browser";
+import WebsiteViewer from "./website-viewer";
 
 export default function Home() {
   const xtermRef = useRef<XTerm | null>(null);
@@ -70,6 +71,7 @@ export default function Home() {
   const [browserUrl, setBrowserUrl] = useState("");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobileDetailPaneOpen, setIsMobileDetailPaneOpen] = useState(false);
+  const [deployedUrl, setDeployedUrl] = useState<string>("");
 
   const isReplayMode = useMemo(() => !!searchParams.get("id"), [searchParams]);
   const { toggleChutesLLM, getOptimalModel } = useChutes();
@@ -612,6 +614,15 @@ export default function Home() {
             data.content.tool_name !== TOOL.SEQUENTIAL_THINKING &&
             data.content.tool_name !== TOOL.PRESENTATION
           ) {
+            // Handle static deploy result to extract URL
+            if (data.content.tool_name === TOOL.STATIC_DEPLOY) {
+              const result = data.content.result as string;
+              if (result && result.startsWith('http')) {
+                setDeployedUrl(result);
+                setActiveTab(TAB.WEBSITE);
+              }
+            }
+            
             // TODO: Implement helper function to handle tool results
             setMessages((prev) => {
               const lastMessage = cloneDeep(prev[prev.length - 1]);
@@ -903,7 +914,7 @@ export default function Home() {
       </motion.header>
 
       {/* Main Content */}
-      <main className="flex-1 relative z-10">
+      <main className="flex-1 relative z-10 flex flex-col min-h-0">
         {!isInChatView && (
           <motion.div
             className="flex flex-col items-center justify-center min-h-[60vh] px-4"
@@ -998,10 +1009,10 @@ export default function Home() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
                   transition={{ duration: 0.6 }}
-                  className="w-full h-full flex flex-col md:grid md:grid-cols-10 gap-4 px-4 pb-4 mobile-safe-area"
+                  className="w-full flex-1 flex flex-col md:grid md:grid-cols-10 gap-4 px-4 pb-4 mobile-safe-area"
                 >
                   {/* Chat Messages Panel */}
-                  <div className={`${isMobileDetailPaneOpen ? 'hidden' : 'flex'} md:flex md:order-1 md:col-span-4 flex-col h-[calc(100vh-200px)] md:h-[calc(100vh-120px)]`}>
+                  <div className={`${isMobileDetailPaneOpen ? 'hidden' : 'flex'} md:flex md:order-1 md:col-span-4 flex-col flex-1 min-h-0`}>
                     <ChatMessage
                       messages={messages}
                       isLoading={isLoading}
@@ -1027,10 +1038,10 @@ export default function Home() {
                   </div>
 
                   {/* Tools Panel */}
-                  <div className={`${!isMobileDetailPaneOpen ? 'hidden' : 'flex'} md:flex md:order-2 md:col-span-6 bg-glass-dark rounded-2xl border border-white/10 overflow-hidden h-[calc(100vh-200px)] md:h-auto flex-col`}>
+                  <div className={`${!isMobileDetailPaneOpen ? 'hidden' : 'flex'} md:flex md:order-2 md:col-span-6 bg-glass-dark rounded-2xl border border-white/10 overflow-hidden flex-1 min-h-0 flex-col`}>
                     {/* Tab Navigation */}
-                    <div className="flex items-center justify-between p-4 border-b border-white/10 bg-black/20">
-                      <div className="flex gap-2 overflow-x-auto">
+                    <div className="flex items-center justify-between p-4 pt-6 border-b border-white/10 bg-black/20">
+                      <div className="flex gap-2 overflow-x-auto pb-2">
                         {/* Mobile back button */}
                         <Button
                           size="sm"
@@ -1065,7 +1076,7 @@ export default function Home() {
                           }`}
                         >
                           <Code className="w-4 h-4 mr-2" />
-                          Code
+                          Files
                         </Button>
                         <Button
                           size="sm"
@@ -1080,9 +1091,24 @@ export default function Home() {
                           <TerminalIcon className="w-4 h-4 mr-2" />
                           Terminal
                         </Button>
+                        {deployedUrl && (
+                          <Button
+                            size="sm"
+                            variant={activeTab === TAB.WEBSITE ? "default" : "outline"}
+                            onClick={() => setActiveTab(TAB.WEBSITE)}
+                            className={`transition-all-smooth hover-lift ${
+                              activeTab === TAB.WEBSITE
+                                ? "bg-gradient-skyblue-lavender text-black shadow-glow"
+                                : "bg-glass border-white/20 hover:bg-white/10"
+                            }`}
+                          >
+                            <Globe className="w-4 h-4 mr-2" />
+                            Website
+                          </Button>
+                        )}
                       </div>
                       
-                      {/* VS Code button - only show if environment variable is set and points to correct domain */}
+                      {/* VS Code button - commented out as requested
                       {process.env.NEXT_PUBLIC_VSCODE_URL && 
                        !process.env.NEXT_PUBLIC_VSCODE_URL.includes('127.0.0.1') && 
                        !process.env.NEXT_PUBLIC_VSCODE_URL.includes('localhost') && (
@@ -1104,6 +1130,7 @@ export default function Home() {
                           VS Code
                         </Button>
                       )}
+                      */}
                     </div>
 
                     {/* Tab Content */}
@@ -1168,6 +1195,12 @@ export default function Home() {
                         ref={xtermRef}
                         className={`tab-content-enter ${activeTab === TAB.TERMINAL ? "" : "hidden"}`}
                       />
+                      {deployedUrl && (
+                        <WebsiteViewer
+                          url={deployedUrl}
+                          className={`tab-content-enter ${activeTab === TAB.WEBSITE ? "" : "hidden"}`}
+                        />
+                      )}
                     </div>
                   </div>
                 </motion.div>
@@ -1185,8 +1218,8 @@ export default function Home() {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.8, delay: 1 }}
         >
-          <div className="text-sm text-muted-foreground space-y-2">
-            <div className="flex flex-wrap items-center justify-center gap-1">
+          <div className="text-sm text-muted-foreground">
+            <div className="flex flex-wrap items-center justify-center gap-1 md:gap-2">
               <span>fubea is</span>
               <a 
                 href="https://github.com/fstandhartinger/ii-agent-chutes/tree/main" 
@@ -1197,8 +1230,7 @@ export default function Home() {
                 open source
               </a>
               <span>and free</span>
-            </div>
-            <div className="flex flex-wrap items-center justify-center gap-1">
+              <span className="text-muted-foreground/60 mx-1 md:mx-2">•</span>
               <span>based on the amazing</span>
               <a 
                 href="https://github.com/Intelligent-Internet/ii-agent" 
@@ -1208,8 +1240,7 @@ export default function Home() {
               >
                 ii-agent
               </a>
-            </div>
-            <div className="flex items-center justify-center gap-2">
+              <span className="text-muted-foreground/60 mx-1 md:mx-2">•</span>
               <span>powered by</span>
               <a 
                 href="https://chutes.ai" 

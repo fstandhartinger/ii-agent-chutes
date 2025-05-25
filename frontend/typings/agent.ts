@@ -2,6 +2,7 @@ export enum TAB {
   BROWSER = "browser",
   CODE = "code",
   TERMINAL = "terminal",
+  WEBSITE = "website",
 }
 
 export type Source = {
