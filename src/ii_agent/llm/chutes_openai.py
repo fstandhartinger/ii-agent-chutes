@@ -99,6 +99,27 @@ class ChutesOpenAIClient(LLMClient):
         jitter = random.uniform(0.8, 1.2)
         return delay * jitter
 
+    def _is_tool_call_loop(self, tool_call_data: dict, recent_messages: list) -> bool:
+        """Detect if this tool call would create a loop."""
+        tool_name = tool_call_data.get("name", "")
+        
+        # Check the last few messages for repeated tool calls
+        recent_tool_calls = []
+        for msg in recent_messages[-6:]:  # Check last 6 messages
+            if msg.get("role") == "assistant" and "tool_call" in str(msg.get("content", "")):
+                recent_tool_calls.append(tool_name)
+        
+        # If we've seen this tool called 2+ times recently, it might be a loop
+        if recent_tool_calls.count(tool_name) >= 2:
+            # Special case for sequential_thinking - it's particularly prone to loops
+            if tool_name == "sequential_thinking":
+                return True
+            # For other tools, allow some repetition but not excessive
+            elif recent_tool_calls.count(tool_name) >= 3:
+                return True
+                
+        return False
+
     def generate(
         self,
         messages: LLMMessages,
@@ -181,7 +202,7 @@ class ChutesOpenAIClient(LLMClient):
         if tools:
             logging.info(f"[CHUTES] Implementing JSON workaround for {len(tools)} tools")
             # Add a system message that instructs the model to output tool calls as JSON
-            tool_instructions = "\n\nWhen you need to use a tool, output a JSON object in the following format:\n```json\n{\n  \"tool_call\": {\n    \"id\": \"call_<unique_id>\",\n    \"name\": \"<tool_name>\",\n    \"arguments\": {<tool_arguments>}\n  }\n}\n```\n\nAvailable tools:\n"
+            tool_instructions = "\n\nIMPORTANT: When you need to use a tool, you MUST output a JSON object in the following EXACT format:\n```json\n{\n  \"tool_call\": {\n    \"id\": \"call_<unique_id>\",\n    \"name\": \"<tool_name>\",\n    \"arguments\": {<tool_arguments>}\n  }\n}\n```\n\nRULES:\n- Use ONLY ONE tool call per response\n- Do NOT call the same tool repeatedly without making progress\n- For sequential_thinking: Only use when you need to break down a complex problem. Do NOT use for simple tasks.\n- Always provide substantive reasoning in your response along with the tool call\n- If a tool fails, try a different approach rather than repeating the same call\n\nAvailable tools:\n"
             for tool in tools:
                 tool_instructions += f"- {tool.name}: {tool.description}\n"
                 tool_instructions += f"  Parameters: {tool.input_schema}\n"
@@ -192,7 +213,7 @@ class ChutesOpenAIClient(LLMClient):
             else:
                 openai_messages.insert(0, {"role": "system", "content": tool_instructions})
             
-            logging.info(f"[CHUTES] Added tool instructions to system prompt")
+            logging.info(f"[CHUTES] Added enhanced tool instructions to system prompt")
 
         response = None
         
@@ -300,20 +321,44 @@ class ChutesOpenAIClient(LLMClient):
                 import json
                 import re
                 
-                # Look for JSON blocks in the content
-                json_pattern = r'```json\s*(\{.*?\})\s*```'
-                json_matches = re.findall(json_pattern, message.content, re.DOTALL)
+                # Look for JSON blocks in the content with multiple patterns
+                json_patterns = [
+                    r'```json\s*(\{.*?\})\s*```',  # Standard JSON blocks
+                    r'```\s*(\{.*?"tool_call".*?\})\s*```',  # JSON blocks without json label
+                    r'(\{[^{}]*"tool_call"[^{}]*\{[^{}]*\}[^{}]*\})',  # Inline JSON with tool_call
+                ]
+                
+                json_matches = []
+                for pattern in json_patterns:
+                    matches = re.findall(pattern, message.content, re.DOTALL | re.IGNORECASE)
+                    json_matches.extend(matches)
                 
                 if json_matches:
                     logging.info(f"[CHUTES] Found {len(json_matches)} potential JSON tool calls in content")
                     
                     # Process each JSON block
+                    tool_calls_found = 0
                     for json_str in json_matches:
                         try:
+                            # Clean up the JSON string
+                            json_str = json_str.strip()
+                            if not json_str.startswith('{'):
+                                continue
+                                
                             json_data = json.loads(json_str)
                             if "tool_call" in json_data:
                                 tool_call_data = json_data["tool_call"]
                                 logging.info(f"[CHUTES] Extracted tool call from JSON: {tool_call_data}")
+                                
+                                # Validate tool call data
+                                if not tool_call_data.get("name"):
+                                    logging.warning(f"[CHUTES] Tool call missing name, skipping")
+                                    continue
+                                    
+                                # Prevent tool call loops by checking recent history
+                                if self._is_tool_call_loop(tool_call_data, openai_messages):
+                                    logging.warning(f"[CHUTES] Detected potential tool call loop for {tool_call_data.get('name')}, skipping")
+                                    continue
                                 
                                 # Create a ToolCall from the JSON data
                                 internal_messages.append(
@@ -323,11 +368,24 @@ class ChutesOpenAIClient(LLMClient):
                                         tool_input=tool_call_data.get("arguments", {}),
                                     )
                                 )
+                                tool_calls_found += 1
                                 
                                 # Remove the JSON block from the content
                                 message.content = message.content.replace(f"```json\n{json_str}\n```", "").strip()
+                                message.content = message.content.replace(f"```\n{json_str}\n```", "").strip()
+                                message.content = message.content.replace(json_str, "").strip()
+                                
+                                # Only process the first valid tool call to prevent multiple calls
+                                if tool_calls_found >= 1:
+                                    break
+                                    
                         except json.JSONDecodeError as e:
                             logging.error(f"[CHUTES] Failed to parse JSON tool call: {e}")
+                            logging.error(f"[CHUTES] Problematic JSON: {json_str[:200]}...")
+                            continue
+                        except Exception as e:
+                            logging.error(f"[CHUTES] Unexpected error processing tool call: {e}")
+                            continue
                 
                 # Add remaining content as TextResult if any
                 if message.content.strip():

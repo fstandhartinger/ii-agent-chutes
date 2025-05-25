@@ -3,7 +3,7 @@ import sys
 
 # Run the tests and capture output
 result = subprocess.run(
-    [sys.executable, 'test_chutes_fast.py'],
+    [sys.executable, 'tests/test_chutes_fast.py'],
     capture_output=True,
     text=True
 )

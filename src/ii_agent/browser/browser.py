@@ -166,17 +166,43 @@ class Browser:
                 )
             else:
                 logger.info("Launching new browser instance")
-                self.playwright_browser = await self.playwright.chromium.launch(
-                    headless=False,
-                    args=[
-                        "--no-sandbox",
-                        "--disable-blink-features=AutomationControlled",
-                        "--disable-web-security",
-                        "--disable-site-isolation-trials",
-                        "--disable-features=IsolateOrigins,site-per-process",
-                        f"--window-size={self.config.viewport_size['width']},{self.config.viewport_size['height']}",
-                    ],
-                )
+                try:
+                    self.playwright_browser = await self.playwright.chromium.launch(
+                        headless=False,
+                        args=[
+                            "--no-sandbox",
+                            "--disable-blink-features=AutomationControlled",
+                            "--disable-web-security",
+                            "--disable-site-isolation-trials",
+                            "--disable-features=IsolateOrigins,site-per-process",
+                            f"--window-size={self.config.viewport_size['width']},{self.config.viewport_size['height']}",
+                        ],
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to launch browser with headless=False: {e}")
+                    logger.info("Attempting to launch browser in headless mode as fallback")
+                    try:
+                        self.playwright_browser = await self.playwright.chromium.launch(
+                            headless=True,
+                            args=[
+                                "--no-sandbox",
+                                "--disable-blink-features=AutomationControlled",
+                                "--disable-web-security",
+                                "--disable-site-isolation-trials",
+                                "--disable-features=IsolateOrigins,site-per-process",
+                                "--disable-dev-shm-usage",
+                                "--disable-gpu",
+                                f"--window-size={self.config.viewport_size['width']},{self.config.viewport_size['height']}",
+                            ],
+                        )
+                        logger.info("Successfully launched browser in headless mode")
+                    except Exception as e2:
+                        logger.error(f"Failed to launch browser in headless mode: {e2}")
+                        raise BrowserError(
+                            f"Failed to launch browser. This might be due to missing Playwright browsers. "
+                            f"Please run 'playwright install chromium' to install the required browser. "
+                            f"Original error: {e2}"
+                        ) from e2
 
         # Create context if needed
         if self.context is None:
