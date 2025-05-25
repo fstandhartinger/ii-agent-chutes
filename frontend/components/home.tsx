@@ -22,7 +22,6 @@ import { v4 as uuidv4 } from "uuid";
 import { useRouter, useSearchParams } from "next/navigation";
 import SidebarButton from "@/components/sidebar-button";
 import { useChutes } from "@/providers/chutes-provider";
-import ModelSelector from "@/components/model-selector";
 
 import Browser from "@/components/browser";
 import CodeEditor from "@/components/code-editor";
@@ -70,6 +69,7 @@ export default function Home() {
   );
   const [browserUrl, setBrowserUrl] = useState("");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMobileDetailPaneOpen, setIsMobileDetailPaneOpen] = useState(false);
 
   const isReplayMode = useMemo(() => !!searchParams.get("id"), [searchParams]);
   const { toggleChutesLLM, getOptimalModel } = useChutes();
@@ -950,16 +950,6 @@ export default function Home() {
                 Your AI assistant powered by advanced language models
               </motion.p>
             </div>
-
-            {/* Model Selector */}
-            <motion.div
-              className="mb-8"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.8 }}
-            >
-              <ModelSelector />
-            </motion.div>
           </motion.div>
         )}
 
@@ -1008,16 +998,22 @@ export default function Home() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
                   transition={{ duration: 0.6 }}
-                  className="w-full h-full grid grid-cols-1 md:grid-cols-10 gap-4 px-4 pb-4 mobile-safe-area"
+                  className="w-full h-full flex flex-col md:grid md:grid-cols-10 gap-4 px-4 pb-4 mobile-safe-area"
                 >
                   {/* Chat Messages Panel */}
-                  <div className="order-2 md:order-1 md:col-span-4 flex flex-col h-[40vh] md:h-auto">
+                  <div className={`${isMobileDetailPaneOpen ? 'hidden' : 'flex'} md:flex md:order-1 md:col-span-4 flex-col h-[calc(100vh-200px)] md:h-auto`}>
                     <ChatMessage
                       messages={messages}
                       isLoading={isLoading}
                       isCompleted={isCompleted}
                       workspaceInfo={workspaceInfo}
-                      handleClickAction={handleClickAction}
+                      handleClickAction={(action, isReplay) => {
+                        handleClickAction(action, isReplay);
+                        // On mobile, open detail pane when action is clicked
+                        if (window.innerWidth < 768) {
+                          setIsMobileDetailPaneOpen(true);
+                        }
+                      }}
                       isUploading={isUploading}
                       isUseDeepResearch={isUseDeepResearch}
                       isReplayMode={isReplayMode}
@@ -1031,10 +1027,20 @@ export default function Home() {
                   </div>
 
                   {/* Tools Panel */}
-                  <div className="order-1 md:order-2 md:col-span-6 bg-glass-dark rounded-2xl border border-white/10 overflow-hidden h-[50vh] md:h-auto">
+                  <div className={`${!isMobileDetailPaneOpen ? 'hidden' : 'flex'} md:flex md:order-2 md:col-span-6 bg-glass-dark rounded-2xl border border-white/10 overflow-hidden h-[calc(100vh-200px)] md:h-auto flex-col`}>
                     {/* Tab Navigation */}
                     <div className="flex items-center justify-between p-4 border-b border-white/10 bg-black/20">
                       <div className="flex gap-2 overflow-x-auto">
+                        {/* Mobile back button */}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setIsMobileDetailPaneOpen(false)}
+                          className="md:hidden bg-glass border-white/20 hover:bg-white/10 transition-all-smooth hover-lift mr-2"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                        
                         <Button
                           size="sm"
                           variant={activeTab === TAB.BROWSER ? "default" : "outline"}
@@ -1076,7 +1082,10 @@ export default function Home() {
                         </Button>
                       </div>
                       
-                      {process.env.NEXT_PUBLIC_VSCODE_URL && (
+                      {/* VS Code button - only show if environment variable is set and points to correct domain */}
+                      {process.env.NEXT_PUBLIC_VSCODE_URL && 
+                       !process.env.NEXT_PUBLIC_VSCODE_URL.includes('127.0.0.1') && 
+                       !process.env.NEXT_PUBLIC_VSCODE_URL.includes('localhost') && (
                         <Button
                           size="sm"
                           variant="outline"
@@ -1098,7 +1107,7 @@ export default function Home() {
                     </div>
 
                     {/* Tab Content */}
-                    <div className="h-full overflow-hidden">
+                    <div className="flex-1 overflow-hidden">
                       <Browser
                         className={`tab-content-enter ${
                           activeTab === TAB.BROWSER &&

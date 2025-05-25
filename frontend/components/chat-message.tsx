@@ -1,13 +1,16 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Check, User, Bot } from "lucide-react";
+import { Check, Copy } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 
 import Action from "@/components/action";
 import Markdown from "@/components/markdown";
 import QuestionInput from "@/components/question-input";
 import { ActionStep, Message } from "@/typings/agent";
 import { getFileIconAndColor } from "@/utils/file-utils";
+import { Button } from "@/components/ui/button";
 
 interface ChatMessageProps {
   messages: Message[];
@@ -44,6 +47,19 @@ const ChatMessage = ({
   handleQuestionSubmit,
   handleFileUpload,
 }: ChatMessageProps) => {
+  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
+
+  const copyToClipboard = async (text: string, messageId: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedMessageId(messageId);
+      toast.success("Copied to clipboard");
+      setTimeout(() => setCopiedMessageId(null), 2000);
+    } catch {
+      toast.error("Failed to copy to clipboard");
+    }
+  };
+
   return (
     <div className="flex flex-col h-full bg-glass-dark rounded-2xl border border-white/10 overflow-hidden">
       {/* Messages Container */}
@@ -56,31 +72,16 @@ const ChatMessage = ({
         {messages.map((message, index) => (
           <motion.div
             key={message.id}
-            className={`flex gap-3 md:gap-4 ${
-              message.role === "user" ? "flex-row-reverse" : "flex-row"
-            }`}
+            className="flex flex-col gap-3"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.05 * index, duration: 0.4 }}
           >
-            {/* Avatar */}
-            <div className={`flex-shrink-0 w-8 h-8 md:w-10 md:h-10 rounded-xl flex items-center justify-center ${
-              message.role === "user" 
-                ? "bg-gradient-to-br from-blue-500 to-purple-500 shadow-glow" 
-                : "bg-gradient-to-br from-emerald-500 to-blue-500 shadow-glow-purple"
-            }`}>
-              {message.role === "user" ? (
-                <User className="w-4 h-4 md:w-5 md:h-5 text-white" />
-              ) : (
-                <Bot className="w-4 h-4 md:w-5 md:h-5 text-white" />
-              )}
-            </div>
-
             {/* Message Content */}
-            <div className={`flex-1 min-w-0 ${message.role === "user" ? "text-right" : "text-left"}`}>
+            <div className="flex-1 min-w-0 relative group">
               {/* File Attachments */}
               {message.files && message.files.length > 0 && (
-                <div className={`flex flex-wrap gap-2 mb-3 ${message.role === "user" ? "justify-end" : "justify-start"}`}>
+                <div className="flex flex-wrap gap-2 mb-3">
                   {message.files.map((fileName, fileIndex) => {
                     const isImage = fileName.match(/\.(jpeg|jpg|gif|png|webp|svg|heic|bmp)$/i) !== null;
 
@@ -133,9 +134,9 @@ const ChatMessage = ({
               {/* Text Content */}
               {message.content && (
                 <motion.div
-                  className={`inline-block max-w-full md:max-w-[85%] ${
+                  className={`inline-block max-w-full md:max-w-[85%] relative ${
                     message.role === "user"
-                      ? "bg-gradient-to-br from-blue-500/20 to-purple-500/20 backdrop-blur-sm border border-blue-500/30 rounded-2xl p-3 md:p-4 text-white shadow-lg"
+                      ? "bg-gradient-to-br from-blue-500/20 to-purple-500/20 backdrop-blur-sm border border-blue-500/30 rounded-2xl p-3 md:p-4 text-white shadow-lg ml-auto"
                       : "text-white"
                   }`}
                   initial={{ scale: 0.95, opacity: 0 }}
@@ -147,10 +148,24 @@ const ChatMessage = ({
                     delay: 0.1
                   }}
                 >
+                  {/* Copy Button */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/20 hover:bg-black/40 border border-white/20 p-1 h-auto"
+                    onClick={() => copyToClipboard(message.content || "", message.id)}
+                  >
+                    {copiedMessageId === message.id ? (
+                      <Check className="w-3 h-3 text-green-400" />
+                    ) : (
+                      <Copy className="w-3 h-3 text-white" />
+                    )}
+                  </Button>
+
                   {message.role === "user" ? (
-                    <div className="text-sm md:text-base leading-relaxed">{message.content}</div>
+                    <div className="text-sm md:text-base leading-relaxed pr-8">{message.content}</div>
                   ) : (
-                    <div className="prose prose-invert prose-sm md:prose-base max-w-none">
+                    <div className="prose prose-invert prose-sm md:prose-base max-w-none pr-8">
                       <Markdown>{message.content}</Markdown>
                     </div>
                   )}
@@ -189,9 +204,6 @@ const ChatMessage = ({
               damping: 30,
             }}
           >
-            <div className="flex-shrink-0 w-8 h-8 md:w-10 md:h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-blue-500 shadow-glow-purple flex items-center justify-center">
-              <Bot className="w-4 h-4 md:w-5 md:h-5 text-white" />
-            </div>
             <motion.div
               className="flex-1 bg-glass border border-white/20 rounded-2xl p-3 md:p-4 backdrop-blur-sm shadow-lg"
               initial={{ scale: 0.95 }}

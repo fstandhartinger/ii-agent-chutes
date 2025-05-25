@@ -81,6 +81,10 @@ const QuestionInput = ({
       // Enable/disable scrolling based on whether we've hit the max height
       if (scrollHeight > maxHeight) {
         textarea.style.overflowY = 'auto';
+        // Ensure cursor is visible when scrolling is enabled
+        setTimeout(() => {
+          textarea.scrollTop = textarea.scrollHeight;
+        }, 0);
       } else {
         textarea.style.overflowY = 'hidden';
       }
@@ -298,7 +302,7 @@ const QuestionInput = ({
             />
             
             {/* Bottom Controls */}
-            <div className="absolute bottom-0 left-0 right-0 flex justify-between items-center p-4 bg-black/30 backdrop-blur-sm">
+            <div className="absolute bottom-0 left-0 right-0 flex justify-between items-center p-4 bg-transparent">
               <div className="flex items-center gap-3">
                 {/* Model Indicator */}
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-black/40 rounded-lg border border-white/10">
