@@ -61,18 +61,44 @@ MAX_TURNS = 200
 
 
 app = FastAPI(title="Agent WebSocket API")
+
+# Add CORS middleware with explicit configuration
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Allows all origins
     allow_credentials=True,
-    allow_methods=["*"],  # Allows all methods
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"],
     allow_headers=["*"],  # Allows all headers
+    expose_headers=["*"],  # Expose all headers to the client
 )
+
+# Add explicit OPTIONS handler for additional CORS support
+@app.options("/{full_path:path}")
+async def options_handler(request: Request):
+    """Handle preflight OPTIONS requests for CORS."""
+    headers = CORS_HEADERS.copy()
+    headers["Access-Control-Max-Age"] = "86400"
+    return JSONResponse(content={}, headers=headers)
 
 
 # Create a logger
 logger = logging.getLogger("websocket_server")
 logger.setLevel(logging.INFO)
+
+# CORS headers for API responses
+CORS_HEADERS = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, HEAD, PATCH",
+    "Access-Control-Allow-Headers": "*",
+}
+
+def create_cors_response(content: dict, status_code: int = 200):
+    """Create a JSONResponse with CORS headers."""
+    return JSONResponse(
+        content=content,
+        status_code=status_code,
+        headers=CORS_HEADERS
+    )
 
 # Active WebSocket connections
 active_connections: Set[WebSocket] = set()
@@ -1049,10 +1075,10 @@ async def run_gaia_benchmark(request: Request):
             import datasets
             import huggingface_hub
         except ImportError as e:
-            return {
-                "status": "error", 
-                "message": f"GAIA dependencies not installed. Missing: {str(e)}. Please install with: pip install datasets huggingface-hub"
-            }
+                    return create_cors_response({
+            "status": "error", 
+            "message": f"GAIA dependencies not installed. Missing: {str(e)}. Please install with: pip install datasets huggingface-hub"
+        }, 400)
         
         data = await request.json()
         set_to_run = data.get("set_to_run", "validation")
@@ -1091,7 +1117,7 @@ async def run_gaia_benchmark(request: Request):
                 total_tasks = len(results)
                 completed_tasks = len([r for r in results if r.get('prediction')])
                 
-                return {
+                response_data = {
                     "status": "success", 
                     "results": results,
                     "summary": {
@@ -1102,20 +1128,18 @@ async def run_gaia_benchmark(request: Request):
                         "set_to_run": set_to_run
                     }
                 }
+                return create_cors_response(response_data)
             else:
-                return {"status": "error", "message": "Results file not found"}
+                return create_cors_response({"status": "error", "message": "Results file not found"}, 404)
         else:
             logger.error(f"GAIA benchmark failed: {result.stderr}")
-            return {"status": "error", "message": result.stderr or "Unknown error occurred"}
+            return create_cors_response({"status": "error", "message": result.stderr or "Unknown error occurred"}, 500)
         
     except subprocess.TimeoutExpired:
-        return {"status": "error", "message": "Benchmark execution timed out (30 minutes)"}
+        return create_cors_response({"status": "error", "message": "Benchmark execution timed out (30 minutes)"}, 408)
     except Exception as e:
         logger.error(f"Error running GAIA benchmark: {str(e)}")
-        return JSONResponse(
-            status_code=500, 
-            content={"error": f"Error running GAIA benchmark: {str(e)}"}
-        )
+        return create_cors_response({"error": f"Error running GAIA benchmark: {str(e)}"}, 500)
 
 
 if __name__ == "__main__":

@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { ArrowUp, Loader2, Paperclip, Sparkles } from "lucide-react";
+import { ArrowUp, Loader2, Paperclip, Sparkles, Mic, Square } from "lucide-react";
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
 import { useState, useEffect, useRef } from "react";
@@ -46,6 +46,10 @@ const QuestionInput = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [textareaHeight, setTextareaHeight] = useState<number>(60);
   const [isButtonEnabled, setIsButtonEnabled] = useState<boolean>(false);
+  const [isRecording, setIsRecording] = useState<boolean>(false);
+  const [isTranscribing, setIsTranscribing] = useState<boolean>(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   // Clean up object URLs when component unmounts
   useEffect(() => {
@@ -100,6 +104,120 @@ const QuestionInput = ({
     return ["jpg", "jpeg", "png", "gif", "webp", "bmp", "heic", "svg"].includes(
       ext
     );
+  };
+
+  // Audio recording functions
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
+        await transcribeAudio(audioBlob);
+        
+        // Stop all tracks to release microphone
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+    } catch (error) {
+      console.error('Error starting recording:', error);
+      alert('Could not access microphone. Please check permissions.');
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      setIsTranscribing(true);
+    }
+  };
+
+  const transcribeAudio = async (audioBlob: Blob) => {
+    try {
+      // Convert blob to base64
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64Audio = (reader.result as string).split(',')[1];
+        
+        // Try to use the API endpoint first (which will use backend CHUTES_API_TOKEN)
+        try {
+          const response = await fetch('/api/transcribe', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              audio_b64: base64Audio,
+            }),
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            const transcription = data.transcription || '';
+            setValue(transcription);
+            return;
+          }
+        } catch (error) {
+          console.error('Backend transcription failed, trying direct API:', error);
+        }
+
+        // Fallback to direct API call if backend fails
+        const apiToken = process.env.NEXT_PUBLIC_CHUTES_API_TOKEN;
+        if (!apiToken) {
+          console.error('CHUTES API token not found and backend transcription failed');
+          setValue('Transcription failed: API token not configured');
+          return;
+        }
+
+        const response = await fetch('https://chutes-whisper-large-v3.chutes.ai/transcribe', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            language: null,
+            audio_b64: base64Audio,
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const transcription = data[0]?.data || '';
+          setValue(transcription);
+        } else {
+          console.error('Transcription failed:', response.statusText);
+          setValue('Transcription failed');
+        }
+      };
+      
+      reader.readAsDataURL(audioBlob);
+    } catch (error) {
+      console.error('Error transcribing audio:', error);
+      setValue('Transcription error');
+    } finally {
+      setIsTranscribing(false);
+    }
+  };
+
+  const handleMicrophoneClick = () => {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      startRecording();
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -305,6 +423,23 @@ const QuestionInput = ({
             {/* Bottom Controls */}
             <div className="absolute bottom-0 left-0 right-0 flex justify-between items-center p-4 bg-transparent">
               <div className="flex items-center gap-3">
+                {/* Microphone Button */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="bg-glass border border-white/20 hover:bg-white/10 w-11 h-11 rounded-xl transition-all-smooth hover-lift shadow-lg"
+                  onClick={handleMicrophoneClick}
+                  disabled={isUploading || isTranscribing}
+                >
+                  {isTranscribing ? (
+                    <Loader2 className="w-5 h-5 text-muted-foreground animate-spin" />
+                  ) : isRecording ? (
+                    <Square className="w-5 h-5 text-red-500" />
+                  ) : (
+                    <Mic className="w-5 h-5 text-muted-foreground" />
+                  )}
+                </Button>
+
                 {handleFileUpload && (
                   <label htmlFor="file-upload" className="cursor-pointer">
                     <Button

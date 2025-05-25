@@ -75,9 +75,35 @@ export default function Home() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobileDetailPaneOpen, setIsMobileDetailPaneOpen] = useState(false);
   const [deployedUrl, setDeployedUrl] = useState<string>("");
+  const [taskSummary, setTaskSummary] = useState<string>("");
 
   const isReplayMode = useMemo(() => !!searchParams.get("id"), [searchParams]);
   const { toggleChutesLLM, getOptimalModel } = useChutes();
+
+  // Generate task summary using LLM
+  const generateTaskSummary = async (firstUserMessage: string) => {
+    try {
+      const response = await fetch('/api/generate-summary', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: firstUserMessage,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setTaskSummary(data.summary || "Task in progress");
+      } else {
+        setTaskSummary("Task in progress");
+      }
+    } catch (error) {
+      console.error("Error generating task summary:", error);
+      setTaskSummary("Task in progress");
+    }
+  };
 
   // Function to detect if there are images in the current conversation context
   const hasImagesInContext = useMemo(() => {
@@ -349,6 +375,11 @@ export default function Home() {
 
     setMessages((prev) => [...prev, newUserMessage]);
 
+    // Generate task summary for the first message
+    if (messages.length === 0) {
+      generateTaskSummary(newQuestion);
+    }
+
     if (!socket || !isSocketConnected || socket.readyState !== WebSocket.OPEN) {
       toast.error("WebSocket connection is not open. Please try again.");
       setIsLoading(false);
@@ -407,6 +438,7 @@ export default function Home() {
     setFilesContent({}); // Reset files content
     setActiveTab(TAB.BROWSER); // Reset active tab
     setCurrentActionData(undefined); // Reset current action data
+    setTaskSummary(""); // Reset task summary
   };
 
   const parseJson = (jsonString: string) => {
@@ -907,14 +939,10 @@ export default function Home() {
           >
             {isInChatView && (
               <>
-                <Button
-                  variant="outline"
-                  size="sm"
+                <ArrowLeft 
+                  className="w-6 h-6 text-white/80 hover:text-white cursor-pointer transition-colors" 
                   onClick={resetChat}
-                  className="bg-glass border-white/20 hover:bg-red-500/20 transition-all-smooth hover-lift"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                </Button>
+                />
                 <div className="relative">
                   <Image
                     src="/logo-only.png"
@@ -925,8 +953,8 @@ export default function Home() {
                   />
                   <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-lg blur-sm" />
                 </div>
-                <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                  fubea
+                <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent truncate max-w-xs md:max-w-md">
+                  {taskSummary || "fubea"}
                 </span>
               </>
             )}
