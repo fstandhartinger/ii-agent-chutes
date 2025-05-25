@@ -386,4 +386,89 @@ For a simpler setup without running code-server, you could use VS Code tunnels:
 2. Run `code tunnel` to create a secure tunnel
 3. Access VS Code through the provided URL
 
-This approach doesn't require additional server configuration but requires a GitHub account for authentication. 
+This approach doesn't require additional server configuration but requires a GitHub account for authentication.
+
+# Chutes Integration Improvements
+
+This document describes the improvements made to the Chutes integration to handle tool calling more robustly.
+
+## Problem Statement
+
+The agent was failing to continue with tool calls after gathering initial information when using DeepSeek V3 via Chutes. The issue manifested as:
+- Agent would make initial tool calls successfully
+- At some point, no tools would be called in a response
+- The agent would immediately assume the task was complete and stop
+- This happened even when the task was clearly incomplete
+
+## Root Causes
+
+1. **Aggressive completion logic**: The agent assumed any response without tool calls meant the task was complete
+2. **JSON formatting issues**: The Chutes API doesn't support native tool calling, so we use a JSON workaround that sometimes fails
+3. **Lack of recovery mechanisms**: When tool call extraction failed, there was no way to recover
+
+## Improvements Made
+
+### 1. Smarter Completion Detection (anthropic_fc.py)
+
+Instead of immediately assuming the task is complete when no tools are called, the agent now:
+
+- Analyzes the response content to determine if it seems like a final answer
+- Looks for completion indicators (e.g., "task completed", "finished", "here is the answer")
+- Looks for continuation indicators (e.g., "let me", "I'll", "searching", "analyzing")
+- If the response seems incomplete, prompts the model to continue or explicitly state completion
+- Handles empty responses by asking the model to retry with proper JSON formatting
+
+### 2. Enhanced Tool Call Instructions (chutes_openai.py)
+
+Improved the system prompt for tool calling:
+
+- Added clearer formatting rules
+- Emphasized the need for complete JSON blocks with closing braces
+- Added concrete examples for common tools (web_search, sequential_thinking)
+- Made the JSON format requirements more explicit
+
+### 3. Robust JSON Extraction (chutes_openai.py)
+
+Enhanced the JSON extraction logic to handle edge cases:
+
+- Attempts to fix incomplete JSON blocks (missing closing braces)
+- Removes trailing commas that cause JSON parsing errors
+- Validates tool names against available tools
+- Provides better error messages when extraction fails
+- Logs helpful debugging information when tool calls are mentioned but not extracted
+
+### 4. Loop Prevention
+
+Added logic to detect and prevent tool call loops:
+
+- Tracks recent tool calls in the conversation
+- Prevents repeated calls to the same tool without progress
+- Special handling for sequential_thinking which is prone to loops
+
+## Testing
+
+A test script (`test_chutes_improvements.py`) has been created to verify:
+
+1. Proper JSON tool call extraction
+2. Incomplete JSON handling
+3. Agent behavior when no tools are called
+
+## Usage
+
+The improvements are automatically applied when using Chutes models. No configuration changes are needed.
+
+## Future Improvements
+
+1. **Native tool calling support**: Work with Chutes to add native tool calling support to their API
+2. **Better model-specific prompts**: Customize prompts based on the specific model being used
+3. **Streaming support**: Add support for streaming responses with tool calls
+4. **Multi-tool calls**: Support multiple tool calls in a single response (currently limited to one)
+
+## Debugging
+
+When debugging tool call issues with Chutes:
+
+1. Enable INFO level logging to see detailed extraction attempts
+2. Look for `[CHUTES]` prefixed log messages
+3. Check for "no tools were called" messages followed by recovery attempts
+4. Review the JSON extraction patterns if tool calls are being missed 

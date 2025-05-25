@@ -202,10 +202,15 @@ class ChutesOpenAIClient(LLMClient):
         if tools:
             logging.info(f"[CHUTES] Implementing JSON workaround for {len(tools)} tools")
             # Add a system message that instructs the model to output tool calls as JSON
-            tool_instructions = "\n\nIMPORTANT: When you need to use a tool, you MUST output a JSON object in the following EXACT format:\n```json\n{\n  \"tool_call\": {\n    \"id\": \"call_<unique_id>\",\n    \"name\": \"<tool_name>\",\n    \"arguments\": {<tool_arguments>}\n  }\n}\n```\n\nRULES:\n- Use ONLY ONE tool call per response\n- Do NOT call the same tool repeatedly without making progress\n- For sequential_thinking: Only use when you need to break down a complex problem. Do NOT use for simple tasks.\n- Always provide substantive reasoning in your response along with the tool call\n- If a tool fails, try a different approach rather than repeating the same call\n\nAvailable tools:\n"
+            tool_instructions = "\n\nIMPORTANT: When you need to use a tool, you MUST output a JSON object in the following EXACT format:\n```json\n{\n  \"tool_call\": {\n    \"id\": \"call_<unique_id>\",\n    \"name\": \"<tool_name>\",\n    \"arguments\": {<tool_arguments>}\n  }\n}\n```\n\nRULES:\n- Use ONLY ONE tool call per response\n- Do NOT call the same tool repeatedly without making progress\n- For sequential_thinking: Only use when you need to break down a complex problem. Do NOT use for simple tasks.\n- Always provide substantive reasoning in your response along with the tool call\n- If a tool fails, try a different approach rather than repeating the same call\n- The JSON block MUST be properly formatted and complete\n- Always include the closing braces and backticks\n\nAvailable tools:\n"
             for tool in tools:
                 tool_instructions += f"- {tool.name}: {tool.description}\n"
                 tool_instructions += f"  Parameters: {tool.input_schema}\n"
+            
+            # Add examples for common tools
+            tool_instructions += "\n\nEXAMPLES:\n"
+            tool_instructions += "For web search:\n```json\n{\n  \"tool_call\": {\n    \"id\": \"call_123\",\n    \"name\": \"web_search\",\n    \"arguments\": {\"query\": \"your search query here\"}\n  }\n}\n```\n"
+            tool_instructions += "For sequential thinking:\n```json\n{\n  \"tool_call\": {\n    \"id\": \"call_456\",\n    \"name\": \"sequential_thinking\",\n    \"arguments\": {\"thought\": \"your thought here\", \"nextThoughtNeeded\": true, \"thoughtNumber\": 1, \"totalThoughts\": 3}\n  }\n}\n```\n"
             
             # Append to system prompt or create new one
             if openai_messages and openai_messages[0]["role"] == "system":
@@ -333,6 +338,28 @@ class ChutesOpenAIClient(LLMClient):
                     matches = re.findall(pattern, message.content, re.DOTALL | re.IGNORECASE)
                     json_matches.extend(matches)
                 
+                # Also try to find incomplete JSON blocks (missing closing braces)
+                if not json_matches:
+                    incomplete_patterns = [
+                        r'```json\s*(\{.*?)"tool_call".*?```',  # Incomplete JSON in code block
+                        r'(\{[^{}]*"tool_call"[^{}]*"name"[^{}]*"[^"]+"\s*[^{}]*)',  # Partial JSON with tool_call and name
+                    ]
+                    for pattern in incomplete_patterns:
+                        matches = re.findall(pattern, message.content, re.DOTALL | re.IGNORECASE)
+                        if matches:
+                            logging.warning(f"[CHUTES] Found incomplete JSON tool call, attempting to fix")
+                            for match in matches:
+                                # Try to fix common issues
+                                fixed_json = match
+                                if not fixed_json.rstrip().endswith('}'):
+                                    # Count opening and closing braces
+                                    open_braces = fixed_json.count('{')
+                                    close_braces = fixed_json.count('}')
+                                    missing_braces = open_braces - close_braces
+                                    if missing_braces > 0:
+                                        fixed_json += '}' * missing_braces
+                                json_matches.append(fixed_json)
+                
                 if json_matches:
                     logging.info(f"[CHUTES] Found {len(json_matches)} potential JSON tool calls in content")
                     
@@ -345,6 +372,11 @@ class ChutesOpenAIClient(LLMClient):
                             if not json_str.startswith('{'):
                                 continue
                                 
+                            # Try to fix common JSON issues
+                            # Remove trailing commas before closing braces
+                            json_str = re.sub(r',\s*}', '}', json_str)
+                            json_str = re.sub(r',\s*]', ']', json_str)
+                            
                             json_data = json.loads(json_str)
                             if "tool_call" in json_data:
                                 tool_call_data = json_data["tool_call"]
@@ -353,6 +385,12 @@ class ChutesOpenAIClient(LLMClient):
                                 # Validate tool call data
                                 if not tool_call_data.get("name"):
                                     logging.warning(f"[CHUTES] Tool call missing name, skipping")
+                                    continue
+                                
+                                # Check if this is a valid tool name
+                                valid_tool_names = [tool.name for tool in tools]
+                                if tool_call_data.get("name") not in valid_tool_names:
+                                    logging.warning(f"[CHUTES] Invalid tool name '{tool_call_data.get('name')}', valid tools are: {valid_tool_names}")
                                     continue
                                     
                                 # Prevent tool call loops by checking recent history
@@ -382,10 +420,19 @@ class ChutesOpenAIClient(LLMClient):
                         except json.JSONDecodeError as e:
                             logging.error(f"[CHUTES] Failed to parse JSON tool call: {e}")
                             logging.error(f"[CHUTES] Problematic JSON: {json_str[:200]}...")
+                            # Try to extract tool name for better debugging
+                            name_match = re.search(r'"name"\s*:\s*"([^"]+)"', json_str)
+                            if name_match:
+                                logging.error(f"[CHUTES] Attempted tool call was for: {name_match.group(1)}")
                             continue
                         except Exception as e:
                             logging.error(f"[CHUTES] Unexpected error processing tool call: {e}")
                             continue
+                
+                # If no tool calls were found but we expected them, log helpful debug info
+                if tool_calls_found == 0 and "tool_call" in message.content.lower():
+                    logging.warning(f"[CHUTES] Content mentions 'tool_call' but no valid JSON was extracted")
+                    logging.warning(f"[CHUTES] Response excerpt: {message.content[:500]}...")
                 
                 # Add remaining content as TextResult if any
                 if message.content.strip():

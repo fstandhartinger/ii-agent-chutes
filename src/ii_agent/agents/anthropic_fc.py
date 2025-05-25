@@ -231,18 +231,80 @@ try breaking down the task into smaller steps. After call this tool to update or
                 pending_tool_calls = self.history.get_pending_tool_calls()
 
                 if len(pending_tool_calls) == 0:
-                    # No tools were called, so assume the task is complete
+                    # No tools were called - check if this is intentional
                     self.logger_for_agent_logs.info("[no tools were called]")
-                    self.message_queue.put_nowait(
-                        RealtimeEvent(
-                            type=EventType.AGENT_RESPONSE,
-                            content={"text": "Task completed"},
+                    
+                    # Get the last assistant response
+                    last_response = self.history.get_last_assistant_text_response()
+                    
+                    # Check if the response seems incomplete or if the model might need prompting
+                    # This is especially important for Chutes models that might fail to output proper JSON
+                    if last_response and len(last_response.strip()) > 0:
+                        # If there's a substantive response, check if it seems like a final answer
+                        response_lower = last_response.lower()
+                        
+                        # Keywords that suggest the task might be complete
+                        completion_indicators = [
+                            "task completed", "task is complete", "completed successfully",
+                            "finished", "done", "here is", "here's", "the answer is",
+                            "in summary", "to summarize", "in conclusion"
+                        ]
+                        
+                        # Keywords that suggest the agent is still working
+                        continuation_indicators = [
+                            "let me", "i'll", "i will", "next", "now", "first",
+                            "searching", "looking", "finding", "checking", "analyzing"
+                        ]
+                        
+                        seems_complete = any(indicator in response_lower for indicator in completion_indicators)
+                        seems_continuing = any(indicator in response_lower for indicator in continuation_indicators)
+                        
+                        if seems_complete and not seems_continuing:
+                            # The response seems like a final answer
+                            self.message_queue.put_nowait(
+                                RealtimeEvent(
+                                    type=EventType.AGENT_RESPONSE,
+                                    content={"text": last_response},
+                                )
+                            )
+                            return ToolImplOutput(
+                                tool_output=last_response,
+                                tool_result_message="Task completed",
+                            )
+                        else:
+                            # The response doesn't seem final - prompt for clarification
+                            self.logger_for_agent_logs.info(
+                                "Response doesn't seem final, prompting for tool use or completion"
+                            )
+                            
+                            # Add a system message to prompt the model
+                            clarification_prompt = (
+                                "I notice you didn't use any tools in your last response. "
+                                "If you need to use tools to complete the task, please do so now. "
+                                "If you believe the task is complete, please explicitly state that the task is finished."
+                            )
+                            
+                            self.history.add_user_prompt(clarification_prompt)
+                            
+                            # Continue to the next turn
+                            continue
+                    else:
+                        # Empty or minimal response - likely an issue with tool call formatting
+                        self.logger_for_agent_logs.info(
+                            "Empty or minimal response with no tools called - prompting for action"
                         )
-                    )
-                    return ToolImplOutput(
-                        tool_output=self.history.get_last_assistant_text_response(),
-                        tool_result_message="Task completed",
-                    )
+                        
+                        # Add a more direct prompt
+                        recovery_prompt = (
+                            "It seems there was an issue with your last response. "
+                            "Please continue with the task. If you need to use a tool, "
+                            "make sure to format it as a JSON object with 'tool_call' containing 'name' and 'arguments'."
+                        )
+                        
+                        self.history.add_user_prompt(recovery_prompt)
+                        
+                        # Continue to the next turn
+                        continue
 
                 if len(pending_tool_calls) > 1:
                     raise ValueError("Only one tool call per turn is supported")
