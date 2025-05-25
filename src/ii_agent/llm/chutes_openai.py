@@ -102,20 +102,61 @@ class ChutesOpenAIClient(LLMClient):
     def _is_tool_call_loop(self, tool_call_data: dict, recent_messages: list) -> bool:
         """Detect if this tool call would create a loop."""
         tool_name = tool_call_data.get("name", "")
+        tool_args = tool_call_data.get("arguments", {})
         
         # Check the last few messages for repeated tool calls
         recent_tool_calls = []
-        for msg in recent_messages[-6:]:  # Check last 6 messages
-            if msg.get("role") == "assistant" and "tool_call" in str(msg.get("content", "")):
-                recent_tool_calls.append(tool_name)
+        recent_tool_details = []
         
-        # If we've seen this tool called 2+ times recently, it might be a loop
-        if recent_tool_calls.count(tool_name) >= 2:
-            # Special case for sequential_thinking - it's particularly prone to loops
-            if tool_name == "sequential_thinking":
+        for msg in recent_messages[-8:]:  # Check last 8 messages (increased from 6)
+            if msg.get("role") == "assistant":
+                content = str(msg.get("content", ""))
+                if "tool_call" in content:
+                    # Try to extract tool name from the content
+                    import re
+                    name_match = re.search(r'"name"\s*:\s*"([^"]+)"', content)
+                    if name_match:
+                        extracted_name = name_match.group(1)
+                        recent_tool_calls.append(extracted_name)
+                        
+                        # Also extract arguments for more detailed comparison
+                        args_match = re.search(r'"arguments"\s*:\s*(\{[^}]*\})', content)
+                        if args_match:
+                            try:
+                                import json
+                                args = json.loads(args_match.group(1))
+                                recent_tool_details.append((extracted_name, args))
+                            except:
+                                recent_tool_details.append((extracted_name, {}))
+                        else:
+                            recent_tool_details.append((extracted_name, {}))
+        
+        # Count occurrences of this tool
+        tool_count = recent_tool_calls.count(tool_name)
+        
+        # Special handling for different tools
+        if tool_name == "sequential_thinking":
+            # Allow sequential thinking but prevent excessive repetition
+            if tool_count >= 3:
+                self.logger_for_agent_logs.info(f"[LOOP DETECTION] Blocking sequential_thinking after {tool_count} recent uses")
                 return True
-            # For other tools, allow some repetition but not excessive
-            elif recent_tool_calls.count(tool_name) >= 3:
+        elif tool_name in ["web_search", "visit_webpage"]:
+            # For research tools, be more lenient but check for identical arguments
+            if tool_count >= 4:
+                # Check if we're making the exact same call repeatedly
+                current_call = (tool_name, tool_args)
+                identical_calls = sum(1 for name, args in recent_tool_details 
+                                    if name == tool_name and args == tool_args)
+                if identical_calls >= 2:
+                    self.logger_for_agent_logs.info(f"[LOOP DETECTION] Blocking {tool_name} - identical call repeated {identical_calls} times")
+                    return True
+                elif tool_count >= 5:
+                    self.logger_for_agent_logs.info(f"[LOOP DETECTION] Blocking {tool_name} after {tool_count} recent uses")
+                    return True
+        else:
+            # For other tools, use moderate limits
+            if tool_count >= 3:
+                self.logger_for_agent_logs.info(f"[LOOP DETECTION] Blocking {tool_name} after {tool_count} recent uses")
                 return True
                 
         return False
@@ -129,6 +170,7 @@ class ChutesOpenAIClient(LLMClient):
         tools: list[ToolParam] = [],
         tool_choice: dict[str, str] | None = None,
         thinking_tokens: int | None = None,
+        _retry_count: int = 0,
     ) -> Tuple[list[AssistantContentBlock], dict[str, Any]]:
         """Generate responses using Chutes OpenAI-compatible API.
 
@@ -144,8 +186,13 @@ class ChutesOpenAIClient(LLMClient):
         Returns:
             A generated response.
         """
+        # Check for maximum retry limit to prevent infinite recursion
+        if _retry_count > 3:
+            raise Exception(f"Maximum retry limit exceeded: {_retry_count}")
+        
         # Log each LLM call
-        logging.info(f"[CHUTES LLM CALL] model={self.model_name}, max_tokens={max_tokens}, temperature={temperature}")
+        retry_info = f" (retry {_retry_count}/3)" if _retry_count > 0 else ""
+        logging.info(f"[CHUTES LLM CALL] model={self.model_name}, max_tokens={max_tokens}, temperature={temperature}{retry_info}")
         
         # Convert messages to OpenAI format
         openai_messages = []
@@ -202,7 +249,7 @@ class ChutesOpenAIClient(LLMClient):
         if tools:
             logging.info(f"[CHUTES] Implementing JSON workaround for {len(tools)} tools")
             # Add a system message that instructs the model to output tool calls as JSON
-            tool_instructions = "\n\nIMPORTANT: When you need to use a tool, you MUST output a JSON object in the following EXACT format:\n```json\n{\n  \"tool_call\": {\n    \"id\": \"call_<unique_id>\",\n    \"name\": \"<tool_name>\",\n    \"arguments\": {<tool_arguments>}\n  }\n}\n```\n\nRULES:\n- Use ONLY ONE tool call per response\n- Do NOT call the same tool repeatedly without making progress\n- For sequential_thinking: Only use when you need to break down a complex problem. Do NOT use for simple tasks.\n- Always provide substantive reasoning in your response along with the tool call\n- If a tool fails, try a different approach rather than repeating the same call\n- The JSON block MUST be properly formatted and complete\n- Always include the closing braces and backticks\n\nAvailable tools:\n"
+            tool_instructions = "\n\nIMPORTANT: When you need to use a tool, you MUST output a JSON object in the following EXACT format:\n```json\n{\n  \"tool_call\": {\n    \"id\": \"call_<unique_id>\",\n    \"name\": \"<tool_name>\",\n    \"arguments\": {<tool_arguments>}\n  }\n}\n```\n\nRULES:\n- Use ONLY ONE tool call per response\n- Do NOT call the same tool repeatedly without making progress\n- For sequential_thinking: Only use when you need to break down a complex problem. Do NOT use for simple tasks.\n- Always provide substantive reasoning in your response along with the tool call\n- If a tool fails, try a different approach rather than repeating the same call\n- The JSON block MUST be properly formatted and complete\n- Always include the closing braces and backticks\n- For research tasks: Continue using tools until you have comprehensive information, then provide a complete summary\n- When you have sufficient information to answer the question, provide your final answer WITHOUT using tools\n\nAvailable tools:\n"
             for tool in tools:
                 tool_instructions += f"- {tool.name}: {tool.description}\n"
                 tool_instructions += f"  Parameters: {tool.input_schema}\n"
@@ -304,11 +351,57 @@ class ChutesOpenAIClient(LLMClient):
             if response:
                 break
         
-        # If all models failed, raise the last error
+        # If all models failed, try retry with enhanced prompt if within retry limit
         if not response:
-            error_msg = f"All models failed: {models_to_try}"
-            logging.error(f"[CHUTES] {error_msg}")
-            raise Exception(error_msg)
+            if _retry_count < 3:
+                logging.warning(f"[CHUTES] All models failed, attempting retry {_retry_count + 1}/3 with enhanced prompt")
+                
+                # Add a clarifying instruction to the system prompt for retry
+                enhanced_system_prompt = system_prompt or ""
+                if tools:
+                    enhanced_system_prompt += "\n\nIMPORTANT: Please ensure you provide a complete and valid response. If using tools, format them correctly as JSON."
+                else:
+                    enhanced_system_prompt += "\n\nIMPORTANT: Please provide a complete and helpful response to the user's request."
+                
+                # Recursive retry with enhanced prompt
+                return self.generate(
+                    messages=messages,
+                    max_tokens=max_tokens,
+                    system_prompt=enhanced_system_prompt,
+                    temperature=temperature,
+                    tools=tools,
+                    tool_choice=tool_choice,
+                    thinking_tokens=thinking_tokens,
+                    _retry_count=_retry_count + 1
+                )
+            else:
+                error_msg = f"All models failed after {_retry_count + 1} attempts: {models_to_try}"
+                logging.error(f"[CHUTES] {error_msg}")
+                raise Exception(error_msg)
+
+        # Check if response is valid and has content
+        if response and (not response.choices or not response.choices[0].message):
+            if _retry_count < 3:
+                logging.warning(f"[CHUTES] Received malformed response (no choices/message), attempting retry {_retry_count + 1}/3")
+                
+                # Add a clarifying instruction to the system prompt for retry
+                enhanced_system_prompt = system_prompt or ""
+                enhanced_system_prompt += "\n\nIMPORTANT: Please provide a complete response with proper content."
+                
+                # Recursive retry with enhanced prompt
+                return self.generate(
+                    messages=messages,
+                    max_tokens=max_tokens,
+                    system_prompt=enhanced_system_prompt,
+                    temperature=temperature,
+                    tools=tools,
+                    tool_choice=tool_choice,
+                    thinking_tokens=thinking_tokens,
+                    _retry_count=_retry_count + 1
+                )
+            else:
+                logging.error(f"[CHUTES] Received malformed response after {_retry_count + 1} attempts")
+                raise Exception(f"Received malformed response after {_retry_count + 1} attempts")
 
         # Convert response back to internal format
         internal_messages = []
@@ -360,11 +453,13 @@ class ChutesOpenAIClient(LLMClient):
                                         fixed_json += '}' * missing_braces
                                 json_matches.append(fixed_json)
                 
+                # Initialize tool_calls_found before processing
+                tool_calls_found = 0
+                
                 if json_matches:
                     logging.info(f"[CHUTES] Found {len(json_matches)} potential JSON tool calls in content")
                     
                     # Process each JSON block
-                    tool_calls_found = 0
                     for json_str in json_matches:
                         try:
                             # Clean up the JSON string
@@ -478,10 +573,40 @@ class ChutesOpenAIClient(LLMClient):
 
         logging.info(f"[CHUTES DEBUG] Final internal_messages: {internal_messages}")
         
+        # Check if we got empty internal messages and retry if needed
+        if not internal_messages and _retry_count < 3:
+            logging.warning(f"[CHUTES] Received empty internal messages, attempting retry {_retry_count + 1}/3")
+            
+            # Add a clarifying instruction to the system prompt for retry
+            enhanced_system_prompt = system_prompt or ""
+            enhanced_system_prompt += "\n\nIMPORTANT: Please provide a substantive response to the user's request. Do not return empty content."
+            
+            # Recursive retry with enhanced prompt
+            return self.generate(
+                messages=messages,
+                max_tokens=max_tokens,
+                system_prompt=enhanced_system_prompt,
+                temperature=temperature,
+                tools=tools,
+                tool_choice=tool_choice,
+                thinking_tokens=thinking_tokens,
+                _retry_count=_retry_count + 1
+            )
+        
+        # Safely extract token usage information
+        input_tokens = 0
+        output_tokens = 0
+        
+        if response and hasattr(response, 'usage') and response.usage:
+            input_tokens = getattr(response.usage, 'prompt_tokens', 0) or 0
+            output_tokens = getattr(response.usage, 'completion_tokens', 0) or 0
+        else:
+            logging.warning("[CHUTES] Response or usage information is missing, using default token counts")
+        
         message_metadata = {
             "raw_response": response,
-            "input_tokens": response.usage.prompt_tokens if response else 0,
-            "output_tokens": response.usage.completion_tokens if response else 0,
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
         }
 
         return internal_messages, message_metadata 

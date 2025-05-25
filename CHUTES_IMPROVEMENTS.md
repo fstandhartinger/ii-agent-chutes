@@ -11,6 +11,7 @@ This document outlines the improvements made to address tool calling reliability
 - Tool call loops where models get stuck calling the same tool repeatedly
 - Poor tool call format leading to parsing failures
 - Models not making progress when using `sequential_thinking` tool
+- **NEW**: Premature task completion when models fail to output tool calls but provide substantive responses
 
 **Solutions implemented:**
 
@@ -22,13 +23,28 @@ This document outlines the improvements made to address tool calling reliability
 - **Better error handling**: Improved error recovery and logging for failed JSON parsing
 - **Validation**: Added validation to ensure tool calls have required fields
 
-#### Loop Detection
-- **Tool call loop prevention**: Added `_is_tool_call_loop()` method to detect repeated tool calls
-- **Special handling for sequential_thinking**: More aggressive loop detection for this tool
-- **Recent history analysis**: Checks last 6 messages for repeated patterns
+#### Improved Loop Detection
+- **Less aggressive loop prevention**: Increased limits for research tools (web_search, visit_webpage) to allow legitimate research workflows
+- **Argument-aware detection**: Now checks for identical tool calls with same arguments, not just tool names
+- **Tool-specific limits**: Different loop detection thresholds for different tool types:
+  - `sequential_thinking`: 3 uses (was 2)
+  - `web_search`/`visit_webpage`: 4-5 uses depending on argument similarity
+  - Other tools: 3 uses
+- **Better logging**: Added detailed logging when loop detection triggers
 
-#### Improved Instructions
-- **Enhanced system prompts**: More explicit instructions about tool usage
+#### Enhanced Completion Detection
+- **Research-aware completion**: Added specific patterns for research tasks that indicate completion
+- **Content-based analysis**: Analyzes response content to determine if it contains substantial research findings
+- **Lenient completion for research**: If response contains research content and is substantial (>100 chars), considers it potentially complete
+- **Clarification prompts**: When uncertain, asks the model to clarify if task is complete or needs continuation
+- **Multi-tier detection**: 
+  1. Explicit completion indicators ("task completed", "finished", etc.)
+  2. Research completion indicators ("based on", "according to", "research shows", etc.)
+  3. Content-based completion (substantial research content without continuation indicators)
+
+#### Improved Tool Call Instructions
+- **Enhanced system prompts**: More explicit instructions about tool usage and completion criteria
+- **Research workflow guidance**: Clear instructions about when to continue research vs. when to provide final answers
 - **Anti-loop rules**: Clear guidelines about not repeating failed tool calls
 - **Single tool call enforcement**: Prevents multiple tool calls in one response
 

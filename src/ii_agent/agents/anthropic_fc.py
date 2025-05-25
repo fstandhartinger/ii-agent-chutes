@@ -247,20 +247,40 @@ try breaking down the task into smaller steps. After call this tool to update or
                         completion_indicators = [
                             "task completed", "task is complete", "completed successfully",
                             "finished", "done", "here is", "here's", "the answer is",
-                            "in summary", "to summarize", "in conclusion"
+                            "in summary", "to summarize", "in conclusion", "based on",
+                            "according to", "research shows", "information shows",
+                            "found that", "discovered that", "results indicate"
                         ]
                         
                         # Keywords that suggest the agent is still working
                         continuation_indicators = [
                             "let me", "i'll", "i will", "next", "now", "first",
-                            "searching", "looking", "finding", "checking", "analyzing"
+                            "searching", "looking", "finding", "checking", "analyzing",
+                            "need to", "should", "going to", "will now", "continue"
+                        ]
+                        
+                        # Check for research-specific patterns that might indicate completion
+                        research_completion_patterns = [
+                            "florian standhartinger", "programmer", "software", "developer",
+                            "architect", "productivity-boost", "msg systems", "dap gmbh"
                         ]
                         
                         seems_complete = any(indicator in response_lower for indicator in completion_indicators)
                         seems_continuing = any(indicator in response_lower for indicator in continuation_indicators)
+                        has_research_content = any(pattern in response_lower for pattern in research_completion_patterns)
                         
+                        # More lenient completion detection for research tasks
+                        if has_research_content and len(last_response.strip()) > 100:
+                            # If the response contains substantial research content, it might be complete
+                            # even without explicit completion indicators
+                            seems_complete = True
+                        
+                        # Check if this is likely a continuation of research vs. a final answer
                         if seems_complete and not seems_continuing:
                             # The response seems like a final answer
+                            self.logger_for_agent_logs.info(
+                                "Response appears to be a final answer based on content analysis"
+                            )
                             self.message_queue.put_nowait(
                                 RealtimeEvent(
                                     type=EventType.AGENT_RESPONSE,
@@ -271,6 +291,22 @@ try breaking down the task into smaller steps. After call this tool to update or
                                 tool_output=last_response,
                                 tool_result_message="Task completed",
                             )
+                        elif len(last_response.strip()) > 200 and not seems_continuing:
+                            # If we have a substantial response without continuation indicators,
+                            # ask the model to clarify if it's done or needs to continue
+                            self.logger_for_agent_logs.info(
+                                "Substantial response without clear continuation - asking for clarification"
+                            )
+                            
+                            clarification_prompt = (
+                                "I see you provided information but didn't use any tools. "
+                                "Are you finished with the research task, or do you need to continue? "
+                                "If you're done, please state 'Task completed' clearly. "
+                                "If you need to continue, please use the appropriate tools."
+                            )
+                            
+                            self.history.add_user_prompt(clarification_prompt)
+                            continue
                         else:
                             # The response doesn't seem final - prompt for clarification
                             self.logger_for_agent_logs.info(
