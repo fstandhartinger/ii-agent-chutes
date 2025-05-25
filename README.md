@@ -104,15 +104,17 @@ You can view the full traces of some samples here: [GAIA Benchmark Traces](https
 Create a `.env` file in the root directory with the following variables:
 
 ```bash
-# Image and Video Generation Tool
+# Audio Generation Tool (for transcription and audio generation)
 OPENAI_API_KEY=your_openai_key
 OPENAI_AZURE_ENDPOINT=your_azure_endpoint
+# Image Generation Tool (using Chutes API)
+CHUTES_API_TOKEN=your_chutes_api_token
 # Search Provider
 TAVILY_API_KEY=your_tavily_key
 #JINA_API_KEY=your_jina_key
 #FIRECRAWL_API_KEY=your_firecrawl_key
-# For Image Search and better search results use SerpAPI
-#SERPAPI_API_KEY=your_serpapi_key 
+# For Image Search and better search results use Serper.dev
+SERPERDEV_API_KEY=your_serperdev_key 
 
 STATIC_FILE_BASE_URL=http://localhost:8000/
 

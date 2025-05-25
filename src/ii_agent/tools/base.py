@@ -14,6 +14,18 @@ from ii_agent.llm.message_history import MessageHistory
 ToolInputSchema = dict[str, Any]
 
 
+class BaseSearchClient:
+    """
+    A base class for search clients.
+    """
+
+    max_results: int
+    name: str
+
+    def forward(self, query: str) -> str:
+        raise NotImplementedError("Subclasses must implement this method.")
+
+
 @dataclass
 class ToolImplOutput:
     """Output from an LLM tool implementation.

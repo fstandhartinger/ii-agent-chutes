@@ -1,20 +1,11 @@
 import json
 import os
+import urllib.parse
 import requests
-import urllib
-from .utils import truncate_content
+import http.client
 
-
-class BaseSearchClient:
-    """
-    A base class for search clients.
-    """
-
-    max_results: int
-    name: str
-
-    def forward(self, query: str) -> str:
-        raise NotImplementedError("Subclasses must implement this method.")
+from ii_agent.tools.base import BaseSearchClient
+from ii_agent.tools.utils import truncate_content
 
 
 class JinaSearchClient(BaseSearchClient):
@@ -75,44 +66,55 @@ class JinaSearchClient(BaseSearchClient):
             return f"Error searching with Jina: {str(e)}"
 
 
-class SerpAPISearchClient(BaseSearchClient):
+class SerperSearchClient(BaseSearchClient):
     """
-    A client for the SerpAPI search engine.
+    A client for the Serper.dev search engine.
     """
 
-    name = "SerpAPI"
+    name = "Serper"
 
     def __init__(self, max_results=10, **kwargs):
         self.max_results = max_results
-        self.api_key = os.environ.get("SERPAPI_API_KEY", "")
+        self.api_key = os.environ.get("SERPERDEV_API_KEY", "")
 
-    def _search_query_by_serp_api(self, query, max_results=10):
-        """Searches the query using SerpAPI."""
+    def _search_query_by_serper(self, query, max_results=10):
+        """Searches the query using Serper.dev API."""
+        serper_api_key = self.api_key
+        if not serper_api_key:
+            print("Error: SERPERDEV_API_KEY environment variable not set")
+            return []
 
-        serpapi_api_key = self.api_key
-
-        url = "https://serpapi.com/search.json"
-        params = {"q": query, "api_key": serpapi_api_key}
-        encoded_url = url + "?" + urllib.parse.urlencode(params)
         search_response = []
         try:
-            response = requests.get(encoded_url)
-            if response.status_code == 200:
-                search_results = response.json()
-                if search_results:
-                    results = search_results["organic_results"]
+            conn = http.client.HTTPSConnection("google.serper.dev")
+            payload = ''
+            headers = {}
+            
+            # URL encode the query and add API key
+            encoded_query = urllib.parse.quote_plus(query)
+            request_path = f"/search?q={encoded_query}&apiKey={serper_api_key}"
+            
+            conn.request("GET", request_path, payload, headers)
+            res = conn.getresponse()
+            data = res.read()
+            
+            if res.status == 200:
+                search_results = json.loads(data.decode("utf-8"))
+                if search_results and "organic" in search_results:
+                    results = search_results["organic"]
                     results_processed = 0
                     for result in results:
                         if results_processed >= max_results:
                             break
                         search_response.append(
                             {
-                                "title": result["title"],
-                                "url": result["link"],
-                                "content": result["snippet"],
+                                "title": result.get("title", ""),
+                                "url": result.get("link", ""),
+                                "content": result.get("snippet", ""),
                             }
                         )
                         results_processed += 1
+            conn.close()
         except Exception as e:
             print(f"Error: {e}. Failed fetching sources. Resulting in empty response.")
             search_response = []
@@ -121,11 +123,11 @@ class SerpAPISearchClient(BaseSearchClient):
 
     def forward(self, query: str) -> str:
         try:
-            response = self._search_query_by_serp_api(query, self.max_results)
+            response = self._search_query_by_serper(query, self.max_results)
             formatted_results = json.dumps(response, indent=4)
             return truncate_content(formatted_results)
         except Exception as e:
-            return f"Error searching with SerpAPI: {str(e)}"
+            return f"Error searching with Serper: {str(e)}"
 
 
 class DuckDuckGoSearchClient(BaseSearchClient):
@@ -202,43 +204,54 @@ class TavilySearchClient(BaseSearchClient):
 
 class ImageSearchClient:
     """
-    A client for the SerpAPI search engine.
+    A client for the Serper.dev image search engine.
     """
 
-    name = "ImageSerpAPI"
+    name = "SerperImages"
 
     def __init__(self, max_results=10, **kwargs):
         self.max_results = max_results
-        self.api_key = os.environ.get("SERPAPI_API_KEY", "")
+        self.api_key = os.environ.get("SERPERDEV_API_KEY", "")
 
-    def _search_query_by_serp_api(self, query, max_results=10):
-        """Searches the query using SerpAPI."""
+    def _search_query_by_serper_images(self, query, max_results=10):
+        """Searches for images using Serper.dev API."""
+        serper_api_key = self.api_key
+        if not serper_api_key:
+            print("Error: SERPERDEV_API_KEY environment variable not set")
+            return []
 
-        serpapi_api_key = self.api_key
-
-        url = "https://serpapi.com/search.json"
-        params = {"q": query, "api_key": serpapi_api_key, "engine": "google_images"}
-        encoded_url = url + "?" + urllib.parse.urlencode(params)
         search_response = []
         try:
-            response = requests.get(encoded_url)
-            if response.status_code == 200:
-                search_results = response.json()
-                if search_results:
-                    results = search_results["images_results"]
+            conn = http.client.HTTPSConnection("google.serper.dev")
+            payload = ''
+            headers = {}
+            
+            # URL encode the query and add API key, specify images search
+            encoded_query = urllib.parse.quote_plus(query)
+            request_path = f"/images?q={encoded_query}&apiKey={serper_api_key}"
+            
+            conn.request("GET", request_path, payload, headers)
+            res = conn.getresponse()
+            data = res.read()
+            
+            if res.status == 200:
+                search_results = json.loads(data.decode("utf-8"))
+                if search_results and "images" in search_results:
+                    results = search_results["images"]
                     results_processed = 0
                     for result in results:
                         if results_processed >= max_results:
                             break
                         search_response.append(
                             {
-                                "title": result["title"],
-                                "image_url": result["original"],
-                                "width": result["original_width"],
-                                "height": result["original_height"],
+                                "title": result.get("title", ""),
+                                "image_url": result.get("imageUrl", ""),
+                                "width": result.get("imageWidth", 0),
+                                "height": result.get("imageHeight", 0),
                             }
                         )
                         results_processed += 1
+            conn.close()
         except Exception as e:
             print(f"Error: {e}. Failed fetching sources. Resulting in empty response.")
             search_response = []
@@ -247,25 +260,25 @@ class ImageSearchClient:
 
     def forward(self, query: str) -> str:
         try:
-            response = self._search_query_by_serp_api(query, self.max_results)
+            response = self._search_query_by_serper_images(query, self.max_results)
             formatted_results = json.dumps(response, indent=4)
             return truncate_content(formatted_results)
         except Exception as e:
-            return f"Error searching with SerpAPI: {str(e)}"
+            return f"Error searching with Serper Images: {str(e)}"
 
 
 def create_search_client(max_results=10, **kwargs) -> BaseSearchClient:
     """
     A search client that selects from available search APIs in the following order:
-    Tavily > Jina > SerpAPI > DuckDuckGo
+    Tavily > Jina > Serper > DuckDuckGo
 
     It defaults to DuckDuckGo if no API keys are found for the other services.
     """
 
-    serp_api_key = os.environ.get("SERPAPI_API_KEY", "")
-    if serp_api_key:
-        print("Using SerpAPI to search")
-        return SerpAPISearchClient(max_results=max_results, **kwargs)
+    serper_api_key = os.environ.get("SERPERDEV_API_KEY", "")
+    if serper_api_key:
+        print("Using Serper.dev to search")
+        return SerperSearchClient(max_results=max_results, **kwargs)
 
     jina_api_key = os.environ.get("JINA_API_KEY", "")
     if jina_api_key:
@@ -283,11 +296,11 @@ def create_search_client(max_results=10, **kwargs) -> BaseSearchClient:
 
 def create_image_search_client(max_results=5, **kwargs) -> ImageSearchClient:
     """
-    A search client that selects from available image search APIs in the following order:
-    Google > Bing > DuckDuckGo
+    A search client that selects from available image search APIs.
+    Uses Serper.dev for image search if API key is available.
     """
-    if os.environ.get("SERPAPI_API_KEY"):
-        print("Using SerpAPI to search for images")
+    if os.environ.get("SERPERDEV_API_KEY"):
+        print("Using Serper.dev to search for images")
         return ImageSearchClient(max_results=max_results, **kwargs)
     else:
         print("No image search API key found, using DuckDuckGo")

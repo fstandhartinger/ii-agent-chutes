@@ -1,13 +1,11 @@
 # src/ii_agent/tools/image_generate_tool.py
 
 import os
+import aiohttp
+import asyncio
+import json
 from pathlib import Path
 from typing import Any, Optional
-
-import vertexai
-from vertexai.preview.vision_models import (
-    ImageGenerationModel,
-)  # Use preview for Imagen 3
 
 from ii_agent.tools.base import (
     MessageHistory,
@@ -16,17 +14,10 @@ from ii_agent.tools.base import (
 )
 from ii_agent.utils import WorkspaceManager
 
-GCP_PROJECT_ID = os.environ.get("GOOGLE_CLOUD_PROJECT")
-GCP_LOCATION = os.environ.get("GOOGLE_CLOUD_REGION")
-
-SUPPORTED_ASPECT_RATIOS = ["1:1", "16:9", "9:16", "4:3", "3:4"]
-SAFETY_FILTER_LEVELS = ["block_some", "block_most", "block_few", "block_none"]
-PERSON_GENERATION_OPTIONS = ["allow_adult", "dont_allow", "allow_all"]
-
 
 class ImageGenerateTool(LLMTool):
     name = "generate_image_from_text"
-    description = """Generates an image based on a text prompt using Google's Imagen 3 model via Vertex AI.
+    description = """Generates an image based on a text prompt using Chutes Flux model.
 The generated image will be saved to the specified local path in the workspace as a PNG file."""
     input_schema = {
         "type": "object",
@@ -39,37 +30,30 @@ The generated image will be saved to the specified local path in the workspace a
                 "type": "string",
                 "description": "The desired relative path for the output PNG image file within the workspace (e.g., 'generated_images/my_image.png'). Must end with .png.",
             },
-            "number_of_images": {
+            "negative_prompt": {
+                "type": "string",
+                "default": "blur, distortion, low quality",
+                "description": "Negative prompt to specify what should not be in the image.",
+            },
+            "guidance_scale": {
+                "type": "number",
+                "default": 7.5,
+                "description": "How closely to follow the prompt (1.0 to 20.0).",
+            },
+            "width": {
                 "type": "integer",
-                "default": 1,
-                "description": "Number of images to generate (currently, the example shows 1, stick to 1 unless API supports more easily).",
+                "default": 1024,
+                "description": "Width of the generated image.",
             },
-            "aspect_ratio": {
-                "type": "string",
-                "enum": SUPPORTED_ASPECT_RATIOS,
-                "default": "1:1",
-                "description": "The aspect ratio for the generated image.",
-            },
-            "seed": {
+            "height": {
                 "type": "integer",
-                "description": "(Optional) A seed for deterministic generation. If provided, add_watermark will be forced to False as they are mutually exclusive.",
+                "default": 1024,
+                "description": "Height of the generated image.",
             },
-            "add_watermark": {
-                "type": "boolean",
-                "default": True,  # Defaulting to True as per general Vertex AI Imagen behavior
-                "description": "Whether to add a watermark to the generated image. Cannot be used with 'seed'.",
-            },
-            "safety_filter_level": {
-                "type": "string",
-                "enum": SAFETY_FILTER_LEVELS,
-                "default": "block_some",
-                "description": "The safety filter level to apply.",
-            },
-            "person_generation": {
-                "type": "string",
-                "enum": PERSON_GENERATION_OPTIONS,
-                "default": "allow_adult",
-                "description": "Controls the generation of people.",
+            "num_inference_steps": {
+                "type": "integer",
+                "default": 50,
+                "description": "Number of inference steps for generation quality.",
             },
         },
         "required": ["prompt", "output_filename"],
@@ -78,36 +62,53 @@ The generated image will be saved to the specified local path in the workspace a
     def __init__(self, workspace_manager: WorkspaceManager):
         super().__init__()
         self.workspace_manager = workspace_manager
-        if not GCP_PROJECT_ID:
-            raise ValueError("GOOGLE_CLOUD_PROJECT environment variable not set.")
+        self.api_token = os.environ.get("CHUTES_API_TOKEN")
+        if not self.api_token:
+            raise ValueError("CHUTES_API_TOKEN environment variable not set.")
 
-        try:
-            vertexai.init(project=GCP_PROJECT_ID, location=GCP_LOCATION)
-            self.model = ImageGenerationModel.from_pretrained(
-                "imagen-3.0-generate-002"
-            )  # As per snippet
-        except Exception as e:
-            print(f"Error initializing Vertex AI or loading Imagen model: {e}")
-            self.model = None
+    async def _generate_image_async(self, tool_input: dict[str, Any]) -> dict:
+        """Async method to generate image using Chutes API."""
+        headers = {
+            "Authorization": "Bearer " + self.api_token,
+            "Content-Type": "application/json"
+        }
+        
+        body = {
+            "prompt": tool_input["prompt"],
+            "negative_prompt": tool_input.get("negative_prompt", "blur, distortion, low quality"),
+            "guidance_scale": tool_input.get("guidance_scale", 7.5),
+            "width": tool_input.get("width", 1024),
+            "height": tool_input.get("height", 1024),
+            "num_inference_steps": tool_input.get("num_inference_steps", 50)
+        }
+
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                "https://chutes-flux-1-schnell.chutes.ai/generate", 
+                headers=headers,
+                json=body
+            ) as response:
+                if response.status != 200:
+                    raise Exception(f"API request failed with status {response.status}: {await response.text()}")
+                
+                # Collect all chunks
+                image_data = b""
+                async for chunk in response.content.iter_chunked(8192):
+                    image_data += chunk
+                
+                return {"image_data": image_data}
 
     def run_impl(
         self,
         tool_input: dict[str, Any],
         message_history: Optional[MessageHistory] = None,
     ) -> ToolImplOutput:
-        if not self.model:
-            return ToolImplOutput(
-                "Error: Imagen model could not be initialized. Check Vertex AI setup and credentials.",
-                "Imagen model initialization failed.",
-                {"success": False, "error": "Model not initialized"},
-            )
-
         prompt = tool_input["prompt"]
         relative_output_filename = tool_input["output_filename"]
 
         if not relative_output_filename.lower().endswith(".png"):
             return ToolImplOutput(
-                "Error: output_filename must end with .png for Imagen generation.",
+                "Error: output_filename must end with .png for image generation.",
                 "Invalid output filename for image.",
                 {"success": False, "error": "Output filename must be .png"},
             )
@@ -117,45 +118,18 @@ The generated image will be saved to the specified local path in the workspace a
         )
         local_output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        generate_params = {
-            "number_of_images": tool_input.get("number_of_images", 1),
-            "language": "en",  # Explicitly setting, though API might default
-            "aspect_ratio": tool_input.get("aspect_ratio", "1:1"),
-            "safety_filter_level": tool_input.get("safety_filter_level", "block_some"),
-            "person_generation": tool_input.get("person_generation", "allow_adult"),
-        }
-
-        seed = tool_input.get("seed")
-        add_watermark = tool_input.get("add_watermark", True)
-
-        if seed is not None:
-            generate_params["seed"] = int(seed)
-            if add_watermark:
-                print(
-                    "Warning: 'seed' is provided, 'add_watermark' will be ignored (or set to False)."
-                )
-                generate_params["add_watermark"] = False
-        elif "add_watermark" in tool_input:
-            generate_params["add_watermark"] = add_watermark
-
         try:
-            images = self.model.generate_images(prompt=prompt, **generate_params)
+            # Run the async function
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                result = loop.run_until_complete(self._generate_image_async(tool_input))
+            finally:
+                loop.close()
 
-            if not images:  # Response could be None or empty list
-                return ToolImplOutput(
-                    f"Image generation failed for prompt: {prompt}. No images returned.",
-                    "Image generation produced no output.",
-                    {"success": False, "error": "No images returned from API"},
-                )
-
-            if generate_params["number_of_images"] > 1:
-                print(
-                    f"Warning: Requested {generate_params['number_of_images']} images, but tool currently saves only the first."
-                )
-
-            images[0].save(
-                location=str(local_output_path), include_generation_parameters=False
-            )  # include_generation_parameters=False as per snippet
+            # Save the image data to file
+            with open(local_output_path, 'wb') as f:
+                f.write(result["image_data"])
 
             output_url = (
                 f"http://localhost:{self.workspace_manager.file_server_port}/workspace/{relative_output_filename}"
