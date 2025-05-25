@@ -21,7 +21,8 @@ def test_simple_conversation():
     client = ChutesOpenAIClient(
         model_name="deepseek-ai/DeepSeek-V3-0324",
         max_retries=1,  # Reduce retries for faster testing
-        use_caching=True
+        use_caching=True,
+        test_mode=True  # Use short backoff times for testing
     )
     
     # Simple conversation

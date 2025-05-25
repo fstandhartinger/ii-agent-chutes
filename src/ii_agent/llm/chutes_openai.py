@@ -39,6 +39,8 @@ class ChutesOpenAIClient(LLMClient):
         max_retries=3,
         use_caching=True,
         fallback_models=None,
+        test_mode=False,
+        no_fallback=False,
     ):
         """Initialize the Chutes OpenAI-compatible client."""
         api_key = os.getenv("CHUTES_API_KEY")
@@ -54,6 +56,8 @@ class ChutesOpenAIClient(LLMClient):
         self.model_name = model_name
         self.max_retries = max_retries
         self.use_caching = use_caching
+        self.test_mode = test_mode
+        self.no_fallback = no_fallback
         
         # Default fallback models for different scenarios
         if fallback_models is None:
@@ -67,7 +71,12 @@ class ChutesOpenAIClient(LLMClient):
             
         # Log provider info
         logging.info(f"=== Using CHUTES LLM provider with model: {model_name} ===")
-        logging.info(f"=== Fallback models: {self.fallback_models} ===")
+        if self.no_fallback:
+            logging.info(f"=== Fallback models DISABLED (no_fallback=True) ===")
+        else:
+            logging.info(f"=== Fallback models: {self.fallback_models} ===")
+        if test_mode:
+            logging.info("=== TEST MODE: Using reduced backoff times ===")
 
     def _is_target_exhausted_error(self, error: Exception) -> bool:
         """Check if the error is related to exhausted targets."""
@@ -80,6 +89,10 @@ class ChutesOpenAIClient(LLMClient):
 
     def _get_backoff_time(self, retry: int, base_delay: float = 30.0) -> float:
         """Calculate exponential backoff time with jitter."""
+        if self.test_mode:
+            # In test mode, use very short delays (max 1 second)
+            return min(1.0, 0.1 * (2 ** retry))
+        
         # Exponential backoff: base_delay * 2^retry with jitter
         delay = base_delay * (2 ** retry)
         # Add jitter to avoid thundering herd
@@ -141,26 +154,19 @@ class ChutesOpenAIClient(LLMClient):
                     logging.warning("[CHUTES] Image blocks are not supported, skipping...")
                     continue
                 elif str(type(message)) == str(ToolCall):
-                    # Convert ToolCall to OpenAI format
+                    # Chutes doesn't support tool calls - skip them with warning
                     message = cast(ToolCall, message)
-                    if role == "assistant":
-                        tool_calls = [{
-                            "id": message.tool_call_id,
-                            "type": "function",
-                            "function": {
-                                "name": message.tool_name,
-                                "arguments": str(message.tool_input),
-                            },
-                        }]
-                        openai_messages.append({"role": "assistant", "tool_calls": tool_calls})
+                    logging.warning(f"[CHUTES] Skipping ToolCall message (tool_name: {message.tool_name}) - not supported by Chutes API")
+                    continue
                 elif str(type(message)) == str(ToolFormattedResult):
-                    # Convert ToolFormattedResult to OpenAI format
+                    # Chutes doesn't support tool results - convert to regular text message
                     message = cast(ToolFormattedResult, message)
+                    logging.warning(f"[CHUTES] Converting ToolFormattedResult to text message - Chutes doesn't support tool results")
                     if role == "user":
+                        # Convert tool result to a regular user message
                         openai_messages.append({
-                            "role": "tool",
-                            "tool_call_id": message.tool_call_id,
-                            "content": str(message.tool_output),
+                            "role": "user",
+                            "content": f"Tool result: {str(message.tool_output)}",
                         })
 
         # Build the request payload - only include what's needed
@@ -171,35 +177,31 @@ class ChutesOpenAIClient(LLMClient):
             "temperature": temperature,
         }
         
-        # Only add tools if they are actually provided
+        # JSON Workaround for tools when they are provided
         if tools:
-            openai_tools = []
+            logging.info(f"[CHUTES] Implementing JSON workaround for {len(tools)} tools")
+            # Add a system message that instructs the model to output tool calls as JSON
+            tool_instructions = "\n\nWhen you need to use a tool, output a JSON object in the following format:\n```json\n{\n  \"tool_call\": {\n    \"id\": \"call_<unique_id>\",\n    \"name\": \"<tool_name>\",\n    \"arguments\": {<tool_arguments>}\n  }\n}\n```\n\nAvailable tools:\n"
             for tool in tools:
-                openai_tools.append(
-                    Tool(
-                        type="function",
-                        function={
-                            "name": tool.name,
-                            "description": tool.description,
-                            "parameters": tool.input_schema,
-                        },
-                    )
-                )
-            payload["tools"] = openai_tools
+                tool_instructions += f"- {tool.name}: {tool.description}\n"
+                tool_instructions += f"  Parameters: {tool.input_schema}\n"
             
-            # Only add tool_choice if tools are present
-            if tool_choice:
-                if tool_choice["type"] == "any":
-                    payload["tool_choice"] = ToolChoice(type="any")
-                elif tool_choice["type"] == "auto":
-                    payload["tool_choice"] = ToolChoice(type="auto")
-                elif tool_choice["type"] == "tool":
-                    payload["tool_choice"] = ToolChoice(
-                        type="function", function={"name": tool_choice["name"]}
-                    )
+            # Append to system prompt or create new one
+            if openai_messages and openai_messages[0]["role"] == "system":
+                openai_messages[0]["content"] += tool_instructions
+            else:
+                openai_messages.insert(0, {"role": "system", "content": tool_instructions})
+            
+            logging.info(f"[CHUTES] Added tool instructions to system prompt")
 
         response = None
-        models_to_try = [self.model_name] + self.fallback_models
+        
+        # Determine models to try based on no_fallback flag
+        if self.no_fallback:
+            models_to_try = [self.model_name]
+            logging.info(f"[CHUTES] Using only primary model (no_fallback=True): {self.model_name}")
+        else:
+            models_to_try = [self.model_name] + self.fallback_models
         
         # Log the messages being sent
         logging.info(f"[CHUTES DEBUG] Sending messages to OpenAI API:")
@@ -246,7 +248,7 @@ class ChutesOpenAIClient(LLMClient):
                     else:
                         # For other internal server errors, use shorter backoff
                         if retry < self.max_retries - 1:
-                            backoff_time = 10 * random.uniform(0.8, 1.2)
+                            backoff_time = 1.0 if self.test_mode else 10 * random.uniform(0.8, 1.2)
                             logging.warning(f"[CHUTES] Internal server error, retrying in {backoff_time:.1f}s...")
                             time.sleep(backoff_time)
                             continue
@@ -256,7 +258,7 @@ class ChutesOpenAIClient(LLMClient):
                             
                 except (OpenAI_APIConnectionError, OpenAI_RateLimitError) as e:
                     if retry < self.max_retries - 1:
-                        backoff_time = 15 * random.uniform(0.8, 1.2)
+                        backoff_time = 1.0 if self.test_mode else 15 * random.uniform(0.8, 1.2)
                         logging.warning(
                             f"[CHUTES] {type(e).__name__} for model {current_model} "
                             f"(attempt {retry + 1}/{self.max_retries}). "
@@ -293,9 +295,47 @@ class ChutesOpenAIClient(LLMClient):
             logging.info(f"[CHUTES DEBUG] Message content: {message.content}")
             logging.info(f"[CHUTES DEBUG] Message tool_calls: {message.tool_calls}")
             
-            if message.content:
+            # Check if content contains JSON tool calls (our workaround)
+            if message.content and tools:
+                import json
+                import re
+                
+                # Look for JSON blocks in the content
+                json_pattern = r'```json\s*(\{.*?\})\s*```'
+                json_matches = re.findall(json_pattern, message.content, re.DOTALL)
+                
+                if json_matches:
+                    logging.info(f"[CHUTES] Found {len(json_matches)} potential JSON tool calls in content")
+                    
+                    # Process each JSON block
+                    for json_str in json_matches:
+                        try:
+                            json_data = json.loads(json_str)
+                            if "tool_call" in json_data:
+                                tool_call_data = json_data["tool_call"]
+                                logging.info(f"[CHUTES] Extracted tool call from JSON: {tool_call_data}")
+                                
+                                # Create a ToolCall from the JSON data
+                                internal_messages.append(
+                                    ToolCall(
+                                        tool_call_id=tool_call_data.get("id", f"call_{int(time.time() * 1000)}"),
+                                        tool_name=tool_call_data.get("name", ""),
+                                        tool_input=tool_call_data.get("arguments", {}),
+                                    )
+                                )
+                                
+                                # Remove the JSON block from the content
+                                message.content = message.content.replace(f"```json\n{json_str}\n```", "").strip()
+                        except json.JSONDecodeError as e:
+                            logging.error(f"[CHUTES] Failed to parse JSON tool call: {e}")
+                
+                # Add remaining content as TextResult if any
+                if message.content.strip():
+                    internal_messages.append(TextResult(text=message.content))
+            elif message.content:
                 internal_messages.append(TextResult(text=message.content))
             
+            # Process native tool calls if any (unlikely with Chutes)
             if message.tool_calls:
                 logging.info(f"[CHUTES DEBUG] Processing {len(message.tool_calls)} tool calls")
                 for i, tool_call in enumerate(message.tool_calls):

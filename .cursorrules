@@ -1,0 +1,112 @@
+# Cursor AI Assistant Rules for Windows Development
+
+## Running Tests and Commands on Windows
+
+### Problem
+When running Python tests or long-running commands on Windows through the terminal tool, outputs are often:
+- Truncated or incomplete
+- Pushed to background unexpectedly
+- Mixed with PowerShell error messages
+- Difficult to capture completely
+
+### Solution
+Instead of running tests directly via terminal, create a wrapper Python script that uses `subprocess.run()` to capture output:
+
+```python
+# run_tests.py
+import subprocess
+import sys
+
+result = subprocess.run(
+    [sys.executable, 'test_script.py'],
+    capture_output=True,
+    text=True
+)
+
+print("=== STDOUT ===")
+print(result.stdout)
+print("\n=== STDERR ===")
+print(result.stderr)
+print(f"\n=== Return Code: {result.returncode} ===")
+```
+
+### Best Practices for Windows Development
+
+1. **Avoid complex shell commands**: PowerShell doesn't support `&&` or other Unix-style operators
+   - Bad: `cd /path && python script.py`
+   - Good: Use separate commands or Python's `os.chdir()`
+
+2. **Use Python for file operations**: Instead of shell commands like `cat`, use Python's file operations
+   - Bad: `cat file.txt`
+   - Good: `with open('file.txt') as f: print(f.read())`
+
+3. **Capture output programmatically**: For any command that produces important output
+   - Create a Python wrapper script
+   - Use `subprocess.run()` with `capture_output=True`
+   - Print both stdout and stderr
+
+4. **Handle paths carefully**: Windows uses backslashes, but Python accepts forward slashes
+   - Use `pathlib.Path` for cross-platform compatibility
+   - Or use raw strings: `r"C:\path\to\file"`
+
+5. **Test execution pattern**: When running unit tests
+   ```python
+   # test_runner.py
+   import subprocess
+   import sys
+   import json
+   
+   # Run tests and capture output
+   result = subprocess.run(
+       [sys.executable, '-m', 'pytest', 'test_file.py', '-v'],
+       capture_output=True,
+       text=True
+   )
+   
+   # Parse and display results
+   print(result.stdout)
+   if result.returncode != 0:
+       print("TESTS FAILED")
+       print(result.stderr)
+   ```
+
+6. **Environment variables**: Check and set them programmatically
+   ```python
+   import os
+   if not os.getenv("API_KEY"):
+       print("Error: API_KEY not set")
+   ```
+
+### Terminal Tool Guidelines
+
+When using the `run_terminal_cmd` tool on Windows:
+
+1. Keep commands simple and atomic
+2. Expect PowerShell syntax, not bash
+3. For complex operations, create a Python script first
+4. Always check if output was truncated (look for "popped out into background")
+5. If output is critical, use the subprocess wrapper approach
+
+### Example Workflow
+
+1. Create a test runner script:
+   ```python
+   # run_specific_test.py
+   import subprocess
+   import sys
+   
+   test_file = sys.argv[1] if len(sys.argv) > 1 else 'test_default.py'
+   result = subprocess.run([sys.executable, test_file], capture_output=True, text=True)
+   
+   print(f"Testing {test_file}...")
+   print(result.stdout)
+   if result.stderr:
+       print("Errors:", result.stderr)
+   ```
+
+2. Run it via terminal:
+   ```
+   python run_specific_test.py test_chutes_fast.py
+   ```
+
+This approach ensures reliable output capture and better debugging on Windows systems. 
