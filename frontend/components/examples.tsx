@@ -9,7 +9,7 @@ interface ExamplesProps {
 }
 
 const EXAMPLES = [
-  "research why chutes ai can provide llm inference for free, while everyone else serves them so expensive. provide a pdf download. (Deep Research)",
+  "research how chutes.ai's role as a bittensor subnet allows them to provide llm inference for free, while everyone else serves it so expensive. provide a pdf download. (Deep Research)",
   "create a presentation about the psychological benefits of working on something you love.",
   "build a 3d game of tic tac toe with cats for my cat loving girl friend. host it online, so that I can send it to her.",
   "find out everything there is to know about fusion reactors and how far we are from getting them into production use.",

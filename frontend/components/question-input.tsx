@@ -56,6 +56,13 @@ const QuestionInput = ({
     };
   }, [files]);
 
+  // Reset files state when value is empty (e.g., when coming back from results page)
+  useEffect(() => {
+    if (!value.trim()) {
+      setFiles([]);
+    }
+  }, [value]);
+
   // Auto-resize textarea based on content and update button state
   useEffect(() => {
     if (textareaRef.current) {

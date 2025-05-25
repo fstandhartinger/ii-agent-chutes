@@ -6,11 +6,11 @@ import {
   Code,
   Globe,
   Terminal as TerminalIcon,
-  X,
   Loader2,
   Share,
   Menu,
   Sparkles,
+  ArrowLeft,
 } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -400,6 +400,11 @@ export default function Home() {
     setMessages([]);
     setIsLoading(false);
     setIsCompleted(false);
+    setCurrentQuestion(""); // Reset the current question
+    setUploadedFiles([]); // Reset uploaded files
+    setFilesContent({}); // Reset files content
+    setActiveTab(TAB.BROWSER); // Reset active tab
+    setCurrentActionData(undefined); // Reset current action data
   };
 
   const parseJson = (jsonString: string) => {
@@ -874,7 +879,7 @@ export default function Home() {
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse" />
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse delay-1000" />
       
-      <SidebarButton />
+      {!isInChatView && <SidebarButton />}
       
       {/* Header */}
       <motion.header 
@@ -897,6 +902,14 @@ export default function Home() {
           >
             {isInChatView && (
               <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={resetChat}
+                  className="bg-glass border-white/20 hover:bg-red-500/20 transition-all-smooth hover-lift"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                </Button>
                 <div className="relative">
                   <Image
                     src="/logo-only.png"
@@ -932,14 +945,6 @@ export default function Home() {
                 className="md:hidden bg-glass border-white/20"
               >
                 <Menu className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={resetChat}
-                className="bg-glass border-white/20 hover:bg-red-500/20 transition-all-smooth hover-lift"
-              >
-                <X className="w-4 h-4" />
               </Button>
             </div>
           ) : (
@@ -1045,6 +1050,7 @@ export default function Home() {
                     transition={{ duration: 0.6 }}
                   >
                     <QuestionInput
+                      key={sessionId || 'new-session'} // Force remount when session changes
                       placeholder="Give fubea a task to work on..."
                       value={currentQuestion}
                       setValue={setCurrentQuestion}
@@ -1121,7 +1127,7 @@ export default function Home() {
                           onClick={() => setIsMobileDetailPaneOpen(false)}
                           className="md:hidden bg-glass border-white/20 hover:bg-white/10 transition-all-smooth hover-lift mr-2"
                         >
-                          <X className="w-4 h-4" />
+                          <ArrowLeft className="w-4 h-4" />
                         </Button>
                         
                         <Button
