@@ -1,18 +1,10 @@
 "use client";
 
-import { Cpu, ChevronDown, Sparkles } from "lucide-react";
+import { Eye, FileText } from "lucide-react";
 import { motion } from "framer-motion";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-} from "@/components/ui/select";
-import { useChutes, AVAILABLE_MODELS } from "@/providers/chutes-provider";
+import { TEXT_MODELS, VISION_MODELS } from "@/providers/chutes-provider";
 
 export default function ModelSelector() {
-  const { selectedModel, setSelectedModel } = useChutes();
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -23,73 +15,58 @@ export default function ModelSelector() {
       {/* Glow Effect */}
       <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-emerald-500/20 rounded-2xl blur-xl opacity-50" />
       
-      <Select
-        value={selectedModel.id}
-        onValueChange={(value) => {
-          const model = AVAILABLE_MODELS.find(m => m.id === value);
-          if (model) {
-            setSelectedModel(model);
-          }
-        }}
-      >
-        <SelectTrigger className="relative w-[280px] md:w-[320px] bg-glass border-white/20 hover:bg-white/10 transition-all-smooth hover-lift rounded-2xl p-4 shadow-lg backdrop-blur-xl">
-          <div className="flex items-center gap-3 w-full">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl flex items-center justify-center shadow-lg">
-              <Cpu className="w-5 h-5 text-white" />
-            </div>
-            <div className="flex flex-col items-start flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-white text-sm md:text-base">
-                  {selectedModel.name}
-                </span>
-                <Sparkles className="w-4 h-4 text-yellow-400" />
-              </div>
-              <span className="text-xs md:text-sm text-muted-foreground truncate max-w-full">
-                {selectedModel.description}
-              </span>
-            </div>
-            <ChevronDown className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-          </div>
-        </SelectTrigger>
+      <div className="relative bg-glass border border-white/20 rounded-2xl p-4 shadow-lg backdrop-blur-xl">
+        <div className="text-center mb-4">
+          <h3 className="text-lg font-semibold text-white mb-2">Automatic Model Selection</h3>
+          <p className="text-sm text-muted-foreground">
+            Models are automatically chosen based on your content
+          </p>
+        </div>
         
-        <SelectContent className="bg-glass-dark border-white/20 backdrop-blur-xl rounded-2xl shadow-2xl min-w-[280px] md:min-w-[320px]">
-          {AVAILABLE_MODELS.map((model, index) => (
-            <SelectItem 
-              key={model.id} 
-              value={model.id}
-              className="hover:bg-white/10 focus:bg-white/10 rounded-xl m-1 transition-all-smooth"
-            >
-              <motion.div 
-                className="flex items-center gap-3 w-full py-2"
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.05 }}
-              >
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-sm ${
-                  model.id === selectedModel.id 
-                    ? "bg-gradient-to-br from-blue-500 to-purple-500" 
-                    : "bg-gradient-to-br from-gray-600 to-gray-700"
-                }`}>
-                  <Cpu className="w-4 h-4 text-white" />
-                </div>
-                <div className="flex flex-col flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-white text-sm">
-                      {model.name}
-                    </span>
-                    {model.id === selectedModel.id && (
-                      <Sparkles className="w-3 h-3 text-yellow-400" />
-                    )}
-                  </div>
-                  <span className="text-xs text-muted-foreground truncate">
-                    {model.description}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Text Models */}
+          <div className="bg-black/20 rounded-xl p-3 border border-white/10">
+            <div className="flex items-center gap-2 mb-2">
+              <FileText className="w-4 h-4 text-blue-400" />
+              <span className="text-sm font-medium text-white">Text Tasks</span>
+            </div>
+            <div className="space-y-2">
+              {TEXT_MODELS.map((model, index) => (
+                <div key={model.id} className="flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full ${index === 0 ? 'bg-blue-400' : 'bg-gray-500'}`} />
+                  <span className={`text-xs ${index === 0 ? 'text-white font-medium' : 'text-muted-foreground'}`}>
+                    {model.name} {index === 0 && '(Primary)'}
                   </span>
                 </div>
-              </motion.div>
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+              ))}
+            </div>
+          </div>
+          
+          {/* Vision Models */}
+          <div className="bg-black/20 rounded-xl p-3 border border-white/10">
+            <div className="flex items-center gap-2 mb-2">
+              <Eye className="w-4 h-4 text-purple-400" />
+              <span className="text-sm font-medium text-white">Vision Tasks</span>
+            </div>
+            <div className="space-y-2">
+              {VISION_MODELS.map((model, index) => (
+                <div key={model.id} className="flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full ${index === 0 ? 'bg-purple-400' : 'bg-gray-500'}`} />
+                  <span className={`text-xs ${index === 0 ? 'text-white font-medium' : 'text-muted-foreground'}`}>
+                    {model.name} {index === 0 && '(Primary)'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+        
+        <div className="mt-4 pt-3 border-t border-white/10">
+          <p className="text-xs text-muted-foreground text-center">
+            💡 Upload images or paste them to automatically switch to vision models
+          </p>
+        </div>
+      </div>
     </motion.div>
   );
 } 

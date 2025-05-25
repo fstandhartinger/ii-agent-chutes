@@ -1,9 +1,10 @@
 import { motion } from "framer-motion";
-import { ArrowUp, Loader2, Paperclip, Sparkles } from "lucide-react";
+import { ArrowUp, Loader2, Paperclip, Sparkles, Eye, FileText } from "lucide-react";
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
 import { useState, useEffect, useRef } from "react";
 import { getFileIconAndColor } from "@/utils/file-utils";
+import { useChutes } from "@/providers/chutes-provider";
 
 interface FileUploadStatus {
   name: string;
@@ -46,6 +47,11 @@ const QuestionInput = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [textareaHeight, setTextareaHeight] = useState<number>(60);
   const [isButtonEnabled, setIsButtonEnabled] = useState<boolean>(false);
+  const { getOptimalModel } = useChutes();
+
+  // Check if current context has images
+  const hasImages = files.some(file => file.isImage);
+  const currentModel = getOptimalModel(hasImages);
 
   // Clean up object URLs when component unmounts
   useEffect(() => {
@@ -294,6 +300,17 @@ const QuestionInput = ({
             {/* Bottom Controls */}
             <div className="absolute bottom-0 left-0 right-0 flex justify-between items-center p-4 bg-black/30 backdrop-blur-sm">
               <div className="flex items-center gap-3">
+                {/* Model Indicator */}
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-black/40 rounded-lg border border-white/10">
+                  {hasImages ? (
+                    <Eye className="w-3 h-3 text-purple-400" />
+                  ) : (
+                    <FileText className="w-3 h-3 text-blue-400" />
+                  )}
+                  <span className="text-xs text-white font-medium">
+                    {currentModel.name}
+                  </span>
+                </div>
                 {handleFileUpload && (
                   <label htmlFor="file-upload" className="cursor-pointer">
                     <Button

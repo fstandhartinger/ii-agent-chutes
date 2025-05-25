@@ -7,38 +7,51 @@ export interface LLMModel {
   name: string;
   provider: "anthropic" | "chutes" | "openrouter";
   description?: string;
+  supportsVision?: boolean;
 }
 
-export const AVAILABLE_MODELS: LLMModel[] = [
+// Define model categories for automatic selection
+export const TEXT_MODELS: LLMModel[] = [
   {
     id: "deepseek-ai/DeepSeek-R1",
     name: "DeepSeek R1",
     provider: "chutes",
-    description: "Reasoning-optimized model"
-  },
-  {
-    id: "deepseek-ai/DeepSeek-V3-0324",
-    name: "DeepSeek V3 0324",
-    provider: "chutes",
-    description: "Advanced reasoning model"
+    description: "Reasoning-optimized model",
+    supportsVision: false
   },
   {
     id: "Qwen/Qwen3-235B-A22B",
     name: "Qwen3 235B",
     provider: "chutes", 
-    description: "Large-scale reasoning model"
+    description: "Large-scale reasoning model",
+    supportsVision: false
+  }
+];
+
+export const VISION_MODELS: LLMModel[] = [
+  {
+    id: "deepseek-ai/DeepSeek-V3-0324",
+    name: "DeepSeek V3 0324",
+    provider: "chutes",
+    description: "Advanced reasoning model with vision",
+    supportsVision: true
   },
   {
     id: "chutesai/Llama-4-Maverick-17B-128E-Instruct-FP8",
-    name: "Llama Maverick",
+    name: "Llama Maverick 4",
     provider: "chutes",
-    description: "Efficient instruction-following model"
+    description: "Efficient instruction-following model with vision",
+    supportsVision: true
   }
 ];
+
+// All available models (for display in selector)
+export const AVAILABLE_MODELS: LLMModel[] = [...TEXT_MODELS, ...VISION_MODELS];
 
 type LLMContextType = {
   selectedModel: LLMModel;
   setSelectedModel: (model: LLMModel) => void;
+  getOptimalModel: (hasImages: boolean) => LLMModel;
   useChutesLLM: boolean; // Keep for backward compatibility
   toggleChutesLLM: () => void; // Keep for backward compatibility
 };
@@ -46,10 +59,21 @@ type LLMContextType = {
 const LLMContext = createContext<LLMContextType | undefined>(undefined);
 
 export function ChutesProvider({ children }: { children: ReactNode }) {
-  const [selectedModel, setSelectedModelState] = useState<LLMModel>(AVAILABLE_MODELS[0]);
+  const [selectedModel, setSelectedModelState] = useState<LLMModel>(TEXT_MODELS[0]);
 
   // Keep backward compatibility 
   const useChutesLLM = selectedModel.provider === "chutes";
+
+  // Function to get optimal model based on content
+  const getOptimalModel = (hasImages: boolean): LLMModel => {
+    if (hasImages) {
+      // Use vision models when images are present
+      return VISION_MODELS[0]; // DeepSeek V3 0324 as primary
+    } else {
+      // Use text models when no images
+      return TEXT_MODELS[0]; // DeepSeek R1 as primary
+    }
+  };
 
   // Load state from localStorage when component mounts
   useEffect(() => {
@@ -63,10 +87,10 @@ export function ChutesProvider({ children }: { children: ReactNode }) {
       // Try to migrate from old useChutesLLM setting or set default to DeepSeek R1
       const savedChutesValue = localStorage.getItem("useChutesLLM");
       if (savedChutesValue === "true") {
-        setSelectedModelState(AVAILABLE_MODELS[0]); // DeepSeek R1 is now first
+        setSelectedModelState(TEXT_MODELS[0]); // DeepSeek R1 is now first
       } else {
         // Default to DeepSeek R1 for new users
-        setSelectedModelState(AVAILABLE_MODELS[0]);
+        setSelectedModelState(TEXT_MODELS[0]);
       }
     }
   }, []);
@@ -98,6 +122,7 @@ export function ChutesProvider({ children }: { children: ReactNode }) {
     <LLMContext.Provider value={{ 
       selectedModel, 
       setSelectedModel, 
+      getOptimalModel,
       useChutesLLM, 
       toggleChutesLLM 
     }}>

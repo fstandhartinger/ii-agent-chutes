@@ -32,6 +32,18 @@ II Agent is built around providing an agentic interface to Anthropic Claude mode
 
 II-Agent is a versatile open-source assistant built to elevate your productivity across domains:
 
+### Automatic Model Selection
+
+II-Agent features intelligent automatic model selection that optimizes performance and cost-efficiency:
+
+- **Text Tasks**: Automatically uses DeepSeek R1 (primary) or Qwen3 235B (fallback) for text-only conversations
+- **Vision Tasks**: Automatically switches to DeepSeek V3 0324 (primary) or Llama Maverick 4 (fallback) when images are detected
+- **Smart Detection**: Recognizes images from file uploads, clipboard paste, or message history
+- **Visual Indicators**: Clear UI feedback showing which model is being used
+- **Seamless Switching**: No user intervention required - the system handles everything automatically
+
+For detailed information, see [AUTOMATIC_MODEL_SELECTION.md](AUTOMATIC_MODEL_SELECTION.md).
+
 | Domain | What II‑Agent Can Do |
 |--------|----------------------|
 | Research & Fact‑Checking | Multistep web search, source triangulation, structured note‑taking, rapid summarization |

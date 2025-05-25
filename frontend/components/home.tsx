@@ -72,7 +72,30 @@ export default function Home() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const isReplayMode = useMemo(() => !!searchParams.get("id"), [searchParams]);
-  const { toggleChutesLLM, selectedModel } = useChutes();
+  const { toggleChutesLLM, getOptimalModel } = useChutes();
+
+  // Function to detect if there are images in the current conversation context
+  const hasImagesInContext = useMemo(() => {
+    // Check if there are uploaded files that are images
+    const hasUploadedImages = uploadedFiles.some(file => {
+      const ext = file.split('.').pop()?.toLowerCase();
+      return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'heic', 'svg'].includes(ext || '');
+    });
+
+    // Check if there are images in recent messages
+    const hasMessageImages = messages.slice(-5).some(message => {
+      return message.files && message.files.some(fileName => {
+        return fileName.match(/\.(jpeg|jpg|gif|png|webp|svg|heic|bmp)$/i) !== null;
+      });
+    });
+
+    return hasUploadedImages || hasMessageImages;
+  }, [uploadedFiles, messages]);
+
+  // Get the optimal model based on current context
+  const optimalModel = useMemo(() => {
+    return getOptimalModel(hasImagesInContext);
+  }, [hasImagesInContext, getOptimalModel]);
 
   // Get session ID from URL params
   useEffect(() => {
@@ -693,8 +716,12 @@ export default function Home() {
     if (deviceId) {
       wsUrl += `?device_id=${deviceId}`;
 
-      // Append model information - all models are now Chutes models
-      wsUrl += `&use_chutes=true&model_id=${encodeURIComponent(selectedModel.id)}`;
+      // Use optimal model based on context (images present or not)
+      const modelToUse = optimalModel;
+      wsUrl += `&use_chutes=true&model_id=${encodeURIComponent(modelToUse.id)}`;
+      
+      // Log model selection for debugging
+      console.log(`Using model: ${modelToUse.name} (${modelToUse.id}) - Images in context: ${hasImagesInContext}`);
     }
 
     const ws = new WebSocket(wsUrl);
@@ -748,7 +775,7 @@ export default function Home() {
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [deviceId, isReplayMode, selectedModel]);
+  }, [deviceId, isReplayMode, optimalModel]);
 
   const isBrowserTool = useMemo(
     () =>

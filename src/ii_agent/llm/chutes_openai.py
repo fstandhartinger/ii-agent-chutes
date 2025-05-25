@@ -217,10 +217,41 @@ class ChutesOpenAIClient(LLMClient):
                         # Use simple string format for Chutes compatibility
                         openai_messages.append({"role": role, "content": message.text})
                 elif str(type(message)) == str(ImageBlock):
-                    # Handle image blocks - for now, skip them as Chutes may not support vision
+                    # Handle image blocks for vision models
                     message = cast(ImageBlock, message)
-                    logging.warning("[CHUTES] Image blocks are not supported, skipping...")
-                    continue
+                    if role == "user":
+                        # Check if this is a vision-capable model
+                        vision_models = ["deepseek-ai/DeepSeek-V3-0324", "chutesai/Llama-4-Maverick-17B-128E-Instruct-FP8"]
+                        if self.model_name in vision_models:
+                            # Convert to OpenAI vision format
+                            image_content = {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": f"data:{message.source['media_type']};base64,{message.source['data']}"
+                                }
+                            }
+                            
+                            # Find the last user message and convert it to multi-modal format
+                            if openai_messages and openai_messages[-1]["role"] == "user":
+                                # Convert existing text content to multi-modal format
+                                existing_content = openai_messages[-1]["content"]
+                                if isinstance(existing_content, str):
+                                    openai_messages[-1]["content"] = [
+                                        {"type": "text", "text": existing_content},
+                                        image_content
+                                    ]
+                                elif isinstance(existing_content, list):
+                                    openai_messages[-1]["content"].append(image_content)
+                            else:
+                                # Create new message with just the image
+                                openai_messages.append({
+                                    "role": "user",
+                                    "content": [image_content]
+                                })
+                            logging.info(f"[CHUTES] Added image to message for vision model: {self.model_name}")
+                        else:
+                            logging.warning(f"[CHUTES] Model {self.model_name} does not support vision, skipping image...")
+                            continue
                 elif str(type(message)) == str(ToolCall):
                     # Chutes doesn't support tool calls - skip them with warning
                     message = cast(ToolCall, message)
