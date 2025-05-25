@@ -9,6 +9,8 @@ import {
   X,
   Loader2,
   Share,
+  Menu,
+  Sparkles,
 } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -67,6 +69,7 @@ export default function Home() {
     {}
   );
   const [browserUrl, setBrowserUrl] = useState("");
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const isReplayMode = useMemo(() => !!searchParams.get("id"), [searchParams]);
   const { toggleChutesLLM, selectedModel } = useChutes();
@@ -772,263 +775,392 @@ export default function Home() {
   }, [messages?.length]);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-[#191E1B] relative">
+    <div className="flex flex-col min-h-screen bg-background relative overflow-hidden">
+      {/* Background Elements */}
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-purple-500/5 to-emerald-500/5" />
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse" />
+      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse delay-1000" />
+      
       <SidebarButton />
-      {!isInChatView && (
-        <motion.h1
-          className="text-3xl font-medium text-center"
-          layout
-          layoutId="page-title"
-        >
-          <div 
-            className="flex items-center justify-center mb-6 cursor-pointer"
-            onDoubleClick={toggleChutesLLM}
-          >
-            <Image
-              src="/logo-only.png"
-              alt="fubea Logo"
-              width={300}
-              height={216}
-              className="rounded-sm"
-            />
-          </div>
-          <div className="mb-3">How can I help you today?</div>
-        </motion.h1>
-      )}
-      <div
-        className={`flex justify-between w-full ${
-          !isInChatView ? "pt-0 pb-8" : "p-4"
-        }`}
+      
+      {/* Header */}
+      <motion.header 
+        className="relative z-10 mobile-header-safe"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
       >
-        {!isInChatView && (
-          <div className="flex justify-center w-full mb-4">
-            <ModelSelector />
-          </div>
-        )}
-        <motion.div
-          className={`font-medium text-center ${
-            isInChatView ? "flex items-center gap-x-2 text-2xl ml-12" : "hidden"
-          }`}
-          layout
-          layoutId="page-title"
-        >
-          {isInChatView && (
-            <Image
-              src="/logo-only.png"
-              alt="fubea Logo"
-              width={40}
-              height={40}
-              className="rounded-sm"
-            />
+        <div className={`flex justify-between items-center w-full px-4 md:px-8 py-4 ${!isInChatView ? 'pb-0' : ''}`}>
+          {!isInChatView && (
+            <div className="flex-1" />
           )}
-          {isInChatView ? "fubea" : ""}
-        </motion.div>
-        {isInChatView ? (
-          <div className="flex gap-x-2">
-            <Button
-              className="cursor-pointer h-10"
-              variant="outline"
-              onClick={handleShare}
-            >
-              <Share /> Share
-            </Button>
-            <Button className="cursor-pointer" onClick={resetChat}>
-              <X className="size-5" />
-            </Button>
-          </div>
-        ) : (
-          <div />
-        )}
-      </div>
-      {isLoadingSession ? (
-        <div className="flex flex-col items-center justify-center p-8">
-          <Loader2 className="h-8 w-8 text-white animate-spin mb-4" />
-          <p className="text-white text-lg">Loading session history...</p>
-        </div>
-      ) : (
-        <LayoutGroup>
-          <AnimatePresence mode="wait">
-            {!isInChatView ? (
-              <div className="flex items-center justify-center py-8 flex-col gap-4 flex-grow w-full max-w-3xl">
-                <QuestionInput
-                  placeholder="Give fubea a task to work on..."
-                  value={currentQuestion}
-                  setValue={setCurrentQuestion}
-                  handleKeyDown={handleKeyDown}
-                  handleSubmit={handleQuestionSubmit}
-                  handleFileUpload={handleFileUpload}
-                  isUploading={isUploading}
-                  isUseDeepResearch={isUseDeepResearch}
-                  setIsUseDeepResearch={setIsUseDeepResearch}
-                  isDisabled={!isSocketConnected}
-                  className="w-full"
-                />
-              </div>
-            ) : (
-              <motion.div
-                key="chat-view"
-                initial={{ opacity: 0, y: 30, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -20, scale: 0.95 }}
-                transition={{
-                  type: "spring",
-                  stiffness: 300,
-                  damping: 30,
-                  mass: 1,
-                }}
-                className="w-full grid grid-cols-10 write-report overflow-hidden flex-1 pr-4 pb-4 "
+          
+          <motion.div
+            className={`flex items-center gap-3 ${
+              isInChatView ? "text-xl md:text-2xl font-semibold" : "hidden"
+            }`}
+            layout
+            layoutId="page-title"
+          >
+            {isInChatView && (
+              <>
+                <div className="relative">
+                  <Image
+                    src="/logo-only.png"
+                    alt="fubea Logo"
+                    width={32}
+                    height={32}
+                    className="rounded-lg shadow-lg"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-lg blur-sm" />
+                </div>
+                <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                  fubea
+                </span>
+              </>
+            )}
+          </motion.div>
+          
+          {isInChatView ? (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleShare}
+                className="hidden md:flex bg-glass border-white/20 hover:bg-white/10 transition-all-smooth hover-lift"
               >
-                <ChatMessage
-                  messages={messages}
-                  isLoading={isLoading}
-                  isCompleted={isCompleted}
-                  workspaceInfo={workspaceInfo}
-                  handleClickAction={handleClickAction}
-                  isUploading={isUploading}
-                  isUseDeepResearch={isUseDeepResearch}
-                  isReplayMode={isReplayMode}
-                  currentQuestion={currentQuestion}
-                  messagesEndRef={messagesEndRef}
-                  setCurrentQuestion={setCurrentQuestion}
-                  handleKeyDown={handleKeyDown}
-                  handleQuestionSubmit={handleQuestionSubmit}
-                  handleFileUpload={handleFileUpload}
-                />
+                <Share className="w-4 h-4 mr-2" />
+                Share
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="md:hidden bg-glass border-white/20"
+              >
+                <Menu className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={resetChat}
+                className="bg-glass border-white/20 hover:bg-red-500/20 transition-all-smooth hover-lift"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          ) : (
+            <div className="flex-1" />
+          )}
+        </div>
+        
+        {/* Mobile Menu */}
+        {isMobileMenuOpen && isInChatView && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="md:hidden bg-glass-dark border-t border-white/10 px-4 py-3"
+          >
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleShare}
+              className="w-full bg-glass border-white/20 hover:bg-white/10 mb-2"
+            >
+              <Share className="w-4 h-4 mr-2" />
+              Share Session
+            </Button>
+          </motion.div>
+        )}
+      </motion.header>
 
-                <div className="col-span-6 bg-[#1e1f23] border border-[#3A3B3F] p-4 rounded-2xl">
-                  <div className="pb-4 bg-neutral-850 flex items-center justify-between">
-                    <div className="flex gap-x-4">
-                      <Button
-                        className={`cursor-pointer hover:!bg-black ${
-                          activeTab === TAB.BROWSER
-                            ? "bg-gradient-skyblue-lavender !text-black"
-                            : ""
-                        }`}
-                        variant="outline"
-                        onClick={() => setActiveTab(TAB.BROWSER)}
-                      >
-                        <Globe className="size-4" /> Browser
-                      </Button>
-                      <Button
-                        className={`cursor-pointer hover:!bg-black ${
-                          activeTab === TAB.CODE
-                            ? "bg-gradient-skyblue-lavender !text-black"
-                            : ""
-                        }`}
-                        variant="outline"
-                        onClick={() => setActiveTab(TAB.CODE)}
-                      >
-                        <Code className="size-4" /> Code
-                      </Button>
-                      <Button
-                        className={`cursor-pointer hover:!bg-black ${
-                          activeTab === TAB.TERMINAL
-                            ? "bg-gradient-skyblue-lavender !text-black"
-                            : ""
-                        }`}
-                        variant="outline"
-                        onClick={() => setActiveTab(TAB.TERMINAL)}
-                      >
-                        <TerminalIcon className="size-4" /> Terminal
-                      </Button>
-                    </div>
-                    <div className="flex gap-x-2">
+      {/* Main Content */}
+      <main className="flex-1 relative z-10">
+        {!isInChatView && (
+          <motion.div
+            className="flex flex-col items-center justify-center min-h-[60vh] px-4"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+          >
+            {/* Hero Section */}
+            <div className="text-center mb-8 md:mb-12">
+              <motion.div 
+                className="flex items-center justify-center mb-8 cursor-pointer group"
+                onDoubleClick={toggleChutesLLM}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <div className="relative">
+                  <Image
+                    src="/logo-only.png"
+                    alt="fubea Logo"
+                    width={200}
+                    height={144}
+                    className="rounded-2xl shadow-2xl transition-all-smooth group-hover:shadow-glow"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all-smooth" />
+                  <Sparkles className="absolute -top-2 -right-2 w-6 h-6 text-yellow-400 animate-pulse" />
+                </div>
+              </motion.div>
+              
+              <motion.h1
+                className="text-3xl md:text-5xl lg:text-6xl font-bold mb-4 bg-gradient-to-r from-white via-blue-100 to-purple-100 bg-clip-text text-transparent"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.4 }}
+              >
+                How can I help you today?
+              </motion.h1>
+              
+              <motion.p
+                className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.6 }}
+              >
+                Your AI assistant powered by advanced language models
+              </motion.p>
+            </div>
+
+            {/* Model Selector */}
+            <motion.div
+              className="mb-8"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.8 }}
+            >
+              <ModelSelector />
+            </motion.div>
+          </motion.div>
+        )}
+
+        {isLoadingSession ? (
+          <motion.div 
+            className="flex flex-col items-center justify-center min-h-[50vh] px-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
+            <div className="bg-glass rounded-2xl p-8 text-center">
+              <Loader2 className="h-12 w-12 text-blue-400 animate-spin mb-4 mx-auto" />
+              <p className="text-lg font-medium mb-2">Loading session history...</p>
+              <p className="text-muted-foreground">Please wait while we restore your conversation</p>
+            </div>
+          </motion.div>
+        ) : (
+          <LayoutGroup>
+            <AnimatePresence mode="wait">
+              {!isInChatView ? (
+                <motion.div
+                  key="input-view"
+                  className="flex items-center justify-center px-4 pb-8"
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.6 }}
+                >
+                  <QuestionInput
+                    placeholder="Give fubea a task to work on..."
+                    value={currentQuestion}
+                    setValue={setCurrentQuestion}
+                    handleKeyDown={handleKeyDown}
+                    handleSubmit={handleQuestionSubmit}
+                    handleFileUpload={handleFileUpload}
+                    isUploading={isUploading}
+                    isUseDeepResearch={isUseDeepResearch}
+                    setIsUseDeepResearch={setIsUseDeepResearch}
+                    isDisabled={!isSocketConnected}
+                    className="w-full max-w-4xl"
+                  />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="chat-view"
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.6 }}
+                  className="w-full h-full grid grid-cols-1 md:grid-cols-10 gap-4 px-4 pb-4 mobile-safe-area"
+                >
+                  {/* Chat Messages Panel */}
+                  <div className="order-2 md:order-1 md:col-span-4 flex flex-col h-[40vh] md:h-auto">
+                    <ChatMessage
+                      messages={messages}
+                      isLoading={isLoading}
+                      isCompleted={isCompleted}
+                      workspaceInfo={workspaceInfo}
+                      handleClickAction={handleClickAction}
+                      isUploading={isUploading}
+                      isUseDeepResearch={isUseDeepResearch}
+                      isReplayMode={isReplayMode}
+                      currentQuestion={currentQuestion}
+                      messagesEndRef={messagesEndRef}
+                      setCurrentQuestion={setCurrentQuestion}
+                      handleKeyDown={handleKeyDown}
+                      handleQuestionSubmit={handleQuestionSubmit}
+                      handleFileUpload={handleFileUpload}
+                    />
+                  </div>
+
+                  {/* Tools Panel */}
+                  <div className="order-1 md:order-2 md:col-span-6 bg-glass-dark rounded-2xl border border-white/10 overflow-hidden h-[50vh] md:h-auto">
+                    {/* Tab Navigation */}
+                    <div className="flex items-center justify-between p-4 border-b border-white/10 bg-black/20">
+                      <div className="flex gap-2 overflow-x-auto">
+                        <Button
+                          size="sm"
+                          variant={activeTab === TAB.BROWSER ? "default" : "outline"}
+                          onClick={() => setActiveTab(TAB.BROWSER)}
+                          className={`transition-all-smooth hover-lift ${
+                            activeTab === TAB.BROWSER
+                              ? "bg-gradient-skyblue-lavender text-black shadow-glow"
+                              : "bg-glass border-white/20 hover:bg-white/10"
+                          }`}
+                        >
+                          <Globe className="w-4 h-4 mr-2" />
+                          Browser
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant={activeTab === TAB.CODE ? "default" : "outline"}
+                          onClick={() => setActiveTab(TAB.CODE)}
+                          className={`transition-all-smooth hover-lift ${
+                            activeTab === TAB.CODE
+                              ? "bg-gradient-skyblue-lavender text-black shadow-glow"
+                              : "bg-glass border-white/20 hover:bg-white/10"
+                          }`}
+                        >
+                          <Code className="w-4 h-4 mr-2" />
+                          Code
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant={activeTab === TAB.TERMINAL ? "default" : "outline"}
+                          onClick={() => setActiveTab(TAB.TERMINAL)}
+                          className={`transition-all-smooth hover-lift ${
+                            activeTab === TAB.TERMINAL
+                              ? "bg-gradient-skyblue-lavender text-black shadow-glow"
+                              : "bg-glass border-white/20 hover:bg-white/10"
+                          }`}
+                        >
+                          <TerminalIcon className="w-4 h-4 mr-2" />
+                          Terminal
+                        </Button>
+                      </div>
+                      
                       {process.env.NEXT_PUBLIC_VSCODE_URL && (
                         <Button
-                          className="cursor-pointer hover:!bg-black"
+                          size="sm"
                           variant="outline"
                           onClick={() => {
                             const vscodeUrl = process.env.NEXT_PUBLIC_VSCODE_URL;
                             if (workspaceInfo) {
-                              // Open VS Code server with the current workspace
                               window.open(`${vscodeUrl}?folder=${encodeURIComponent(workspaceInfo)}`, '_blank');
                             } else {
-                              // Open VS Code server without specific folder
                               window.open(vscodeUrl, '_blank');
                             }
                           }}
+                          className="bg-glass border-white/20 hover:bg-white/10 transition-all-smooth hover-lift"
                           title="Open in VS Code"
                         >
-                          <Code className="size-4" /> VS Code
+                          <Code className="w-4 h-4 mr-2" />
+                          VS Code
                         </Button>
                       )}
                     </div>
+
+                    {/* Tab Content */}
+                    <div className="h-full overflow-hidden">
+                      <Browser
+                        className={`tab-content-enter ${
+                          activeTab === TAB.BROWSER &&
+                          (currentActionData?.type === TOOL.VISIT || isBrowserTool)
+                            ? ""
+                            : "hidden"
+                        }`}
+                        url={currentActionData?.data?.tool_input?.url || browserUrl}
+                        screenshot={
+                          isBrowserTool
+                            ? (currentActionData?.data.result as string)
+                            : undefined
+                        }
+                        raw={
+                          currentActionData?.type === TOOL.VISIT
+                            ? (currentActionData?.data?.result as string)
+                            : undefined
+                        }
+                      />
+                      <SearchBrowser
+                        className={`tab-content-enter ${
+                          activeTab === TAB.BROWSER &&
+                          currentActionData?.type === TOOL.WEB_SEARCH
+                            ? ""
+                            : "hidden"
+                        }`}
+                        keyword={currentActionData?.data.tool_input?.query}
+                        search_results={
+                          currentActionData?.type === TOOL.WEB_SEARCH &&
+                          currentActionData?.data?.result
+                            ? parseJson(currentActionData?.data?.result as string)
+                            : undefined
+                        }
+                      />
+                      <ImageBrowser
+                        className={`tab-content-enter ${
+                          activeTab === TAB.BROWSER &&
+                          currentActionData?.type === TOOL.IMAGE_GENERATE
+                            ? ""
+                            : "hidden"
+                        }`}
+                        url={currentActionData?.data.tool_input?.output_filename}
+                        image={getRemoteURL(
+                          currentActionData?.data.tool_input?.output_filename
+                        )}
+                      />
+                      <CodeEditor
+                        currentActionData={currentActionData}
+                        activeTab={activeTab}
+                        className={`tab-content-enter ${activeTab === TAB.CODE ? "" : "hidden"}`}
+                        workspaceInfo={workspaceInfo}
+                        activeFile={activeFileCodeEditor}
+                        setActiveFile={setActiveFileCodeEditor}
+                        filesContent={filesContent}
+                        isReplayMode={isReplayMode}
+                      />
+                      <Terminal
+                        ref={xtermRef}
+                        className={`tab-content-enter ${activeTab === TAB.TERMINAL ? "" : "hidden"}`}
+                      />
+                    </div>
                   </div>
-                  <Browser
-                    className={
-                      activeTab === TAB.BROWSER &&
-                      (currentActionData?.type === TOOL.VISIT || isBrowserTool)
-                        ? ""
-                        : "hidden"
-                    }
-                    url={currentActionData?.data?.tool_input?.url || browserUrl}
-                    screenshot={
-                      isBrowserTool
-                        ? (currentActionData?.data.result as string)
-                        : undefined
-                    }
-                    raw={
-                      currentActionData?.type === TOOL.VISIT
-                        ? (currentActionData?.data?.result as string)
-                        : undefined
-                    }
-                  />
-                  <SearchBrowser
-                    className={
-                      activeTab === TAB.BROWSER &&
-                      currentActionData?.type === TOOL.WEB_SEARCH
-                        ? ""
-                        : "hidden"
-                    }
-                    keyword={currentActionData?.data.tool_input?.query}
-                    search_results={
-                      currentActionData?.type === TOOL.WEB_SEARCH &&
-                      currentActionData?.data?.result
-                        ? parseJson(currentActionData?.data?.result as string)
-                        : undefined
-                    }
-                  />
-                  <ImageBrowser
-                    className={
-                      activeTab === TAB.BROWSER &&
-                      currentActionData?.type === TOOL.IMAGE_GENERATE
-                        ? ""
-                        : "hidden"
-                    }
-                    url={currentActionData?.data.tool_input?.output_filename}
-                    image={getRemoteURL(
-                      currentActionData?.data.tool_input?.output_filename
-                    )}
-                  />
-                  <CodeEditor
-                    currentActionData={currentActionData}
-                    activeTab={activeTab}
-                    className={activeTab === TAB.CODE ? "" : "hidden"}
-                    workspaceInfo={workspaceInfo}
-                    activeFile={activeFileCodeEditor}
-                    setActiveFile={setActiveFileCodeEditor}
-                    filesContent={filesContent}
-                    isReplayMode={isReplayMode}
-                  />
-                  <Terminal
-                    ref={xtermRef}
-                    className={activeTab === TAB.TERMINAL ? "" : "hidden"}
-                  />
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </LayoutGroup>
-      )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </LayoutGroup>
+        )}
+      </main>
+
+      {/* Footer */}
       {!isInChatView && (
-        <a 
-          href="https://chutes.ai" 
-          target="_blank" 
-          rel="noopener noreferrer"
-          className="absolute bottom-4 right-4 text-sm text-gray-400 hover:text-gray-300 transition-colors"
+        <motion.footer
+          className="relative z-10 text-center py-6 mobile-safe-area"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.8, delay: 1 }}
         >
-          powered by Chutes
-        </a>
+          <a 
+            href="https://chutes.ai" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors hover-lift inline-flex items-center gap-2"
+          >
+            <span>powered by</span>
+            <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent font-semibold">
+              Chutes
+            </span>
+          </a>
+        </motion.footer>
       )}
     </div>
   );

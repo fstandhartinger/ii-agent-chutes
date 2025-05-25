@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { ArrowUp, Loader2, Paperclip } from "lucide-react";
+import { ArrowUp, Loader2, Paperclip, Sparkles } from "lucide-react";
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
 import { useState, useEffect, useRef } from "react";
@@ -44,7 +44,7 @@ const QuestionInput = ({
 }: QuestionInputProps) => {
   const [files, setFiles] = useState<FileUploadStatus[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [textareaHeight, setTextareaHeight] = useState<number>(50);
+  const [textareaHeight, setTextareaHeight] = useState<number>(60);
   const [isButtonEnabled, setIsButtonEnabled] = useState<boolean>(false);
 
   // Clean up object URLs when component unmounts
@@ -64,8 +64,8 @@ const QuestionInput = ({
       textarea.style.height = 'auto';
       const scrollHeight = textarea.scrollHeight;
       
-      // Set minimum height to 50px and maximum to 200px
-      const minHeight = 50;
+      // Set minimum height to 60px and maximum to 200px
+      const minHeight = 60;
       const maxHeight = 200;
       const newHeight = Math.min(Math.max(scrollHeight, minHeight), maxHeight);
       
@@ -192,21 +192,33 @@ const QuestionInput = ({
         damping: 30,
         mass: 1,
       }}
-      className={`w-full max-w-2xl z-50 ${className}`}
+      className={`w-full max-w-4xl z-50 ${className}`}
     >
       <motion.div
-        className="relative rounded-xl"
+        className="relative"
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.1 }}
       >
+        {/* File Previews */}
         {files.length > 0 && (
-          <div className="absolute top-4 left-4 right-2 flex items-center overflow-auto gap-2 z-10">
-            {files.map((file) => {
+          <motion.div 
+            className="mb-4 flex flex-wrap gap-3"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            transition={{ duration: 0.3 }}
+          >
+            {files.map((file, index) => {
               if (file.isImage && file.preview) {
                 return (
-                  <div key={file.name} className="relative">
-                    <div className="w-20 h-20 rounded-xl overflow-hidden">
+                  <motion.div 
+                    key={file.name}
+                    className="relative group"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: index * 0.1 }}
+                  >
+                    <div className="w-20 h-20 rounded-xl overflow-hidden bg-glass border border-white/20 shadow-lg">
                       <img
                         src={file.preview}
                         alt={file.name}
@@ -214,11 +226,14 @@ const QuestionInput = ({
                       />
                     </div>
                     {file.loading && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-xl">
-                        <Loader2 className="size-5 text-white animate-spin" />
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-xl backdrop-blur-sm">
+                        <Loader2 className="w-5 h-5 text-white animate-spin" />
                       </div>
                     )}
-                  </div>
+                    <div className="absolute -top-2 -right-2 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                      <Sparkles className="w-3 h-3 text-white" />
+                    </div>
+                  </motion.div>
                 );
               }
 
@@ -227,104 +242,116 @@ const QuestionInput = ({
               );
 
               return (
-                <div
+                <motion.div
                   key={file.name}
-                  className="flex items-center gap-2 bg-neutral-900 text-white rounded-full px-3 py-2 border border-gray-700 shadow-sm"
+                  className="flex items-center gap-3 bg-glass border border-white/20 rounded-xl px-4 py-3 shadow-lg backdrop-blur-sm"
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: index * 0.1 }}
                 >
                   <div
-                    className={`flex items-center justify-center w-10 h-10 ${bgColor} rounded-full`}
+                    className={`flex items-center justify-center w-10 h-10 ${bgColor} rounded-lg shadow-sm`}
                   >
                     {isUploading ? (
-                      <Loader2 className="size-5 text-white animate-spin" />
+                      <Loader2 className="w-5 h-5 text-white animate-spin" />
                     ) : (
-                      <IconComponent className="size-5 text-white" />
+                      <IconComponent className="w-5 h-5 text-white" />
                     )}
                   </div>
-                  <div className="flex flex-col">
-                    <span className="text-sm font-medium truncate max-w-[200px]">
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-sm font-medium text-white truncate max-w-[150px]">
                       {file.name}
                     </span>
-                    <span className="text-xs text-gray-500">{label}</span>
+                    <span className="text-xs text-muted-foreground">{label}</span>
                   </div>
-                </div>
+                </motion.div>
               );
             })}
-          </div>
+          </motion.div>
         )}
-        <Textarea
-          ref={textareaRef}
-          className={`w-full p-4 pb-[72px] rounded-xl !text-lg focus:ring-0 resize-none !placeholder-gray-400 !bg-[#27282b] border-[#3a3b3f] shadow-lg ${
-            files.length > 0 ? "pt-24" : ""
-          } ${textareaClassName}`}
-          style={{ 
-            height: `${textareaHeight}px`,
-            minHeight: '50px',
-            maxHeight: '200px'
-          }}
-          placeholder={
-            placeholder ||
-            "What can I help you with today?"
-          }
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          onKeyDown={handleKeyDown}
-          onPaste={handlePaste}
-        />
-        <div className="flex justify-between items-center absolute bottom-0 py-4 m-px w-[calc(100%-4px)] rounded-b-xl bg-[#27282b] px-4">
-          <div className="flex items-center gap-x-3">
-            {handleFileUpload && (
-              <label htmlFor="file-upload" className="cursor-pointer">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="hover:bg-gray-700/50 size-10 rounded-full cursor-pointer border border-[#3a3b3f] shadow-sm"
-                  onClick={() =>
-                    document.getElementById("file-upload")?.click()
-                  }
-                  disabled={isUploading}
-                >
-                  {isUploading ? (
-                    <Loader2 className="size-5 text-gray-400 animate-spin" />
-                  ) : (
-                    <Paperclip className="size-5 text-gray-400" />
-                  )}
-                </Button>
-                <input
-                  id="file-upload"
-                  type="file"
-                  multiple
-                  className="hidden"
-                  onChange={handleFileChange}
-                  disabled={isUploading}
-                />
-              </label>
-            )}
-            {setIsUseDeepResearch && (
-              <Button
-                variant="outline"
-                className={`h-10 cursor-pointer shadow-sm ${
-                  isUseDeepResearch
-                    ? "bg-gradient-skyblue-lavender !text-black"
-                    : "border !border-[#3a3b3f] bg-transparent"
-                }`}
-                onClick={() => setIsUseDeepResearch?.(!isUseDeepResearch)}
-              >
-                Deep Research
-              </Button>
-            )}
-          </div>
 
-          <Button
-            disabled={!isButtonEnabled}
-            onClick={() => handleSubmit(value)}
-            className={`border-none p-4 size-10 font-bold rounded-full transition-transform shadow-lg ${
-              !isButtonEnabled 
-                ? "cursor-not-allowed opacity-50 bg-gray-500" 
-                : "cursor-pointer bg-gradient-skyblue-lavender hover:scale-105 active:scale-95"
-            }`}
-          >
-            <ArrowUp className="size-5" />
-          </Button>
+        {/* Input Container */}
+        <div className="relative bg-glass border border-white/20 rounded-2xl shadow-2xl backdrop-blur-xl overflow-hidden">
+          {/* Gradient Border Effect */}
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-emerald-500/20 rounded-2xl blur-sm opacity-50" />
+          
+          <div className="relative bg-black/20 rounded-2xl">
+            <Textarea
+              ref={textareaRef}
+              className={`w-full p-6 pb-20 bg-transparent border-0 text-lg placeholder:text-muted-foreground/70 focus:ring-0 resize-none text-white ${textareaClassName}`}
+              style={{ 
+                height: `${textareaHeight}px`,
+                minHeight: '60px',
+                maxHeight: '200px'
+              }}
+              placeholder={placeholder || "What can I help you with today?"}
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onPaste={handlePaste}
+            />
+            
+            {/* Bottom Controls */}
+            <div className="absolute bottom-0 left-0 right-0 flex justify-between items-center p-4 bg-black/30 backdrop-blur-sm">
+              <div className="flex items-center gap-3">
+                {handleFileUpload && (
+                  <label htmlFor="file-upload" className="cursor-pointer">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="bg-glass border border-white/20 hover:bg-white/10 w-11 h-11 rounded-xl transition-all-smooth hover-lift shadow-lg"
+                      onClick={() =>
+                        document.getElementById("file-upload")?.click()
+                      }
+                      disabled={isUploading}
+                    >
+                      {isUploading ? (
+                        <Loader2 className="w-5 h-5 text-muted-foreground animate-spin" />
+                      ) : (
+                        <Paperclip className="w-5 h-5 text-muted-foreground" />
+                      )}
+                    </Button>
+                    <input
+                      id="file-upload"
+                      type="file"
+                      multiple
+                      className="hidden"
+                      onChange={handleFileChange}
+                      disabled={isUploading}
+                    />
+                  </label>
+                )}
+                
+                {setIsUseDeepResearch && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={`transition-all-smooth hover-lift shadow-lg ${
+                      isUseDeepResearch
+                        ? "bg-gradient-skyblue-lavender text-black border-0 shadow-glow"
+                        : "bg-glass border-white/20 hover:bg-white/10 text-white"
+                    }`}
+                    onClick={() => setIsUseDeepResearch?.(!isUseDeepResearch)}
+                  >
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    Deep Research
+                  </Button>
+                )}
+              </div>
+
+              <Button
+                disabled={!isButtonEnabled}
+                onClick={() => handleSubmit(value)}
+                className={`border-0 p-3 w-12 h-12 font-bold rounded-xl transition-all-smooth shadow-lg ${
+                  !isButtonEnabled 
+                    ? "cursor-not-allowed opacity-50 bg-muted" 
+                    : "cursor-pointer bg-gradient-skyblue-lavender hover:scale-105 active:scale-95 shadow-glow hover-lift text-black"
+                }`}
+              >
+                <ArrowUp className="w-5 h-5" />
+              </Button>
+            </div>
+          </div>
         </div>
       </motion.div>
     </motion.div>

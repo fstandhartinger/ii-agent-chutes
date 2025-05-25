@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Check } from "lucide-react";
+import { Check, User, Bot } from "lucide-react";
 
 import Action from "@/components/action";
 import Markdown from "@/components/markdown";
@@ -45,9 +45,10 @@ const ChatMessage = ({
   handleFileUpload,
 }: ChatMessageProps) => {
   return (
-    <div className="col-span-4">
+    <div className="flex flex-col h-full bg-glass-dark rounded-2xl border border-white/10 overflow-hidden">
+      {/* Messages Container */}
       <motion.div
-        className="p-4 pt-0 w-full h-full max-h-[calc(100vh-230px)] overflow-y-auto relative"
+        className="flex-1 p-4 md:p-6 overflow-y-auto space-y-4 md:space-y-6 mobile-chat-messages"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.2, duration: 0.3 }}
@@ -55,117 +56,131 @@ const ChatMessage = ({
         {messages.map((message, index) => (
           <motion.div
             key={message.id}
-            className={`mb-4 ${
-              message.role === "user" ? "text-right" : "text-left"
+            className={`flex gap-3 md:gap-4 ${
+              message.role === "user" ? "flex-row-reverse" : "flex-row"
             }`}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 * index, duration: 0.3 }}
+            transition={{ delay: 0.05 * index, duration: 0.4 }}
           >
-            {message.files && message.files.length > 0 && (
-              <div className="flex flex-col gap-2 mb-2">
-                {message.files.map((fileName, fileIndex) => {
-                  // Check if the file is an image
-                  const isImage =
-                    fileName.match(
-                      /\.(jpeg|jpg|gif|png|webp|svg|heic|bmp)$/i
-                    ) !== null;
+            {/* Avatar */}
+            <div className={`flex-shrink-0 w-8 h-8 md:w-10 md:h-10 rounded-xl flex items-center justify-center ${
+              message.role === "user" 
+                ? "bg-gradient-to-br from-blue-500 to-purple-500 shadow-glow" 
+                : "bg-gradient-to-br from-emerald-500 to-blue-500 shadow-glow-purple"
+            }`}>
+              {message.role === "user" ? (
+                <User className="w-4 h-4 md:w-5 md:h-5 text-white" />
+              ) : (
+                <Bot className="w-4 h-4 md:w-5 md:h-5 text-white" />
+              )}
+            </div>
 
-                  if (
-                    isImage &&
-                    message.fileContents &&
-                    message.fileContents[fileName]
-                  ) {
-                    return (
-                      <div
-                        key={`${message.id}-file-${fileIndex}`}
-                        className="inline-block ml-auto rounded-3xl overflow-hidden max-w-[320px]"
-                      >
-                        <div className="w-40 h-40 rounded-xl overflow-hidden">
-                          <img
-                            src={message.fileContents[fileName]}
-                            alt={fileName}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                      </div>
-                    );
-                  }
+            {/* Message Content */}
+            <div className={`flex-1 min-w-0 ${message.role === "user" ? "text-right" : "text-left"}`}>
+              {/* File Attachments */}
+              {message.files && message.files.length > 0 && (
+                <div className={`flex flex-wrap gap-2 mb-3 ${message.role === "user" ? "justify-end" : "justify-start"}`}>
+                  {message.files.map((fileName, fileIndex) => {
+                    const isImage = fileName.match(/\.(jpeg|jpg|gif|png|webp|svg|heic|bmp)$/i) !== null;
 
-                  // For non-image files, use the existing code
-                  const { IconComponent, bgColor, label } =
-                    getFileIconAndColor(fileName);
-
-                  return (
-                    <div
-                      key={`${message.id}-file-${fileIndex}`}
-                      className="inline-block ml-auto bg-[#35363a] text-white rounded-2xl px-4 py-3 border border-gray-700 shadow-sm"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`flex items-center justify-center w-12 h-12 ${bgColor} rounded-xl`}
+                    if (isImage && message.fileContents && message.fileContents[fileName]) {
+                      return (
+                        <motion.div
+                          key={`${message.id}-file-${fileIndex}`}
+                          className="relative group"
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: 0.1 * fileIndex }}
                         >
-                          <IconComponent className="size-6 text-white" />
+                          <div className="w-32 h-32 md:w-40 md:h-40 rounded-xl overflow-hidden bg-glass border border-white/20 shadow-lg">
+                            <img
+                              src={message.fileContents[fileName]}
+                              alt={fileName}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all-smooth rounded-xl" />
+                        </motion.div>
+                      );
+                    }
+
+                    const { IconComponent, bgColor, label } = getFileIconAndColor(fileName);
+
+                    return (
+                      <motion.div
+                        key={`${message.id}-file-${fileIndex}`}
+                        className="flex items-center gap-3 bg-glass border border-white/20 rounded-xl px-3 py-2 shadow-lg backdrop-blur-sm max-w-xs"
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: 0.1 * fileIndex }}
+                      >
+                        <div className={`flex items-center justify-center w-8 h-8 ${bgColor} rounded-lg shadow-sm`}>
+                          <IconComponent className="w-4 h-4 text-white" />
                         </div>
-                        <div className="flex flex-col">
-                          <span className="text-base font-medium">
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-sm font-medium text-white truncate">
                             {fileName}
                           </span>
-                          <span className="text-left text-sm text-gray-500">
-                            {label}
-                          </span>
+                          <span className="text-xs text-muted-foreground">{label}</span>
                         </div>
-                      </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Text Content */}
+              {message.content && (
+                <motion.div
+                  className={`inline-block max-w-full md:max-w-[85%] ${
+                    message.role === "user"
+                      ? "bg-gradient-to-br from-blue-500/20 to-purple-500/20 backdrop-blur-sm border border-blue-500/30 rounded-2xl p-3 md:p-4 text-white shadow-lg"
+                      : "text-white"
+                  }`}
+                  initial={{ scale: 0.95, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{
+                    type: "spring",
+                    stiffness: 400,
+                    damping: 25,
+                    delay: 0.1
+                  }}
+                >
+                  {message.role === "user" ? (
+                    <div className="text-sm md:text-base leading-relaxed">{message.content}</div>
+                  ) : (
+                    <div className="prose prose-invert prose-sm md:prose-base max-w-none">
+                      <Markdown>{message.content}</Markdown>
                     </div>
-                  );
-                })}
-              </div>
-            )}
+                  )}
+                </motion.div>
+              )}
 
-            {message.content && (
-              <motion.div
-                className={`inline-block text-left rounded-lg ${
-                  message.role === "user"
-                    ? "bg-[#35363a] p-3 text-white max-w-[80%] border border-[#3A3B3F] shadow-sm"
-                    : "text-white"
-                }`}
-                initial={{ scale: 0.9 }}
-                animate={{ scale: 1 }}
-                transition={{
-                  type: "spring",
-                  stiffness: 500,
-                  damping: 30,
-                }}
-              >
-                {message.role === "user" ? (
-                  message.content
-                ) : (
-                  <Markdown>{message.content}</Markdown>
-                )}
-              </motion.div>
-            )}
-
-            {message.action && (
-              <motion.div
-                className="mt-2"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 * index, duration: 0.3 }}
-              >
-                <Action
-                  workspaceInfo={workspaceInfo}
-                  type={message.action.type}
-                  value={message.action.data}
-                  onClick={() => handleClickAction(message.action, true)}
-                />
-              </motion.div>
-            )}
+              {/* Action Component */}
+              {message.action && (
+                <motion.div
+                  className="mt-3"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2, duration: 0.3 }}
+                >
+                  <Action
+                    workspaceInfo={workspaceInfo}
+                    type={message.action.type}
+                    value={message.action.data}
+                    onClick={() => handleClickAction(message.action, true)}
+                  />
+                </motion.div>
+              )}
+            </div>
           </motion.div>
         ))}
 
+        {/* Loading Indicator */}
         {isLoading && (
           <motion.div
-            className="mb-4 text-left"
+            className="flex gap-3 md:gap-4"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{
@@ -174,8 +189,11 @@ const ChatMessage = ({
               damping: 30,
             }}
           >
+            <div className="flex-shrink-0 w-8 h-8 md:w-10 md:h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-blue-500 shadow-glow-purple flex items-center justify-center">
+              <Bot className="w-4 h-4 md:w-5 md:h-5 text-white" />
+            </div>
             <motion.div
-              className="inline-block p-3 text-left rounded-lg bg-neutral-800/90 text-white backdrop-blur-sm"
+              className="flex-1 bg-glass border border-white/20 rounded-2xl p-3 md:p-4 backdrop-blur-sm shadow-lg"
               initial={{ scale: 0.95 }}
               animate={{ scale: 1 }}
               transition={{
@@ -186,33 +204,46 @@ const ChatMessage = ({
             >
               <div className="flex items-center gap-3">
                 <div className="flex space-x-2">
-                  <div className="w-2 h-2 bg-white rounded-full animate-[dot-bounce_1.2s_ease-in-out_infinite_0ms]" />
-                  <div className="w-2 h-2 bg-white rounded-full animate-[dot-bounce_1.2s_ease-in-out_infinite_200ms]" />
-                  <div className="w-2 h-2 bg-white rounded-full animate-[dot-bounce_1.2s_ease-in-out_infinite_400ms]" />
+                  <div className="w-2 h-2 bg-blue-400 rounded-full animate-[dot-bounce_1.2s_ease-in-out_infinite_0ms]" />
+                  <div className="w-2 h-2 bg-purple-400 rounded-full animate-[dot-bounce_1.2s_ease-in-out_infinite_200ms]" />
+                  <div className="w-2 h-2 bg-emerald-400 rounded-full animate-[dot-bounce_1.2s_ease-in-out_infinite_400ms]" />
                 </div>
+                <span className="text-sm text-muted-foreground">fubea is thinking...</span>
               </div>
             </motion.div>
           </motion.div>
         )}
 
+        {/* Completion Indicator */}
         {isCompleted && (
-          <div className="flex gap-x-2 items-center bg-[#25BA3B1E] text-green-600 text-sm p-2 rounded-full">
-            <Check className="size-4" />
-            <span>fubea has completed the current task.</span>
-          </div>
+          <motion.div
+            className="flex items-center gap-3 bg-gradient-to-r from-emerald-500/20 to-green-500/20 border border-emerald-500/30 rounded-2xl p-3 md:p-4 backdrop-blur-sm shadow-lg"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.3 }}
+          >
+            <div className="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center shadow-lg">
+              <Check className="w-4 h-4 text-white" />
+            </div>
+            <span className="text-emerald-400 font-medium text-sm md:text-base">
+              fubea has completed the current task.
+            </span>
+          </motion.div>
         )}
 
         <div ref={messagesEndRef} />
       </motion.div>
+
+      {/* Input Section */}
       <motion.div
-        className="sticky bottom-0 left-0 w-full"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.2, duration: 0.3 }}
+        className="border-t border-white/10 bg-black/20 backdrop-blur-sm"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4, duration: 0.3 }}
       >
         <QuestionInput
-          className="p-4 pb-0 w-full max-w-none"
-          textareaClassName="h-30 w-full"
+          className="p-3 md:p-4 w-full max-w-none"
+          textareaClassName="text-sm md:text-base"
           placeholder="Ask me anything..."
           value={currentQuestion}
           setValue={setCurrentQuestion}
