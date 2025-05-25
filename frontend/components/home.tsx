@@ -22,6 +22,7 @@ import { v4 as uuidv4 } from "uuid";
 import { useRouter, useSearchParams } from "next/navigation";
 import SidebarButton from "@/components/sidebar-button";
 import { useChutes } from "@/providers/chutes-provider";
+import Examples from "@/components/examples";
 
 import Browser from "@/components/browser";
 import CodeEditor from "@/components/code-editor";
@@ -268,6 +269,60 @@ export default function Home() {
     },
     50
   );
+
+  const handleExampleClick = async (text: string, isDeepResearch: boolean, fileUrl?: string) => {
+    // Set the question text
+    setCurrentQuestion(text);
+    
+    // Set deep research if needed
+    if (isDeepResearch) {
+      setIsUseDeepResearch(true);
+    }
+    
+    // Handle file download and upload if fileUrl is provided
+    if (fileUrl) {
+      try {
+        setIsUploading(true);
+        
+        // Download the file
+        const response = await fetch(fileUrl);
+        if (!response.ok) {
+          throw new Error(`Failed to download file: ${response.statusText}`);
+        }
+        
+        const blob = await response.blob();
+        const fileName = fileUrl.split('/').pop() || 'downloaded_file.pdf';
+        
+        // Create a File object
+        const file = new File([blob], fileName, { type: blob.type });
+        
+        // Create a fake file input event
+        const dataTransfer = new DataTransfer();
+        dataTransfer.items.add(file);
+        
+        const fakeEvent = {
+          target: {
+            files: dataTransfer.files,
+            value: ""
+          }
+        } as unknown as React.ChangeEvent<HTMLInputElement>;
+        
+        // Upload the file
+        await handleFileUpload(fakeEvent);
+        
+        setIsUploading(false);
+      } catch (error) {
+        console.error("Error downloading/uploading file:", error);
+        toast.error("Failed to download and attach file");
+        setIsUploading(false);
+      }
+    }
+    
+    // Submit the question
+    setTimeout(() => {
+      handleQuestionSubmit(text);
+    }, fileUrl ? 1000 : 0); // Wait a bit if we're uploading a file
+  };
 
   const handleQuestionSubmit = async (newQuestion: string) => {
     if (!newQuestion.trim() || isLoading) return;
@@ -980,28 +1035,45 @@ export default function Home() {
           <LayoutGroup>
             <AnimatePresence mode="wait">
               {!isInChatView ? (
-                <motion.div
-                  key="input-view"
-                  className="flex items-center justify-center px-4 pb-8"
-                  initial={{ opacity: 0, y: 30 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.6 }}
-                >
-                  <QuestionInput
-                    placeholder="Give fubea a task to work on..."
-                    value={currentQuestion}
-                    setValue={setCurrentQuestion}
-                    handleKeyDown={handleKeyDown}
-                    handleSubmit={handleQuestionSubmit}
-                    handleFileUpload={handleFileUpload}
-                    isUploading={isUploading}
-                    isUseDeepResearch={isUseDeepResearch}
-                    setIsUseDeepResearch={setIsUseDeepResearch}
-                    isDisabled={!isSocketConnected}
-                    className="w-full max-w-4xl"
-                  />
-                </motion.div>
+                <>
+                  <motion.div
+                    key="input-view"
+                    className="flex items-center justify-center px-4 pb-8"
+                    initial={{ opacity: 0, y: 30 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.6 }}
+                  >
+                    <QuestionInput
+                      placeholder="Give fubea a task to work on..."
+                      value={currentQuestion}
+                      setValue={setCurrentQuestion}
+                      handleKeyDown={handleKeyDown}
+                      handleSubmit={handleQuestionSubmit}
+                      handleFileUpload={handleFileUpload}
+                      isUploading={isUploading}
+                      isUseDeepResearch={isUseDeepResearch}
+                      setIsUseDeepResearch={setIsUseDeepResearch}
+                      isDisabled={!isSocketConnected}
+                      className="w-full max-w-4xl"
+                    />
+                  </motion.div>
+                  
+                  {/* Examples Section */}
+                  <motion.div
+                    key="examples-view"
+                    className="flex items-center justify-center px-4 pb-8"
+                    initial={{ opacity: 0, y: 30 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.6, delay: 0.2 }}
+                  >
+                    <Examples
+                      onExampleClick={handleExampleClick}
+                      className="w-full max-w-4xl"
+                    />
+                  </motion.div>
+                </>
               ) : (
                 <motion.div
                   key="chat-view"
