@@ -99,13 +99,10 @@ export function ChutesProvider({ children }: { children: ReactNode }) {
     setSelectedModelState(model);
     localStorage.setItem("selectedModelId", model.id);
     
-    // Show notification
-    alert(`Switched to ${model.name}! Page will reload to apply changes.`);
-    
     // Reload the page to re-establish WebSocket connection with the new setting
     setTimeout(() => {
       window.location.reload();
-    }, 500);
+    }, 100);
   };
 
   // Keep backward compatibility for the toggle function

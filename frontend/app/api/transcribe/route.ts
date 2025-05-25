@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Use CHUTES API to transcribe audio
-    const apiToken = process.env.CHUTES_API_KEY;
+    const apiToken = process.env.CHUTES_API_TOKEN;
     
     if (!apiToken) {
       return NextResponse.json({ error: 'CHUTES API token not configured' }, { status: 500 });
