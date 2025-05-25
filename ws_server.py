@@ -27,7 +27,7 @@ from fastapi import (
     HTTPException,
 )
 
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 import anyio
 import base64
@@ -50,6 +50,11 @@ from ii_agent.llm.token_counter import TokenCounter
 from ii_agent.db.manager import DatabaseManager
 from ii_agent.tools import get_system_tools
 from ii_agent.prompts.system_prompt import SYSTEM_PROMPT
+
+import zipfile
+import tempfile
+from urllib.parse import quote
+import subprocess
 
 MAX_OUTPUT_TOKENS_PER_TURN = 32768
 MAX_TURNS = 200
@@ -877,6 +882,229 @@ async def get_file_content_endpoint(request: Request):
         logger.error(f"Error reading file: {str(e)}")
         return JSONResponse(
             status_code=500, content={"error": f"Error reading file: {str(e)}"}
+        )
+
+
+@app.post("/api/files/download")
+async def download_file_endpoint(request: Request):
+    """API endpoint for downloading a single file from a workspace.
+
+    Expects a JSON payload with:
+    - workspace_id: UUID of the workspace
+    - path: Path to the file within the workspace
+    """
+    try:
+        data = await request.json()
+        workspace_id = data.get("workspace_id")
+        file_path = data.get("path")
+
+        if not workspace_id:
+            return JSONResponse(
+                status_code=400, content={"error": "workspace_id is required"}
+            )
+
+        if not file_path:
+            return JSONResponse(
+                status_code=400, content={"error": "path is required"}
+            )
+
+        # Find the workspace path for this session
+        workspace_path = Path(global_args.workspace).resolve() / workspace_id
+        if not workspace_path.exists():
+            return JSONResponse(
+                status_code=404,
+                content={"error": f"Workspace not found: {workspace_id}"},
+            )
+
+        # Remove /var/data prefix if present and construct full path
+        relative_path = file_path.replace("/var/data/", "").replace("/var/data", "")
+        full_path = workspace_path / relative_path if relative_path else workspace_path
+
+        if not full_path.exists():
+            return JSONResponse(
+                status_code=404,
+                content={"error": f"File not found: {file_path}"},
+            )
+
+        if not full_path.is_file():
+            return JSONResponse(
+                status_code=400,
+                content={"error": f"Path is not a file: {file_path}"},
+            )
+
+        # Return the file for download
+        filename = full_path.name
+        return FileResponse(
+            path=str(full_path),
+            filename=filename,
+            media_type='application/octet-stream'
+        )
+
+    except Exception as e:
+        logger.error(f"Error downloading file: {str(e)}")
+        return JSONResponse(
+            status_code=500, content={"error": f"Error downloading file: {str(e)}"}
+        )
+
+
+@app.post("/api/files/download-zip")
+async def download_zip_endpoint(request: Request):
+    """API endpoint for downloading a folder as a zip file from a workspace.
+
+    Expects a JSON payload with:
+    - workspace_id: UUID of the workspace
+    - path: Path to the folder within the workspace
+    """
+    try:
+        data = await request.json()
+        workspace_id = data.get("workspace_id")
+        folder_path = data.get("path")
+
+        if not workspace_id:
+            return JSONResponse(
+                status_code=400, content={"error": "workspace_id is required"}
+            )
+
+        if not folder_path:
+            return JSONResponse(
+                status_code=400, content={"error": "path is required"}
+            )
+
+        # Find the workspace path for this session
+        workspace_path = Path(global_args.workspace).resolve() / workspace_id
+        if not workspace_path.exists():
+            return JSONResponse(
+                status_code=404,
+                content={"error": f"Workspace not found: {workspace_id}"},
+            )
+
+        # Remove /var/data prefix if present and construct full path
+        relative_path = folder_path.replace("/var/data/", "").replace("/var/data", "")
+        full_path = workspace_path / relative_path if relative_path else workspace_path
+
+        if not full_path.exists():
+            return JSONResponse(
+                status_code=404,
+                content={"error": f"Path not found: {folder_path}"},
+            )
+
+        if not full_path.is_dir():
+            return JSONResponse(
+                status_code=400,
+                content={"error": f"Path is not a directory: {folder_path}"},
+            )
+
+        # Create a temporary zip file
+        temp_zip = tempfile.NamedTemporaryFile(delete=False, suffix='.zip')
+        temp_zip.close()
+
+        try:
+            with zipfile.ZipFile(temp_zip.name, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                # Walk through the directory and add all files
+                for root, dirs, files in os.walk(full_path):
+                    # Skip hidden directories
+                    dirs[:] = [d for d in dirs if not d.startswith('.')]
+                    
+                    for file in files:
+                        # Skip hidden files
+                        if file.startswith('.'):
+                            continue
+                            
+                        file_path = Path(root) / file
+                        # Calculate the archive name (relative to the folder being zipped)
+                        arcname = file_path.relative_to(full_path)
+                        zipf.write(file_path, arcname)
+
+            # Determine the zip filename
+            folder_name = full_path.name if full_path.name else "workspace"
+            zip_filename = f"{folder_name}.zip"
+
+            # Return the zip file for download
+            return FileResponse(
+                path=temp_zip.name,
+                filename=zip_filename,
+                media_type='application/zip',
+                background=lambda: os.unlink(temp_zip.name)  # Clean up temp file after response
+            )
+
+        except Exception as e:
+            # Clean up temp file on error
+            if os.path.exists(temp_zip.name):
+                os.unlink(temp_zip.name)
+            raise e
+
+    except Exception as e:
+        logger.error(f"Error creating zip download: {str(e)}")
+        return JSONResponse(
+            status_code=500, content={"error": f"Error creating zip download: {str(e)}"}
+        )
+
+
+@app.post("/api/gaia/run")
+async def run_gaia_benchmark(request: Request):
+    """API endpoint to run GAIA benchmark evaluation."""
+    try:
+        data = await request.json()
+        set_to_run = data.get("set_to_run", "validation")
+        run_name = data.get("run_name", f"api-run-{uuid.uuid4()}")
+        max_tasks = data.get("max_tasks", 5)  # Limit for demo/testing
+        
+        # Create output directory
+        output_dir = Path("output") / set_to_run
+        output_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Run the benchmark
+        cmd = [
+            "python", "run_gaia.py",
+            "--run-name", run_name,
+            "--set-to-run", set_to_run,
+            "--end-index", str(max_tasks),
+            "--minimize-stdout-logs"
+        ]
+        
+        logger.info(f"Running GAIA benchmark: {' '.join(cmd)}")
+        
+        # Run in background and capture output
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)  # 30 min timeout
+        
+        if result.returncode == 0:
+            # Read results file
+            results_file = output_dir / f"{run_name}.jsonl"
+            if results_file.exists():
+                results = []
+                with open(results_file, 'r') as f:
+                    for line in f:
+                        if line.strip():
+                            results.append(json.loads(line))
+                
+                # Calculate basic statistics
+                total_tasks = len(results)
+                completed_tasks = len([r for r in results if r.get('prediction')])
+                
+                return {
+                    "status": "success", 
+                    "results": results,
+                    "summary": {
+                        "total_tasks": total_tasks,
+                        "completed_tasks": completed_tasks,
+                        "completion_rate": completed_tasks / total_tasks if total_tasks > 0 else 0,
+                        "run_name": run_name,
+                        "set_to_run": set_to_run
+                    }
+                }
+            else:
+                return {"status": "error", "message": "Results file not found"}
+        else:
+            logger.error(f"GAIA benchmark failed: {result.stderr}")
+            return {"status": "error", "message": result.stderr or "Unknown error occurred"}
+        
+    except subprocess.TimeoutExpired:
+        return {"status": "error", "message": "Benchmark execution timed out (30 minutes)"}
+    except Exception as e:
+        logger.error(f"Error running GAIA benchmark: {str(e)}")
+        return JSONResponse(
+            status_code=500, 
+            content={"error": f"Error running GAIA benchmark: {str(e)}"}
         )
 
 

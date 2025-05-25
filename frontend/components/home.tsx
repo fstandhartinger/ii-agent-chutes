@@ -43,6 +43,8 @@ import {
 import ChatMessage from "./chat-message";
 import ImageBrowser from "./image-browser";
 import WebsiteViewer from "./website-viewer";
+import InstallPrompt from "./install-prompt";
+import PWAHandler from "./pwa-handler";
 
 export default function Home() {
   const xtermRef = useRef<XTerm | null>(null);
@@ -874,6 +876,9 @@ export default function Home() {
 
   return (
     <div className="flex flex-col min-h-screen bg-background relative overflow-hidden">
+      {/* PWA Handler */}
+      <PWAHandler />
+      
       {/* Background Elements */}
       <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-purple-500/5 to-emerald-500/5" />
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse" />
@@ -1018,7 +1023,13 @@ export default function Home() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.6 }}
               >
-                World Leading Deep Research Agent. For Free.
+                <span 
+                  className="cursor-pointer hover:text-blue-400 transition-colors underline decoration-dotted underline-offset-4"
+                  onClick={() => router.push('/gaia')}
+                  title="Run GAIA Benchmark"
+                >
+                  Leading
+                </span> Deep Research Agent. For Free.
               </motion.p>
             </div>
           </motion.div>
@@ -1090,7 +1101,7 @@ export default function Home() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
                   transition={{ duration: 0.6 }}
-                  className="w-full flex-1 flex flex-col md:grid md:grid-cols-10 gap-4 px-4 pb-4 mobile-safe-area"
+                  className="w-full flex-1 flex flex-col md:grid md:grid-cols-10 gap-4 px-4 pb-4 mobile-safe-area mobile-chat-view"
                 >
                   {/* Chat Messages Panel */}
                   <div className={`${isMobileDetailPaneOpen ? 'hidden' : 'flex'} md:flex md:order-1 md:col-span-4 flex-col flex-1 min-h-0`}>
@@ -1337,6 +1348,9 @@ export default function Home() {
           </div>
         </motion.footer>
       )}
+      
+      {/* Install Prompt */}
+      <InstallPrompt />
     </div>
   );
 }

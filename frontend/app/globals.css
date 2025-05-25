@@ -364,6 +364,14 @@
   opacity: 1;
 }
 
+/* Utility classes */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 /* Mobile-specific styles */
 @media (max-width: 640px) {
   .mobile-chat-layout {
@@ -389,5 +397,46 @@
 
   .mobile-header-safe {
     padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  /* Ensure chat view takes full height on mobile */
+  .mobile-chat-view {
+    height: 100vh !important;
+    height: 100dvh !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  /* Chat messages panel should be flexible */
+  .mobile-chat-panel {
+    flex: 1 !important;
+    min-height: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  /* Messages container should be scrollable */
+  .mobile-messages-container {
+    flex: 1 !important;
+    overflow-y: auto !important;
+    min-height: 0 !important;
+  }
+
+  /* Input section should stick to bottom */
+  .mobile-input-section {
+    flex-shrink: 0 !important;
+    position: sticky !important;
+    bottom: 0 !important;
+    z-index: 50 !important;
+    background: rgba(0, 0, 0, 0.9) !important;
+    backdrop-filter: blur(10px) !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+    padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+  }
+
+  /* Ensure proper spacing for mobile keyboard */
+  .mobile-viewport-height {
+    height: 100vh !important;
+    height: 100dvh !important;
   }
 }

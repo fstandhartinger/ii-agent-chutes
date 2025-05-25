@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import Providers from "@/providers";
 import { Inter } from "next/font/google";
+import PWAHandler from "@/components/pwa-handler";
 
 const inter = Inter({ 
   subsets: ["latin"],
@@ -41,7 +42,10 @@ export default function RootLayout({
         <link rel="manifest" href="/favicon/site.webmanifest" />
       </head>
       <body className={`antialiased ${inter.variable} font-inter`}>
-        <Providers>{children}</Providers>
+        <Providers>
+          <PWAHandler />
+          {children}
+        </Providers>
       </body>
     </html>
   );

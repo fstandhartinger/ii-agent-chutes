@@ -8,9 +8,11 @@ import {
   File,
   Folder,
   ChevronRight as ChevronRightIcon,
+  Download,
 } from "lucide-react";
 import { useRef, useState, useEffect } from "react";
 import { ActionStep, TAB } from "@/typings/agent";
+import { Button } from "./ui/button";
 
 const ROOT_NAME = "fubea";
 
@@ -204,6 +206,75 @@ const CodeEditor = ({
     isReplayMode,
   ]);
 
+  const downloadFile = async (filePath: string) => {
+    try {
+      const response = await fetch("/api/files/download", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ path: filePath }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to download file");
+      }
+
+      // Create a blob from the response
+      const blob = await response.blob();
+      
+      // Get filename from the path
+      const filename = filePath.split('/').pop() || 'download';
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error("Error downloading file:", error);
+    }
+  };
+
+  const downloadFolderAsZip = async (folderPath: string) => {
+    try {
+      const response = await fetch("/api/files/download-zip", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ path: folderPath }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to download folder as zip");
+      }
+
+      // Create a blob from the response
+      const blob = await response.blob();
+      
+      // Get folder name from the path
+      const folderName = folderPath.split('/').pop() || 'download';
+      const filename = `${folderName}.zip`;
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error("Error downloading folder as zip:", error);
+    }
+  };
+
   const renderFileTree = (items: FileStructure[]) => {
     // Sort items: folders first, then files, both in alphabetical order
     const sortedItems = [...items].sort((a, b) => {
@@ -222,18 +293,32 @@ const CodeEditor = ({
         const isExpanded = expandedFolders.has(fullPath);
         return (
           <div key={fullPath}>
-            <button
-              className="flex items-center gap-2 w-full px-2 py-1 hover:bg-neutral-700 text-left text-sm"
-              onClick={() => toggleFolder(fullPath)}
-            >
-              {isExpanded ? (
-                <ChevronDown className="h-4 w-4" />
-              ) : (
-                <ChevronRight className="h-4 w-4" />
-              )}
-              <Folder className="h-4 w-4" />
-              {item.name}
-            </button>
+            <div className="flex items-center justify-between group hover:bg-neutral-700">
+              <button
+                className="flex items-center gap-2 flex-1 px-2 py-1 text-left text-sm"
+                onClick={() => toggleFolder(fullPath)}
+              >
+                {isExpanded ? (
+                  <ChevronDown className="h-4 w-4" />
+                ) : (
+                  <ChevronRight className="h-4 w-4" />
+                )}
+                <Folder className="h-4 w-4" />
+                {item.name}
+              </button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="opacity-0 group-hover:opacity-100 transition-opacity p-1 h-6 w-6 mr-1"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  downloadFolderAsZip(fullPath);
+                }}
+                title="Download as ZIP"
+              >
+                <Download className="h-3 w-3" />
+              </Button>
+            </div>
             {isExpanded && item.children && (
               <div className="ml-4">{renderFileTree(item.children)}</div>
             )}
@@ -242,20 +327,33 @@ const CodeEditor = ({
       }
 
       return (
-        <button
-          key={fullPath}
-          className={`flex items-center gap-2 w-full px-2 py-1 hover:bg-neutral-700 text-left text-sm ${
-            activeFile === fullPath
-              ? "bg-neutral-700 text-white"
-              : "text-neutral-400"
-          }`}
-          onClick={() => {
-            setActiveFile?.(fullPath);
-          }}
-        >
-          <File className="h-4 w-4" />
-          {item.name}
-        </button>
+        <div key={fullPath} className="flex items-center justify-between group hover:bg-neutral-700">
+          <button
+            className={`flex items-center gap-2 flex-1 px-2 py-1 text-left text-sm ${
+              activeFile === fullPath
+                ? "bg-neutral-700 text-white"
+                : "text-neutral-400"
+            }`}
+            onClick={() => {
+              setActiveFile?.(fullPath);
+            }}
+          >
+            <File className="h-4 w-4" />
+            {item.name}
+          </button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 h-6 w-6 mr-1"
+            onClick={(e) => {
+              e.stopPropagation();
+              downloadFile(fullPath);
+            }}
+            title="Download file"
+          >
+            <Download className="h-3 w-3" />
+          </Button>
+        </div>
       );
     });
   };

@@ -1,9 +1,10 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Check, Copy } from "lucide-react";
+import { Check, Copy, Download } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import jsPDF from 'jspdf';
 
 import Action from "@/components/action";
 import Markdown from "@/components/markdown";
@@ -60,11 +61,37 @@ const ChatMessage = ({
     }
   };
 
+  const downloadMessageAsPDF = (content: string, messageId: string) => {
+    try {
+      const pdf = new jsPDF();
+      
+      // Set font and add title
+      pdf.setFontSize(16);
+      pdf.text('Chat Message', 20, 20);
+      
+      // Add timestamp
+      pdf.setFontSize(10);
+      pdf.text(`Generated: ${new Date().toLocaleString()}`, 20, 30);
+      
+      // Add content with text wrapping
+      pdf.setFontSize(12);
+      const splitText = pdf.splitTextToSize(content, 170);
+      pdf.text(splitText, 20, 45);
+      
+      // Save the PDF
+      pdf.save(`message-${messageId}.pdf`);
+      toast.success("PDF downloaded successfully");
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      toast.error("Failed to generate PDF");
+    }
+  };
+
   return (
-    <div className="flex flex-col h-full bg-glass-dark rounded-2xl border border-white/10 overflow-hidden">
+    <div className="flex flex-col h-full bg-glass-dark rounded-2xl border border-white/10 overflow-hidden mobile-chat-panel">
       {/* Messages Container */}
       <motion.div
-        className="flex-1 p-4 md:p-6 overflow-y-auto space-y-4 md:space-y-6 mobile-chat-messages chat-messages-container"
+        className="flex-1 p-4 md:p-6 overflow-y-auto space-y-4 md:space-y-6 mobile-chat-messages chat-messages-container mobile-messages-container"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.2, duration: 0.3 }}
@@ -198,10 +225,25 @@ const ChatMessage = ({
                       )}
                     </Button>
 
+                    {/* PDF Download Button - Only for long messages */}
+                    {message.content && message.content.length > 500 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="absolute top-1 right-8 z-10 bg-black/30 hover:bg-black/50 border border-white/20 p-1 h-6 w-6 rounded-md transition-all-smooth hover-lift message-copy-button"
+                        onClick={() => downloadMessageAsPDF(message.content || "", message.id)}
+                        title="Download as PDF"
+                      >
+                        <Download className="w-3 h-3 text-white/80" />
+                      </Button>
+                    )}
+
                     {message.role === "user" ? (
-                      <div className="text-sm md:text-base leading-relaxed pr-8">{message.content}</div>
+                      <div className={`text-sm md:text-base leading-relaxed ${message.content && message.content.length > 500 ? 'pr-16' : 'pr-8'}`}>
+                        {message.content}
+                      </div>
                     ) : (
-                      <div className="prose prose-invert prose-sm md:prose-base max-w-none pr-8">
+                      <div className={`prose prose-invert prose-sm md:prose-base max-w-none ${message.content && message.content.length > 500 ? 'pr-16' : 'pr-8'}`}>
                         <Markdown>{message.content}</Markdown>
                       </div>
                     )}
@@ -285,7 +327,7 @@ const ChatMessage = ({
 
       {/* Input Section */}
       <motion.div
-        className="border-t border-white/10 bg-black/20 backdrop-blur-sm"
+        className="border-t border-white/10 bg-black/20 backdrop-blur-sm mobile-input-section"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4, duration: 0.3 }}
