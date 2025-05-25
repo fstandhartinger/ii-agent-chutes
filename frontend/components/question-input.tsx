@@ -174,7 +174,7 @@ const QuestionInput = ({
         }
 
         // Fallback to direct API call if backend fails
-        const apiToken = process.env.NEXT_PUBLIC_CHUTES_API_TOKEN;
+        const apiToken = process.env.NEXT_PUBLIC_CHUTES_API_KEY;
         if (!apiToken) {
           console.error('CHUTES API token not found and backend transcription failed');
           setValue('Transcription failed: API token not configured');
@@ -423,23 +423,6 @@ const QuestionInput = ({
             {/* Bottom Controls */}
             <div className="absolute bottom-0 left-0 right-0 flex justify-between items-center p-4 bg-transparent">
               <div className="flex items-center gap-3">
-                {/* Microphone Button */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="bg-glass border border-white/20 hover:bg-white/10 w-11 h-11 rounded-xl transition-all-smooth hover-lift shadow-lg"
-                  onClick={handleMicrophoneClick}
-                  disabled={isUploading || isTranscribing}
-                >
-                  {isTranscribing ? (
-                    <Loader2 className="w-5 h-5 text-muted-foreground animate-spin" />
-                  ) : isRecording ? (
-                    <Square className="w-5 h-5 text-red-500" />
-                  ) : (
-                    <Mic className="w-5 h-5 text-muted-foreground" />
-                  )}
-                </Button>
-
                 {handleFileUpload && (
                   <label htmlFor="file-upload" className="cursor-pointer">
                     <Button
@@ -485,17 +468,36 @@ const QuestionInput = ({
                 )}
               </div>
 
-              <Button
-                disabled={!isButtonEnabled}
-                onClick={() => handleSubmit(value)}
-                className={`border-0 p-3 w-12 h-12 font-bold rounded-xl transition-all-smooth shadow-lg ${
-                  !isButtonEnabled 
-                    ? "cursor-not-allowed opacity-50 bg-muted" 
-                    : "cursor-pointer bg-gradient-skyblue-lavender hover:scale-105 active:scale-95 shadow-glow hover-lift text-black"
-                }`}
-              >
-                <ArrowUp className="w-5 h-5" />
-              </Button>
+              <div className="flex items-center gap-2">
+                {/* Microphone Button - moved inside prompt box, left of send button */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="p-2 hover:bg-white/10 transition-colors"
+                  onClick={handleMicrophoneClick}
+                  disabled={isUploading || isTranscribing}
+                >
+                  {isTranscribing ? (
+                    <Loader2 className="w-5 h-5 text-muted-foreground animate-spin" />
+                  ) : isRecording ? (
+                    <Square className="w-5 h-5 text-red-500" />
+                  ) : (
+                    <Mic className="w-5 h-5 text-muted-foreground hover:text-white transition-colors" />
+                  )}
+                </Button>
+
+                <Button
+                  disabled={!isButtonEnabled}
+                  onClick={() => handleSubmit(value)}
+                  className={`border-0 p-3 w-12 h-12 font-bold rounded-xl transition-all-smooth shadow-lg ${
+                    !isButtonEnabled 
+                      ? "cursor-not-allowed opacity-50 bg-muted" 
+                      : "cursor-pointer bg-gradient-skyblue-lavender hover:scale-105 active:scale-95 shadow-glow hover-lift text-black"
+                  }`}
+                >
+                  <ArrowUp className="w-5 h-5" />
+                </Button>
+              </div>
             </div>
           </div>
         </div>

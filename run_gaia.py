@@ -144,6 +144,7 @@ def load_gaia_dataset(use_raw_dataset: bool, set_to_run: str) -> Dataset:
         "data/gaia/GAIA.py",
         name="2023_all",
         split=set_to_run,
+        trust_remote_code=True,
     )
 
     eval_ds = eval_ds.rename_columns(

@@ -23,6 +23,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import SidebarButton from "@/components/sidebar-button";
 import { useChutes } from "@/providers/chutes-provider";
 import Examples from "@/components/examples";
+import ModelPicker from "@/components/model-picker";
 
 import Browser from "@/components/browser";
 import CodeEditor from "@/components/code-editor";
@@ -981,7 +982,9 @@ export default function Home() {
               </Button>
             </div>
           ) : (
-            <div className="flex-1" />
+            <div className="flex-1 flex justify-end">
+              <ModelPicker />
+            </div>
           )}
         </div>
         
