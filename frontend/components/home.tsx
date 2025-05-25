@@ -933,7 +933,27 @@ export default function Home() {
                         <TerminalIcon className="size-4" /> Terminal
                       </Button>
                     </div>
-                    {/* TODO: Implement a way to open VS Code if needed in the future */}
+                    <div className="flex gap-x-2">
+                      {process.env.NEXT_PUBLIC_VSCODE_URL && (
+                        <Button
+                          className="cursor-pointer hover:!bg-black"
+                          variant="outline"
+                          onClick={() => {
+                            const vscodeUrl = process.env.NEXT_PUBLIC_VSCODE_URL;
+                            if (workspaceInfo) {
+                              // Open VS Code server with the current workspace
+                              window.open(`${vscodeUrl}?folder=${encodeURIComponent(workspaceInfo)}`, '_blank');
+                            } else {
+                              // Open VS Code server without specific folder
+                              window.open(vscodeUrl, '_blank');
+                            }
+                          }}
+                          title="Open in VS Code"
+                        >
+                          <Code className="size-4" /> VS Code
+                        </Button>
+                      )}
+                    </div>
                   </div>
                   <Browser
                     className={

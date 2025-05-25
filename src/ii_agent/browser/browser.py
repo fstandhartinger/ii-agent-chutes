@@ -197,12 +197,23 @@ class Browser:
                         )
                         logger.info("Successfully launched browser in headless mode")
                     except Exception as e2:
-                        logger.error(f"Failed to launch browser in headless mode: {e2}")
-                        raise BrowserError(
-                            f"Failed to launch browser. This might be due to missing Playwright browsers. "
-                            f"Please run 'playwright install chromium' to install the required browser. "
-                            f"Original error: {e2}"
-                        ) from e2
+                        # Final fallback: try with minimal args
+                        logger.warning("Trying minimal browser launch configuration...")
+                        try:
+                            self.playwright_browser = await self.playwright.chromium.launch(
+                                headless=True,
+                                args=["--no-sandbox", "--disable-dev-shm-usage"]
+                            )
+                            logger.info("Successfully launched browser with minimal configuration")
+                        except Exception as e3:
+                            logger.error(f"Failed to launch browser with minimal configuration: {e3}")
+                            raise BrowserError(
+                                f"Failed to launch browser even with minimal configuration. "
+                                f"This might be due to missing Playwright browsers or system dependencies. "
+                                f"Please run 'python -m playwright install chromium' to install the required browser. "
+                                f"On server environments, system dependencies might not be available. "
+                                f"Errors: GUI mode: {e}, Headless mode: {e2}, Minimal mode: {e3}"
+                            ) from e3
 
         # Create context if needed
         if self.context is None:

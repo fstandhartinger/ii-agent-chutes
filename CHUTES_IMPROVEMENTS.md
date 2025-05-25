@@ -123,23 +123,33 @@ except Exception as e:
 
 ### For Render.com or Similar Platforms
 
-1. **Add to your build script:**
+**Recommended Build Commands:**
+
+1. **Shell script (recommended):**
 ```bash
-# Install Playwright browsers during build
-python -m playwright install chromium
-python -m playwright install-deps chromium || echo "Warning: Could not install system dependencies"
+chmod +x scripts/render_build_safe.sh && ./scripts/render_build_safe.sh
 ```
 
-2. **Or use the provided script:**
+2. **Python script (alternative):**
 ```bash
-chmod +x scripts/setup_deployment.sh
-./scripts/setup_deployment.sh
+python scripts/safe_build.py
 ```
 
-3. **For Python-based deployment:**
-```python
-# Run during deployment
-python scripts/install_playwright.py
+**Alternative Build Commands:**
+
+3. **Simple approach (may fail on system dependencies):**
+```bash
+pip install --upgrade pip && pip install . && python -m playwright install chromium && python -m playwright install-deps chromium
+```
+
+4. **Safe inline approach:**
+```bash
+pip install --upgrade pip && pip install . && python -m playwright install chromium && python -m playwright install-deps chromium 2>/dev/null || echo "Warning: System dependencies not available"
+```
+
+5. **Using the general deployment script:**
+```bash
+chmod +x scripts/setup_deployment.sh && ./scripts/setup_deployment.sh
 ```
 
 ### Environment Variables
@@ -198,7 +208,182 @@ The improvements include enhanced logging to help monitor tool calling behavior:
 3. Try headless mode explicitly
 4. Verify sufficient disk space and memory
 
+### Build Failures on Render.com
+**Error: "su: Authentication failure" during Playwright installation**
+
+This error occurs when Playwright tries to install system dependencies but doesn't have root privileges. This is expected on hosting platforms.
+
+**Solutions:**
+1. **Use the safe build script** (recommended):
+   ```bash
+   chmod +x scripts/render_build_safe.sh && ./scripts/render_build_safe.sh
+   ```
+
+2. **Modify your build command** to handle the failure gracefully:
+   ```bash
+   pip install --upgrade pip && pip install . && python -m playwright install chromium && python -m playwright install-deps chromium 2>/dev/null || echo "System dependencies not available - using fallback mode"
+   ```
+
+3. **The application will automatically fall back** to minimal browser configuration when system dependencies are missing.
+
+**What happens when system dependencies are missing:**
+- The browser will launch in headless mode with minimal arguments
+- Some advanced browser features may not work
+- Basic web browsing and screenshot functionality will still work
+- The application logs will show fallback mode activation
+
 ### Performance Issues
 1. Monitor token usage and context length
 2. Check for excessive tool call loops
-3. Verify browser resource usage 
+3. Verify browser resource usage
+
+## VS Code Server Integration
+
+### Overview
+
+The frontend includes a disabled "Open in VS Code" button that can be enabled by running a VS Code server (code-server) alongside your application. This provides a web-based VS Code interface accessible through the browser.
+
+### Implementation Options
+
+#### Option 1: Enhanced Build Script (Recommended)
+
+Use the enhanced build script that includes code-server installation:
+
+```bash
+chmod +x scripts/render_build_with_vscode.sh && ./scripts/render_build_with_vscode.sh
+```
+
+This script:
+- Installs all dependencies (Python packages, Playwright browsers)
+- Downloads and installs code-server
+- Configures code-server for web access
+- Creates startup scripts
+
+#### Option 2: Separate Installation
+
+Install code-server separately during build:
+
+```bash
+# Your existing build command
+pip install --upgrade pip && pip install . && python -m playwright install chromium
+
+# Add code-server installation
+curl -fsSL https://code-server.dev/install.sh | sh && python scripts/install_code_server.py
+```
+
+#### Option 3: Runtime Installation
+
+Install code-server at runtime using the Python script:
+
+```bash
+python scripts/install_code_server.py
+```
+
+### Startup Configuration
+
+#### Option 1: Combined Startup Script
+
+Use the combined startup script that runs both your application and code-server:
+
+```bash
+chmod +x scripts/start_with_vscode.sh && ./scripts/start_with_vscode.sh
+```
+
+#### Option 2: Separate Processes
+
+Start code-server separately:
+
+```bash
+# Start code-server in background
+./start-code-server.sh
+
+# Start your main application
+python -m uvicorn ws_server:app --host 0.0.0.0 --port ${PORT:-8000}
+```
+
+### Environment Variables
+
+Update your environment variables:
+
+```bash
+# Frontend environment
+NEXT_PUBLIC_VSCODE_URL=https://your-app-name.onrender.com:8080
+
+# Or for local development
+NEXT_PUBLIC_VSCODE_URL=http://127.0.0.1:8080
+```
+
+### Render.com Configuration
+
+#### Build Command
+```bash
+chmod +x scripts/render_build_with_vscode.sh && ./scripts/render_build_with_vscode.sh
+```
+
+**Note:** This script also handles the Playwright system dependencies issue gracefully, so it's safe to use on Render.com.
+
+#### Start Command
+```bash
+chmod +x scripts/start_with_vscode.sh && ./scripts/start_with_vscode.sh
+```
+
+### Security Considerations
+
+**Important**: The current configuration disables authentication for simplicity. For production use, consider:
+
+1. **Enable authentication**:
+```yaml
+# ~/.config/code-server/config.yaml
+bind-addr: 0.0.0.0:8080
+auth: password
+password: your-secure-password
+cert: false
+```
+
+2. **Use HTTPS**:
+```yaml
+bind-addr: 0.0.0.0:8080
+auth: password
+password: your-secure-password
+cert: true
+cert-key: /path/to/key.pem
+cert-cert: /path/to/cert.pem
+```
+
+3. **Restrict access** by IP or use a reverse proxy with authentication.
+
+### Frontend Integration
+
+The VS Code button is automatically enabled when `NEXT_PUBLIC_VSCODE_URL` is set. The button:
+
+- Opens code-server in a new tab
+- Automatically navigates to the current workspace folder
+- Provides full VS Code functionality in the browser
+
+### Troubleshooting VS Code Integration
+
+#### Code-server not starting
+1. Check if code-server is installed: `code-server --version`
+2. Verify the startup script has execute permissions
+3. Check port 8080 is available
+4. Review code-server logs
+
+#### Button not appearing
+1. Verify `NEXT_PUBLIC_VSCODE_URL` environment variable is set
+2. Rebuild the frontend after setting the environment variable
+3. Check browser console for errors
+
+#### Connection issues
+1. Ensure code-server is running on the correct port
+2. Check firewall settings
+3. Verify the URL in `NEXT_PUBLIC_VSCODE_URL` is accessible
+
+### Alternative: VS Code Tunnels
+
+For a simpler setup without running code-server, you could use VS Code tunnels:
+
+1. Install VS Code CLI on your server
+2. Run `code tunnel` to create a secure tunnel
+3. Access VS Code through the provided URL
+
+This approach doesn't require additional server configuration but requires a GitHub account for authentication. 
