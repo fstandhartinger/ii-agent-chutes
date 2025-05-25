@@ -50,6 +50,7 @@ export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [socket, setSocket] = useState<WebSocket | null>(null);
+  const [isSocketConnected, setIsSocketConnected] = useState(false);
   const [activeTab, setActiveTab] = useState(TAB.BROWSER);
   const [currentActionData, setCurrentActionData] = useState<ActionStep>();
   const [activeFileCodeEditor, setActiveFileCodeEditor] = useState("");
@@ -263,7 +264,7 @@ export default function Home() {
 
     setMessages((prev) => [...prev, newUserMessage]);
 
-    if (!socket || socket.readyState !== WebSocket.OPEN) {
+    if (!socket || !isSocketConnected || socket.readyState !== WebSocket.OPEN) {
       toast.error("WebSocket connection is not open. Please try again.");
       setIsLoading(false);
       return;
@@ -689,18 +690,15 @@ export default function Home() {
     if (deviceId) {
       wsUrl += `?device_id=${deviceId}`;
 
-      // Append model information
-      if (selectedModel.provider === "chutes") {
-        wsUrl += `&use_chutes=true&model_id=${encodeURIComponent(selectedModel.id)}`;
-      } else if (selectedModel.provider === "openrouter") {
-        wsUrl += `&use_openrouter=true&model_id=${encodeURIComponent(selectedModel.id)}`;
-      }
+      // Append model information - all models are now Chutes models
+      wsUrl += `&use_chutes=true&model_id=${encodeURIComponent(selectedModel.id)}`;
     }
 
     const ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {
       console.log("WebSocket connection established");
+      setIsSocketConnected(true);
       // Request workspace info immediately after connection
       ws.send(
         JSON.stringify({
@@ -722,11 +720,13 @@ export default function Home() {
     ws.onerror = (error) => {
       console.log("WebSocket error:", error);
       toast.error("WebSocket connection error");
+      setIsSocketConnected(false);
     };
 
     ws.onclose = () => {
       console.log("WebSocket connection closed");
       setSocket(null);
+      setIsSocketConnected(false);
     };
 
     setSocket(ws);
@@ -801,7 +801,7 @@ export default function Home() {
         }`}
       >
         {!isInChatView && (
-          <div className="flex justify-center w-full">
+          <div className="flex justify-center w-full mb-4">
             <ModelSelector />
           </div>
         )}
@@ -825,7 +825,6 @@ export default function Home() {
         </motion.div>
         {isInChatView ? (
           <div className="flex gap-x-2">
-            <ModelSelector />
             <Button
               className="cursor-pointer h-10"
               variant="outline"
@@ -861,7 +860,7 @@ export default function Home() {
                   isUploading={isUploading}
                   isUseDeepResearch={isUseDeepResearch}
                   setIsUseDeepResearch={setIsUseDeepResearch}
-                  isDisabled={!socket || socket.readyState !== WebSocket.OPEN}
+                  isDisabled={!isSocketConnected}
                   className="w-full"
                 />
               </div>

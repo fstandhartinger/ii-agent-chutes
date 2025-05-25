@@ -45,6 +45,7 @@ const QuestionInput = ({
   const [files, setFiles] = useState<FileUploadStatus[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [textareaHeight, setTextareaHeight] = useState<number>(50);
+  const [isButtonEnabled, setIsButtonEnabled] = useState<boolean>(false);
 
   // Clean up object URLs when component unmounts
   useEffect(() => {
@@ -55,7 +56,7 @@ const QuestionInput = ({
     };
   }, [files]);
 
-  // Auto-resize textarea based on content
+  // Auto-resize textarea based on content and update button state
   useEffect(() => {
     if (textareaRef.current) {
       const textarea = textareaRef.current;
@@ -78,7 +79,10 @@ const QuestionInput = ({
         textarea.style.overflowY = 'hidden';
       }
     }
-  }, [value]);
+    
+    // Update button enabled state
+    setIsButtonEnabled(!!value.trim() && !isDisabled);
+  }, [value, isDisabled]);
 
   const isImageFile = (fileName: string): boolean => {
     const ext = fileName.split(".").pop()?.toLowerCase() || "";
@@ -311,9 +315,13 @@ const QuestionInput = ({
           </div>
 
           <Button
-            disabled={!value.trim() || isDisabled}
+            disabled={!isButtonEnabled}
             onClick={() => handleSubmit(value)}
-            className="cursor-pointer border-none p-4 size-10 font-bold bg-gradient-skyblue-lavender rounded-full hover:scale-105 active:scale-95 transition-transform shadow-lg"
+            className={`border-none p-4 size-10 font-bold rounded-full transition-transform shadow-lg ${
+              !isButtonEnabled 
+                ? "cursor-not-allowed opacity-50 bg-gray-500" 
+                : "cursor-pointer bg-gradient-skyblue-lavender hover:scale-105 active:scale-95"
+            }`}
           >
             <ArrowUp className="size-5" />
           </Button>

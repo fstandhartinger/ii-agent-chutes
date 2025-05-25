@@ -23,9 +23,9 @@ export default function ModelSelector() {
         }
       }}
     >
-      <SelectTrigger className="w-[280px]">
+      <SelectTrigger className="w-[200px] text-sm opacity-70 hover:opacity-100 transition-opacity">
         <div className="flex items-center gap-2">
-          <Cpu className="h-4 w-4" />
+          <Cpu className="h-3 w-3" />
           <SelectValue>
             {selectedModel.name}
           </SelectValue>
@@ -37,7 +37,7 @@ export default function ModelSelector() {
             <div className="flex flex-col">
               <div className="font-medium">{model.name}</div>
               <div className="text-xs text-muted-foreground">
-                {model.provider} • {model.description}
+                {model.description}
               </div>
             </div>
           </SelectItem>
