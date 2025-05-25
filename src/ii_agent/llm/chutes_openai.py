@@ -123,17 +123,23 @@ class ChutesOpenAIClient(LLMClient):
         # Process the conversation history
         for idx, message_list in enumerate(messages):
             role = "user" if idx % 2 == 0 else "assistant"
-            message_content = []
             
             for message in message_list:
                 if str(type(message)) == str(TextPrompt):
                     message = cast(TextPrompt, message)
                     if role == "user":
-                        message_content.append({"type": "text", "text": message.text})
+                        # Use simple string format for Chutes compatibility
+                        openai_messages.append({"role": role, "content": message.text})
                 elif str(type(message)) == str(TextResult):
                     message = cast(TextResult, message)
                     if role == "assistant":
-                        message_content.append({"type": "text", "text": message.text})
+                        # Use simple string format for Chutes compatibility
+                        openai_messages.append({"role": role, "content": message.text})
+                elif str(type(message)) == str(ImageBlock):
+                    # Handle image blocks - for now, skip them as Chutes may not support vision
+                    message = cast(ImageBlock, message)
+                    logging.warning("[CHUTES] Image blocks are not supported, skipping...")
+                    continue
                 elif str(type(message)) == str(ToolCall):
                     # Convert ToolCall to OpenAI format
                     message = cast(ToolCall, message)
@@ -147,7 +153,6 @@ class ChutesOpenAIClient(LLMClient):
                             },
                         }]
                         openai_messages.append({"role": "assistant", "tool_calls": tool_calls})
-                        continue
                 elif str(type(message)) == str(ToolFormattedResult):
                     # Convert ToolFormattedResult to OpenAI format
                     message = cast(ToolFormattedResult, message)
@@ -157,15 +162,18 @@ class ChutesOpenAIClient(LLMClient):
                             "tool_call_id": message.tool_call_id,
                             "content": str(message.tool_output),
                         })
-                        continue
-            
-            # Add content if not empty
-            if message_content:
-                openai_messages.append({"role": role, "content": message_content})
 
-        # Convert tools to OpenAI format
-        openai_tools = []
+        # Build the request payload - only include what's needed
+        payload = {
+            "model": self.model_name,
+            "messages": openai_messages,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+        }
+        
+        # Only add tools if they are actually provided
         if tools:
+            openai_tools = []
             for tool in tools:
                 openai_tools.append(
                     Tool(
@@ -177,38 +185,40 @@ class ChutesOpenAIClient(LLMClient):
                         },
                     )
                 )
-
-        # Handle tool_choice
-        openai_tool_choice = None
-        if tool_choice:
-            if tool_choice["type"] == "any":
-                openai_tool_choice = ToolChoice(type="any")
-            elif tool_choice["type"] == "auto":
-                openai_tool_choice = ToolChoice(type="auto")
-            elif tool_choice["type"] == "tool":
-                openai_tool_choice = ToolChoice(
-                    type="function", function={"name": tool_choice["name"]}
-                )
+            payload["tools"] = openai_tools
+            
+            # Only add tool_choice if tools are present
+            if tool_choice:
+                if tool_choice["type"] == "any":
+                    payload["tool_choice"] = ToolChoice(type="any")
+                elif tool_choice["type"] == "auto":
+                    payload["tool_choice"] = ToolChoice(type="auto")
+                elif tool_choice["type"] == "tool":
+                    payload["tool_choice"] = ToolChoice(
+                        type="function", function={"name": tool_choice["name"]}
+                    )
 
         response = None
         models_to_try = [self.model_name] + self.fallback_models
+        
+        # Log the messages being sent
+        logging.info(f"[CHUTES DEBUG] Sending messages to OpenAI API:")
+        for msg in openai_messages:
+            logging.info(f"[CHUTES DEBUG] Message: {msg}")
+        logging.info(f"[CHUTES DEBUG] Payload keys: {list(payload.keys())}")
         
         # Try each model with its own retry logic
         for model_idx, current_model in enumerate(models_to_try):
             if model_idx > 0:
                 logging.warning(f"[CHUTES] Falling back to model: {current_model}")
             
+            # Update model in payload
+            payload["model"] = current_model
+            
             # Retry logic for current model
             for retry in range(self.max_retries):
                 try:
-                    response = self.client.chat.completions.create(
-                        model=current_model,
-                        messages=openai_messages,
-                        max_tokens=max_tokens,
-                        temperature=temperature,
-                        tools=openai_tools if tools else None,
-                        tool_choice=openai_tool_choice,
-                    )
+                    response = self.client.chat.completions.create(**payload)
                     # Success! Update the model name to reflect which one worked
                     if model_idx > 0:
                         logging.info(f"[CHUTES] Successfully used fallback model: {current_model}")
@@ -216,6 +226,10 @@ class ChutesOpenAIClient(LLMClient):
                     break
                     
                 except OpenAI_InternalServerError as e:
+                    # Log the full error details
+                    logging.error(f"[CHUTES] Full error details: {e}")
+                    logging.error(f"[CHUTES] Error response body: {e.response.text if hasattr(e, 'response') else 'No response body'}")
+                    
                     if self._is_target_exhausted_error(e):
                         backoff_time = self._get_backoff_time(retry)
                         logging.warning(
