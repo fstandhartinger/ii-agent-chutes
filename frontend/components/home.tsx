@@ -1050,7 +1050,6 @@ export default function Home() {
                     transition={{ duration: 0.6 }}
                   >
                     <QuestionInput
-                      key={sessionId || 'new-session'} // Force remount when session changes
                       placeholder="Give fubea a task to work on..."
                       value={currentQuestion}
                       setValue={setCurrentQuestion}
@@ -1072,7 +1071,11 @@ export default function Home() {
                     initial={{ opacity: 0, y: 30 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
-                    transition={{ duration: 0.6, delay: 0.2 }}
+                    transition={{ 
+                      duration: 0.6, 
+                      delay: 0.2,
+                      exit: { duration: 0.1, delay: 0 } // Fast exit animation
+                    }}
                   >
                     <Examples
                       onExampleClick={handleExampleClick}

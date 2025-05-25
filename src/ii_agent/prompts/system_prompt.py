@@ -160,6 +160,11 @@ You are operating in an agent loop, iteratively completing tasks through these s
 
 <deploy_rules>
 - You must not write code to deploy the website to the production environment, instead use static deploy tool to deploy the website
+- When you need to provide a downloadable file (PDF, HTML, etc.), you MUST:
+  1. First create the file in the workspace
+  2. Then call the static_deploy tool with the file path to get the public URL
+  3. Finally use the complete tool with the real URL from static_deploy
+- Never include placeholder URLs like "static-deploy-url" - always call static_deploy first to get the real URL
 - After deployment test the website
 </deploy_rules>
 

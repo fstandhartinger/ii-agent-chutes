@@ -1,41 +1,4 @@
 import { NextResponse } from "next/server";
-import fs from "fs/promises";
-import path from "path";
-
-interface FileStructure {
-  name: string;
-  type: "file" | "folder";
-  children?: FileStructure[];
-  language?: string;
-  value?: string;
-  path: string;
-}
-
-async function readDirectory(dirPath: string): Promise<FileStructure[]> {
-  const items = await fs.readdir(dirPath, { withFileTypes: true });
-  const result = await Promise.all(
-    items.map(async (item) => {
-      const fullPath = path.join(dirPath, item.name);
-      if (item.isDirectory()) {
-        const children = await readDirectory(fullPath);
-        return {
-          name: item.name,
-          type: "folder",
-          children,
-          path: fullPath,
-        };
-      } else {
-        return {
-          name: item.name,
-          type: "file",
-          path: fullPath,
-          language: path.extname(item.name).slice(1) || "plaintext",
-        };
-      }
-    })
-  );
-  return result as FileStructure[];
-}
 
 export async function POST(request: Request) {
   try {
@@ -44,8 +7,31 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Path is required" }, { status: 400 });
     }
 
-    const files = await readDirectory(dirPath);
-    return NextResponse.json({ files });
+    // Extract workspace ID from the path
+    const workspaceId = dirPath.split("/").pop();
+    if (!workspaceId) {
+      return NextResponse.json({ error: "Invalid workspace path" }, { status: 400 });
+    }
+
+    // Call the backend API to get file structure
+    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    const response = await fetch(`${backendUrl}/api/files/list`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        workspace_id: workspaceId,
+        path: "/var/data"
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Backend API error: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return NextResponse.json({ files: data.files || [] });
   } catch (error) {
     console.error("Error reading directory:", error);
     return NextResponse.json(

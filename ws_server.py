@@ -489,6 +489,12 @@ def main():
     args = parser.parse_args()
     global_args = args
 
+    # Set the static file base URL if not already set
+    if not os.getenv("STATIC_FILE_BASE_URL"):
+        static_base_url = f"http://localhost:{args.port}"
+        os.environ["STATIC_FILE_BASE_URL"] = static_base_url
+        logger.info(f"Set STATIC_FILE_BASE_URL to {static_base_url}")
+
     setup_workspace(app, args.workspace)
 
     # Start the FastAPI server
@@ -713,6 +719,164 @@ async def get_session_events(session_id: str):
         logger.error(f"Error retrieving events: {str(e)}")
         raise HTTPException(
             status_code=500, detail=f"Error retrieving events: {str(e)}"
+        )
+
+
+@app.post("/api/files/list")
+async def list_files_endpoint(request: Request):
+    """API endpoint for listing files in a workspace directory.
+
+    Expects a JSON payload with:
+    - workspace_id: UUID of the workspace
+    - path: Optional path within the workspace (defaults to root)
+    """
+    try:
+        data = await request.json()
+        workspace_id = data.get("workspace_id")
+        path = data.get("path", "")
+
+        if not workspace_id:
+            return JSONResponse(
+                status_code=400, content={"error": "workspace_id is required"}
+            )
+
+        # Find the workspace path for this session
+        workspace_path = Path(global_args.workspace).resolve() / workspace_id
+        if not workspace_path.exists():
+            return JSONResponse(
+                status_code=404,
+                content={"error": f"Workspace not found: {workspace_id}"},
+            )
+
+        # Determine the target directory
+        if path and path != "/var/data":
+            # Remove /var/data prefix if present and use relative path
+            relative_path = path.replace("/var/data/", "").replace("/var/data", "")
+            target_path = workspace_path / relative_path if relative_path else workspace_path
+        else:
+            target_path = workspace_path
+
+        if not target_path.exists():
+            return JSONResponse(
+                status_code=404,
+                content={"error": f"Path not found: {path}"},
+            )
+
+        # List directory contents
+        files = []
+        try:
+            for item in target_path.iterdir():
+                if item.name.startswith('.'):
+                    continue  # Skip hidden files
+                
+                file_info = {
+                    "name": item.name,
+                    "type": "folder" if item.is_dir() else "file",
+                    "path": str(item),
+                }
+                
+                if item.is_file():
+                    file_info["language"] = item.suffix[1:] if item.suffix else "plaintext"
+                
+                if item.is_dir():
+                    # Recursively get children for folders
+                    children = []
+                    try:
+                        for child in item.iterdir():
+                            if child.name.startswith('.'):
+                                continue
+                            child_info = {
+                                "name": child.name,
+                                "type": "folder" if child.is_dir() else "file",
+                                "path": str(child),
+                            }
+                            if child.is_file():
+                                child_info["language"] = child.suffix[1:] if child.suffix else "plaintext"
+                            children.append(child_info)
+                    except PermissionError:
+                        pass  # Skip directories we can't read
+                    file_info["children"] = children
+                
+                files.append(file_info)
+        except PermissionError:
+            return JSONResponse(
+                status_code=403,
+                content={"error": f"Permission denied accessing: {path}"},
+            )
+
+        return {"files": files}
+
+    except Exception as e:
+        logger.error(f"Error listing files: {str(e)}")
+        return JSONResponse(
+            status_code=500, content={"error": f"Error listing files: {str(e)}"}
+        )
+
+
+@app.post("/api/files/content")
+async def get_file_content_endpoint(request: Request):
+    """API endpoint for getting file content from a workspace.
+
+    Expects a JSON payload with:
+    - workspace_id: UUID of the workspace
+    - path: Path to the file within the workspace
+    """
+    try:
+        data = await request.json()
+        workspace_id = data.get("workspace_id")
+        file_path = data.get("path")
+
+        if not workspace_id:
+            return JSONResponse(
+                status_code=400, content={"error": "workspace_id is required"}
+            )
+
+        if not file_path:
+            return JSONResponse(
+                status_code=400, content={"error": "path is required"}
+            )
+
+        # Find the workspace path for this session
+        workspace_path = Path(global_args.workspace).resolve() / workspace_id
+        if not workspace_path.exists():
+            return JSONResponse(
+                status_code=404,
+                content={"error": f"Workspace not found: {workspace_id}"},
+            )
+
+        # Remove /var/data prefix if present and construct full path
+        relative_path = file_path.replace("/var/data/", "").replace("/var/data", "")
+        full_path = workspace_path / relative_path if relative_path else workspace_path
+
+        if not full_path.exists():
+            return JSONResponse(
+                status_code=404,
+                content={"error": f"File not found: {file_path}"},
+            )
+
+        if not full_path.is_file():
+            return JSONResponse(
+                status_code=400,
+                content={"error": f"Path is not a file: {file_path}"},
+            )
+
+        # Read file content
+        try:
+            with open(full_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+        except UnicodeDecodeError:
+            # Try reading as binary and return base64 encoded
+            with open(full_path, 'rb') as f:
+                binary_content = f.read()
+                content = base64.b64encode(binary_content).decode('utf-8')
+                return {"content": content, "encoding": "base64"}
+
+        return {"content": content}
+
+    except Exception as e:
+        logger.error(f"Error reading file: {str(e)}")
+        return JSONResponse(
+            status_code=500, content={"error": f"Error reading file: {str(e)}"}
         )
 
 

@@ -14,7 +14,7 @@ class StaticDeployTool(LLMTool):
     """Tool for managing static file deployments"""
 
     name = "static_deploy"
-    description = "Get the public URL for static files in the workspace"
+    description = "Get the public URL for static files in the workspace. Use this tool to make files accessible via HTTP URLs for download or viewing. Always call this tool when you need to provide a file URL to the user."
 
     input_schema = {
         "type": "object",
@@ -30,9 +30,8 @@ class StaticDeployTool(LLMTool):
     def __init__(self, workspace_manager: WorkspaceManager):
         super().__init__()
         self.workspace_manager = workspace_manager
-        # TODO: this is a hack to get the base URL for the static files
-        # TODO: we should use a proper URL for the static files
-        default_base_url = f"file://{workspace_manager.root.parent.parent.absolute()}"
+        # Use a proper default base URL that works with the WebSocket server
+        default_base_url = "http://localhost:8000"
         self.base_url = os.getenv("STATIC_FILE_BASE_URL", default_base_url)
 
     def run_impl(
