@@ -31,6 +31,7 @@ interface ChatMessageProps {
   handleKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
   handleQuestionSubmit: (question: string) => void;
   handleFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  handleStopAgent?: () => void;
 }
 
 const ChatMessage = ({
@@ -47,6 +48,7 @@ const ChatMessage = ({
   handleKeyDown,
   handleQuestionSubmit,
   handleFileUpload,
+  handleStopAgent,
 }: ChatMessageProps) => {
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
 
@@ -133,7 +135,11 @@ const ChatMessage = ({
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="absolute top-1 right-1 z-10 bg-black/50 hover:bg-black/70 border border-white/20 p-1 h-6 w-6 rounded-md transition-all-smooth hover-lift message-copy-button"
+                            className={`absolute top-1 right-1 z-10 bg-black/50 hover:bg-black/70 border border-white/20 p-1 h-6 w-6 rounded-md transition-all-smooth hover-lift ${
+                              index === messages.length - 1 
+                                ? 'opacity-70 hover:opacity-100' 
+                                : 'opacity-0 group-hover:opacity-70 hover:!opacity-100'
+                            }`}
                             onClick={() => copyToClipboard(fileName, `${message.id}-file-${fileIndex}`)}
                             title="Copy filename"
                           >
@@ -170,7 +176,11 @@ const ChatMessage = ({
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="absolute top-1 right-1 z-10 bg-black/30 hover:bg-black/50 border border-white/20 p-1 h-6 w-6 rounded-md transition-all-smooth hover-lift message-copy-button"
+                          className={`absolute top-1 right-1 z-10 bg-black/30 hover:bg-black/50 border border-white/20 p-1 h-6 w-6 rounded-md transition-all-smooth hover-lift ${
+                            index === messages.length - 1 
+                              ? 'opacity-70 hover:opacity-100' 
+                              : 'opacity-0 group-hover:opacity-70 hover:!opacity-100'
+                          }`}
                           onClick={() => copyToClipboard(fileName, `${message.id}-file-${fileIndex}`)}
                           title="Copy filename"
                         >
@@ -217,7 +227,7 @@ const ChatMessage = ({
                       className={`absolute top-1 right-1 z-10 bg-black/30 hover:bg-black/50 border border-white/20 p-1 h-6 w-6 rounded-md transition-all-smooth hover-lift ${
                         index === messages.length - 1 
                           ? 'opacity-70 hover:opacity-100' 
-                          : 'opacity-0 group-hover:opacity-70 hover:opacity-100'
+                          : 'opacity-0 group-hover:opacity-70 hover:!opacity-100'
                       }`}
                       onClick={() => copyToClipboard(message.content || "", message.id)}
                       title="Copy message"
@@ -237,7 +247,7 @@ const ChatMessage = ({
                         className={`absolute top-1 right-8 z-10 bg-black/30 hover:bg-black/50 border border-white/20 p-1 h-6 w-6 rounded-md transition-all-smooth hover-lift ${
                           index === messages.length - 1 
                             ? 'opacity-70 hover:opacity-100' 
-                            : 'opacity-0 group-hover:opacity-70 hover:opacity-100'
+                            : 'opacity-0 group-hover:opacity-70 hover:!opacity-100'
                         }`}
                         onClick={() => downloadMessageAsPDF(message.content || "", message.id)}
                         title="Download as PDF"
@@ -351,6 +361,8 @@ const ChatMessage = ({
           handleFileUpload={handleFileUpload}
           isUploading={isUploading}
           isUseDeepResearch={isUseDeepResearch}
+          isLoading={isLoading}
+          handleStopAgent={handleStopAgent}
         />
       </motion.div>
     </div>

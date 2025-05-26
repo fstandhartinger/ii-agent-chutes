@@ -321,7 +321,7 @@ const Action = ({ workspaceInfo, type, value, onClick }: ActionProps) => {
         
         {/* Mobile Right Arrow Indicator */}
         <div className="md:hidden flex items-center justify-center self-center">
-          <ChevronRight className="w-4 h-4 text-neutral-400 group-hover:text-neutral-300" />
+          <ChevronRight className="w-5 h-5 text-neutral-400 group-hover:text-neutral-300" />
         </div>
       </div>
     </div>
