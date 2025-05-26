@@ -33,35 +33,35 @@ interface QuestionInputProps {
 // Add a proper progress circle component
 const TranscriptionProgressCircle = () => {
   return (
-    <div className="relative w-5 h-5">
-      <svg className="w-5 h-5 transform -rotate-90" viewBox="0 0 20 20">
+    <div className="relative w-6 h-6">
+      <svg className="w-6 h-6 transform -rotate-90" viewBox="0 0 24 24">
         {/* Background circle */}
         <circle
-          cx="10"
-          cy="10"
-          r="8"
+          cx="12"
+          cy="12"
+          r="10"
           stroke="currentColor"
-          strokeWidth="2"
+          strokeWidth="3"
           fill="none"
           className="text-muted-foreground/30"
         />
         {/* Animated progress circle */}
         <motion.circle
-          cx="10"
-          cy="10"
-          r="8"
+          cx="12"
+          cy="12"
+          r="10"
           stroke="currentColor"
-          strokeWidth="2"
+          strokeWidth="3"
           fill="none"
-          className="text-blue-400"
+          className="text-blue-500"
           strokeLinecap="round"
-          strokeDasharray={50.27} // 2 * π * 8
-          initial={{ strokeDashoffset: 50.27 }}
+          strokeDasharray={62.83} // 2 * π * 10
+          initial={{ strokeDashoffset: 62.83 }}
           animate={{ 
-            strokeDashoffset: [50.27, 0, 50.27],
+            strokeDashoffset: [62.83, 0, 62.83],
           }}
           transition={{
-            duration: 2,
+            duration: 1.5,
             repeat: Infinity,
             ease: "easeInOut"
           }}
@@ -81,7 +81,7 @@ const TranscriptionProgressCircle = () => {
           ease: "easeInOut"
         }}
       >
-        <div className="w-1 h-1 bg-blue-400 rounded-full" />
+        <div className="w-2 h-2 bg-blue-500 rounded-full" />
       </motion.div>
     </div>
   );
@@ -199,9 +199,10 @@ const QuestionInput = ({
 
   const stopRecording = () => {
     if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
+      // Set transcribing state BEFORE stopping to ensure immediate UI update
       setIsTranscribing(true);
+      setIsRecording(false);
+      mediaRecorderRef.current.stop();
     }
   };
 
@@ -579,12 +580,27 @@ const QuestionInput = ({
                   size="icon"
                   className={`p-2 hover:bg-white/10 transition-colors relative ${
                     isRecording ? 'bg-red-500/20' : ''
+                  } ${
+                    isTranscribing ? 'bg-blue-500/20' : ''
                   }`}
                   onClick={handleMicrophoneClick}
                   disabled={isUploading || isTranscribing}
+                  title={
+                    isTranscribing 
+                      ? "Transcribing audio..." 
+                      : isRecording 
+                        ? "Click to stop recording" 
+                        : "Click to start recording"
+                  }
                 >
                   {isTranscribing ? (
-                    <TranscriptionProgressCircle />
+                    <motion.div
+                      initial={{ scale: 0, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ duration: 0.2, ease: "easeOut" }}
+                    >
+                      <TranscriptionProgressCircle />
+                    </motion.div>
                   ) : isRecording ? (
                     <motion.div
                       initial={{ scale: 1 }}

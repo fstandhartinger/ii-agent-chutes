@@ -980,7 +980,7 @@ export default function Home() {
           
           <motion.div
             className={`flex items-center gap-3 ${
-              isInChatView ? "text-xl md:text-2xl font-semibold flex-1" : "hidden"
+              isInChatView ? "text-xl md:text-2xl font-semibold flex-1 min-w-0" : "hidden"
             }`}
             layout
             layoutId="page-title"
@@ -1001,7 +1001,7 @@ export default function Home() {
                   />
                   <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-lg blur-sm" />
                 </div>
-                <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent truncate text-base md:text-xl">
+                <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent truncate text-base md:text-xl min-w-0 flex-1">
                   {taskSummary || userPrompt || "fubea"}
                 </span>
               </>
@@ -1009,7 +1009,7 @@ export default function Home() {
           </motion.div>
           
           {isInChatView ? (
-            <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="flex items-center gap-2 flex-shrink-0 ml-2">
               <Button
                 variant="outline"
                 size="sm"
@@ -1018,7 +1018,7 @@ export default function Home() {
                 title="Share Session"
               >
                 <Share className="w-4 h-4" />
-                <span className="ml-2 hidden md:inline">Share</span>
+                <span className="ml-2 hidden sm:inline">Share</span>
               </Button>
               <Button
                 variant="outline"

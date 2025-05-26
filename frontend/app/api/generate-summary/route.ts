@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
         messages: [
           {
             role: 'system',
-            content: 'You are a helpful assistant that creates very short, concise summaries of user tasks. Your summaries should be 3-7 words maximum, capturing the essence of what the user wants to do. Be specific but brief.'
+            content: 'You are a helpful assistant that creates very short, concise summaries of user tasks. Your summaries should be 3-7 words maximum, capturing the essence of what the user wants to do. Be specific but brief. You must respond with a JSON object in the format: {"summary": "your short summary here"}'
           },
           {
             role: 'user',

@@ -366,7 +366,52 @@ try breaking down the task into smaller steps. After call this tool to update or
                         continue
 
                 if len(pending_tool_calls) > 1:
-                    raise ValueError("Only one tool call per turn is supported")
+                    # Log detailed information about the multiple tool calls
+                    self.logger_for_agent_logs.error(
+                        f"ERROR: Model attempted to call {len(pending_tool_calls)} tools in a single turn, but only one tool call per turn is supported."
+                    )
+                    self.logger_for_agent_logs.error("Tool calls attempted:")
+                    for i, tc in enumerate(pending_tool_calls):
+                        self.logger_for_agent_logs.error(
+                            f"  {i+1}. {tc.tool_name} with arguments: {tc.tool_input}"
+                        )
+                    
+                    # Get the model's text response if any
+                    text_results = [
+                        item for item in model_response if isinstance(item, TextResult)
+                    ]
+                    if text_results:
+                        self.logger_for_agent_logs.error(
+                            f"Model's reasoning: {text_results[0].text}"
+                        )
+                    
+                    # Send error to websocket
+                    self.message_queue.put_nowait(
+                        RealtimeEvent(
+                            type=EventType.ERROR,
+                            content={
+                                "message": f"Model attempted to call {len(pending_tool_calls)} tools in one turn. Only one tool call per turn is supported. Please retry with a single tool call.",
+                                "tool_calls": [
+                                    {"name": tc.tool_name, "arguments": tc.tool_input}
+                                    for tc in pending_tool_calls
+                                ]
+                            },
+                        )
+                    )
+                    
+                    # Add a recovery prompt to guide the model
+                    recovery_prompt = (
+                        f"I notice you tried to call {len(pending_tool_calls)} tools at once "
+                        f"({', '.join(tc.tool_name for tc in pending_tool_calls)}), "
+                        "but I can only execute one tool at a time. "
+                        "Please choose the most important tool to call first, "
+                        "and we'll handle the others in subsequent turns."
+                    )
+                    
+                    self.history.add_user_prompt(recovery_prompt)
+                    
+                    # Continue to the next turn instead of raising an error
+                    continue
 
                 assert len(pending_tool_calls) == 1
 
