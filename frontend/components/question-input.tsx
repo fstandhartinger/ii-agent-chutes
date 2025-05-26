@@ -28,6 +28,63 @@ interface QuestionInputProps {
   isDisabled?: boolean;
 }
 
+// Add a proper progress circle component
+const TranscriptionProgressCircle = () => {
+  return (
+    <div className="relative w-5 h-5">
+      <svg className="w-5 h-5 transform -rotate-90" viewBox="0 0 20 20">
+        {/* Background circle */}
+        <circle
+          cx="10"
+          cy="10"
+          r="8"
+          stroke="currentColor"
+          strokeWidth="2"
+          fill="none"
+          className="text-muted-foreground/30"
+        />
+        {/* Animated progress circle */}
+        <motion.circle
+          cx="10"
+          cy="10"
+          r="8"
+          stroke="currentColor"
+          strokeWidth="2"
+          fill="none"
+          className="text-blue-400"
+          strokeLinecap="round"
+          strokeDasharray={50.27} // 2 * π * 8
+          initial={{ strokeDashoffset: 50.27 }}
+          animate={{ 
+            strokeDashoffset: [50.27, 0, 50.27],
+          }}
+          transition={{
+            duration: 2,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+        />
+      </svg>
+      {/* Pulsing center dot */}
+      <motion.div
+        className="absolute inset-0 flex items-center justify-center"
+        initial={{ scale: 0.8, opacity: 0.6 }}
+        animate={{ 
+          scale: [0.8, 1.2, 0.8],
+          opacity: [0.6, 1, 0.6]
+        }}
+        transition={{
+          duration: 1.5,
+          repeat: Infinity,
+          ease: "easeInOut"
+        }}
+      >
+        <div className="w-1 h-1 bg-blue-400 rounded-full" />
+      </motion.div>
+    </div>
+  );
+};
+
 const QuestionInput = ({
   className,
   textareaClassName,
@@ -449,11 +506,18 @@ const QuestionInput = ({
                 minHeight: '60px',
                 maxHeight: '200px'
               }}
-              placeholder={placeholder || "What can I help you with today?"}
+              placeholder={
+                isTranscribing 
+                  ? "Transcribing audio..." 
+                  : isRecording 
+                    ? "Recording... Click the stop button when finished"
+                    : placeholder || "What can I help you with today?"
+              }
               value={value}
               onChange={(e) => setValue(e.target.value)}
               onKeyDown={handleKeyDown}
               onPaste={handlePaste}
+              disabled={isRecording || isTranscribing}
             />
             
             {/* Bottom Controls */}
@@ -509,16 +573,47 @@ const QuestionInput = ({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="p-2 hover:bg-white/10 transition-colors"
+                  className={`p-2 hover:bg-white/10 transition-colors relative ${
+                    isRecording ? 'bg-red-500/20' : ''
+                  }`}
                   onClick={handleMicrophoneClick}
                   disabled={isUploading || isTranscribing}
                 >
                   {isTranscribing ? (
-                    <Loader2 className="w-5 h-5 text-muted-foreground animate-spin" />
+                    <TranscriptionProgressCircle />
                   ) : isRecording ? (
-                    <Square className="w-5 h-5 text-red-500" />
+                    <motion.div
+                      initial={{ scale: 1 }}
+                      animate={{ 
+                        scale: [1, 1.1, 1],
+                      }}
+                      transition={{
+                        duration: 1,
+                        repeat: Infinity,
+                        ease: "easeInOut"
+                      }}
+                    >
+                      <Square className="w-5 h-5 text-red-500" />
+                    </motion.div>
                   ) : (
                     <Mic className="w-5 h-5 text-muted-foreground hover:text-white transition-colors" />
+                  )}
+                  
+                  {/* Recording pulse effect */}
+                  {isRecording && (
+                    <motion.div
+                      className="absolute inset-0 rounded-xl border-2 border-red-500"
+                      initial={{ scale: 1, opacity: 0.8 }}
+                      animate={{ 
+                        scale: [1, 1.3, 1],
+                        opacity: [0.8, 0, 0.8]
+                      }}
+                      transition={{
+                        duration: 1.5,
+                        repeat: Infinity,
+                        ease: "easeOut"
+                      }}
+                    />
                   )}
                 </Button>
 
