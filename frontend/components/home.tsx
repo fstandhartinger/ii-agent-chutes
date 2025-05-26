@@ -83,7 +83,7 @@ export default function Home() {
   const [showNativeToolToggle, setShowNativeToolToggle] = useState(false);
 
   const isReplayMode = useMemo(() => !!searchParams.get("id"), [searchParams]);
-  const { getOptimalModel, selectedModel } = useChutes();
+  const { selectedModel } = useChutes();
 
   // Generate task summary using LLM
   const generateTaskSummary = async (firstUserMessage: string) => {
@@ -128,11 +128,6 @@ export default function Home() {
 
     return hasUploadedImages || hasMessageImages;
   }, [uploadedFiles, messages]);
-
-  // Get the optimal model based on current context
-  const optimalModel = useMemo(() => {
-    return getOptimalModel(hasImagesInContext);
-  }, [hasImagesInContext, getOptimalModel]);
 
   // Get session ID from URL params
   useEffect(() => {
@@ -844,8 +839,8 @@ export default function Home() {
     if (deviceId) {
       wsUrl += `?device_id=${deviceId}`;
 
-      // Use optimal model based on context (images present or not)
-      const modelToUse = optimalModel;
+      // Use the selected model from ModelPicker instead of automatic selection
+      const modelToUse = selectedModel;
       wsUrl += `&use_chutes=true&model_id=${encodeURIComponent(modelToUse.id)}`;
       
       // Add native tool calling parameter if enabled
@@ -908,7 +903,7 @@ export default function Home() {
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [deviceId, isReplayMode, optimalModel, useNativeToolCalling]);
+  }, [deviceId, isReplayMode, selectedModel, useNativeToolCalling]);
 
   const isBrowserTool = useMemo(
     () =>
@@ -933,6 +928,31 @@ export default function Home() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages?.length]);
+
+  // Function to stop the current agent run
+  const handleStopAgent = () => {
+    if (!socket || !isSocketConnected || socket.readyState !== WebSocket.OPEN) {
+      toast.error("WebSocket connection is not available.");
+      return;
+    }
+
+    if (!isLoading) {
+      toast.error("No active agent run to stop.");
+      return;
+    }
+
+    // Send cancel message to backend
+    socket.send(
+      JSON.stringify({
+        type: "cancel",
+        content: {},
+      })
+    );
+
+    // Update UI state immediately
+    setIsLoading(false);
+    toast.success("Agent run stopped");
+  };
 
   return (
     <div className="flex flex-col min-h-screen bg-background relative overflow-hidden">
@@ -981,8 +1001,8 @@ export default function Home() {
                   />
                   <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-lg blur-sm" />
                 </div>
-                <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent truncate max-w-xs md:max-w-md">
-                  {userPrompt || taskSummary || "fubea"}
+                <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent truncate max-w-[180px] md:max-w-md">
+                  {taskSummary || userPrompt || "fubea"}
                 </span>
               </>
             )}
@@ -998,6 +1018,15 @@ export default function Home() {
               >
                 <Share className="w-4 h-4 mr-2" />
                 Share
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleShare}
+                className="md:hidden bg-glass border-white/20 hover:bg-white/10 transition-all-smooth hover-lift"
+                title="Share Session"
+              >
+                <Share className="w-4 h-4" />
               </Button>
               <Button
                 variant="outline"
@@ -1148,6 +1177,8 @@ export default function Home() {
                       isUseDeepResearch={isUseDeepResearch}
                       setIsUseDeepResearch={setIsUseDeepResearch}
                       isDisabled={!isSocketConnected}
+                      isLoading={isLoading}
+                      handleStopAgent={handleStopAgent}
                       className="w-full max-w-4xl"
                     />
                   </motion.div>
@@ -1203,6 +1234,7 @@ export default function Home() {
                       handleKeyDown={handleKeyDown}
                       handleQuestionSubmit={handleQuestionSubmit}
                       handleFileUpload={handleFileUpload}
+                      handleStopAgent={handleStopAgent}
                     />
                   </div>
 

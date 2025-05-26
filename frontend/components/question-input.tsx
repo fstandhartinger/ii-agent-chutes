@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { ArrowUp, Loader2, Paperclip, Sparkles, Mic, Square } from "lucide-react";
+import { ArrowUp, Loader2, Paperclip, Sparkles, Mic, Square, StopCircle } from "lucide-react";
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
 import { useState, useEffect, useRef } from "react";
@@ -26,6 +26,8 @@ interface QuestionInputProps {
   isUseDeepResearch?: boolean;
   setIsUseDeepResearch?: (value: boolean) => void;
   isDisabled?: boolean;
+  isLoading?: boolean;
+  handleStopAgent?: () => void;
 }
 
 // Add a proper progress circle component
@@ -98,6 +100,8 @@ const QuestionInput = ({
   isUseDeepResearch = false,
   setIsUseDeepResearch,
   isDisabled,
+  isLoading,
+  handleStopAgent,
 }: QuestionInputProps) => {
   const [files, setFiles] = useState<FileUploadStatus[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -617,17 +621,28 @@ const QuestionInput = ({
                   )}
                 </Button>
 
-                <Button
-                  disabled={!isButtonEnabled}
-                  onClick={() => handleSubmit(value)}
-                  className={`border-0 p-3 w-12 h-12 font-bold rounded-xl transition-all-smooth shadow-lg ${
-                    !isButtonEnabled 
-                      ? "cursor-not-allowed opacity-50 bg-muted" 
-                      : "cursor-pointer bg-gradient-skyblue-lavender hover:scale-105 active:scale-95 shadow-glow hover-lift text-black"
-                  }`}
-                >
-                  <ArrowUp className="w-5 h-5" />
-                </Button>
+                {/* Submit/Stop Button */}
+                {isLoading && handleStopAgent ? (
+                  <Button
+                    onClick={handleStopAgent}
+                    className="border-0 p-3 w-12 h-12 font-bold rounded-xl transition-all-smooth shadow-lg cursor-pointer bg-red-500 hover:bg-red-600 hover:scale-105 active:scale-95 shadow-glow hover-lift text-white"
+                    title="Stop agent run"
+                  >
+                    <StopCircle className="w-5 h-5" />
+                  </Button>
+                ) : (
+                  <Button
+                    disabled={!isButtonEnabled}
+                    onClick={() => handleSubmit(value)}
+                    className={`border-0 p-3 w-12 h-12 font-bold rounded-xl transition-all-smooth shadow-lg ${
+                      !isButtonEnabled 
+                        ? "cursor-not-allowed opacity-50 bg-muted" 
+                        : "cursor-pointer bg-gradient-skyblue-lavender hover:scale-105 active:scale-95 shadow-glow hover-lift text-black"
+                    }`}
+                  >
+                    <ArrowUp className="w-5 h-5" />
+                  </Button>
+                )}
               </div>
             </div>
           </div>

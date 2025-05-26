@@ -90,6 +90,10 @@ try breaking down the task into smaller steps. After call this tool to update or
         self.message_queue = message_queue
         self.websocket = websocket
 
+        # Round counter for tracking consecutive LLM calls
+        self.round_counter = 0
+        self.max_rounds = 50
+
     async def _process_messages(self):
         try:
             while True:
@@ -192,8 +196,27 @@ try breaking down the task into smaller steps. After call this tool to update or
         while remaining_turns > 0:
             remaining_turns -= 1
 
+            # Increment round counter for each LLM call
+            self.round_counter += 1
+            
+            # Check if we've exceeded the maximum number of rounds
+            if self.round_counter > self.max_rounds:
+                timeout_message = f"Agent run stopped automatically after {self.max_rounds} consecutive LLM calls to prevent infinite loops."
+                self.logger_for_agent_logs.warning(timeout_message)
+                self.message_queue.put_nowait(
+                    RealtimeEvent(
+                        type=EventType.AGENT_RESPONSE,
+                        content={"text": timeout_message},
+                    )
+                )
+                return ToolImplOutput(
+                    tool_output=timeout_message,
+                    tool_result_message=timeout_message,
+                )
+
             delimiter = "-" * 45 + " NEW TURN " + "-" * 45
             self.logger_for_agent_logs.info(f"\n{delimiter}\n")
+            self.logger_for_agent_logs.info(f"Round {self.round_counter}/{self.max_rounds}")
 
             # Get tool parameters for available tools
             all_tool_params = self._validate_tool_parameters()
@@ -479,6 +502,8 @@ try breaking down the task into smaller steps. After call this tool to update or
         else:
             self.history.clear()
             self.interrupted = False
+            # Reset round counter for new runs
+            self.round_counter = 0
 
         tool_input = {
             "instruction": instruction,
