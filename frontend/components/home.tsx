@@ -111,24 +111,6 @@ export default function Home() {
     }
   };
 
-  // Function to detect if there are images in the current conversation context
-  const hasImagesInContext = useMemo(() => {
-    // Check if there are uploaded files that are images
-    const hasUploadedImages = uploadedFiles.some(file => {
-      const ext = file.split('.').pop()?.toLowerCase();
-      return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'heic', 'svg'].includes(ext || '');
-    });
-
-    // Check if there are images in recent messages
-    const hasMessageImages = messages.slice(-5).some(message => {
-      return message.files && message.files.some(fileName => {
-        return fileName.match(/\.(jpeg|jpg|gif|png|webp|svg|heic|bmp)$/i) !== null;
-      });
-    });
-
-    return hasUploadedImages || hasMessageImages;
-  }, [uploadedFiles, messages]);
-
   // Get session ID from URL params
   useEffect(() => {
     const id = searchParams.get("id");
@@ -843,9 +825,19 @@ export default function Home() {
     if (deviceId) {
       wsUrl += `?device_id=${deviceId}`;
 
-      // Use the selected model from ModelPicker instead of automatic selection
+      // Use the selected model from ModelPicker
       const modelToUse = selectedModel;
-      wsUrl += `&use_chutes=true&model_id=${encodeURIComponent(modelToUse.id)}`;
+      
+      // Determine which provider to use based on the model
+      if (modelToUse.provider === 'anthropic') {
+        // For Anthropic models, don't send use_chutes parameter (defaults to anthropic-direct)
+        wsUrl += `&model_id=${encodeURIComponent(modelToUse.id)}`;
+      } else if (modelToUse.provider === 'openrouter') {
+        wsUrl += `&use_openrouter=true&model_id=${encodeURIComponent(modelToUse.id)}`;
+      } else {
+        // Default to Chutes
+        wsUrl += `&use_chutes=true&model_id=${encodeURIComponent(modelToUse.id)}`;
+      }
       
       // Add native tool calling parameter if enabled
       if (useNativeToolCalling) {
@@ -853,7 +845,7 @@ export default function Home() {
       }
       
       // Log model selection for debugging
-      console.log(`Using model: ${modelToUse.name} (${modelToUse.id}) - Images in context: ${hasImagesInContext} - Native tool calling: ${useNativeToolCalling}`);
+      console.log(`Using model: ${modelToUse.name} (${modelToUse.id}) - Provider: ${modelToUse.provider} - Native tool calling: ${useNativeToolCalling}`);
     }
 
     const ws = new WebSocket(wsUrl);

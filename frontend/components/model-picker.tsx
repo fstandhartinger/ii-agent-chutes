@@ -19,8 +19,8 @@ const CHUTES_MODELS = [
   { id: "chutesai/Llama-4-Maverick-17B-128E-Instruct-FP8", name: "Llama 4 Maverick", isPremium: false },
   { id: "nvidia/Llama-3_1-Nemotron-Ultra-253B-v1", name: "Nemotron Ultra", isPremium: false },
   // Premium models - hidden by default
-  { id: "anthropic/claude-3-5-sonnet", name: "Sonnet 3.5", isPremium: true, hidden: true },
-  { id: "anthropic/claude-3-opus", name: "Opus 3", isPremium: true, hidden: true },
+  { id: "claude-3-5-sonnet-20241022", name: "Sonnet 3.5", isPremium: true, hidden: true },
+  { id: "claude-3-opus-20240229", name: "Opus 3", isPremium: true, hidden: true },
 ];
 
 export default function ModelPicker() {
@@ -44,11 +44,17 @@ export default function ModelPicker() {
   const handleModelChange = (modelId: string) => {
     const model = CHUTES_MODELS.find(m => m.id === modelId);
     if (model) {
+      // Determine the provider based on the model ID
+      let provider: "anthropic" | "chutes" | "openrouter" = "chutes";
+      if (modelId.startsWith("claude-")) {
+        provider = "anthropic";
+      }
+      
       // Find the full model object from the provider
       const fullModel = {
         id: model.id,
         name: model.name,
-        provider: "chutes" as const,
+        provider: provider,
         supportsVision: model.id.includes("V3") || model.id.includes("Maverick")
       };
       setSelectedModel(fullModel);

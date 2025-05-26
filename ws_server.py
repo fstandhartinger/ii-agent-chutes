@@ -359,6 +359,10 @@ def create_agent_for_connection(
     use_native_tool_calling = websocket.query_params.get("use_native_tool_calling", "false").lower() == "true"
     model_id = websocket.query_params.get("model_id", "deepseek-ai/DeepSeek-V3-0324")
     
+    # Check if this is an Anthropic model based on model_id
+    anthropic_models = ["claude-3-5-sonnet-20241022", "claude-3-opus-20240229", "claude-3-haiku-20240307"]
+    use_anthropic = model_id in anthropic_models and not use_chutes and not use_openrouter
+    
     # Setup logging
     logger_for_agent_logs = logging.getLogger(f"agent_logs_{id(websocket)}")
     logger_for_agent_logs.setLevel(logging.DEBUG)
@@ -385,7 +389,19 @@ def create_agent_for_connection(
     )
 
     # Initialize LLM client
-    if use_chutes:
+    if use_anthropic:
+        logger_for_agent_logs.info("=========================================")
+        logger_for_agent_logs.info("USING ANTHROPIC LLM PROVIDER")
+        logger_for_agent_logs.info(f"Model: {model_id}")
+        logger_for_agent_logs.info("=========================================")
+        client = get_client(
+            "anthropic-direct",
+            model_name=model_id,
+            use_caching=False,
+            project_id=global_args.project_id,
+            region=global_args.region,
+        )
+    elif use_chutes:
         logger_for_agent_logs.info("=========================================")
         logger_for_agent_logs.info("USING CHUTES LLM PROVIDER")
         logger_for_agent_logs.info(f"Model: {model_id}")
@@ -411,8 +427,9 @@ def create_agent_for_connection(
             use_caching=False,
         )
     else:
+        # Default to Anthropic if no provider is specified
         logger_for_agent_logs.info("=========================================")
-        logger_for_agent_logs.info("USING ANTHROPIC LLM PROVIDER")
+        logger_for_agent_logs.info("USING ANTHROPIC LLM PROVIDER (DEFAULT)")
         logger_for_agent_logs.info(f"Model: {DEFAULT_MODEL}")
         logger_for_agent_logs.info("=========================================")
         client = get_client(

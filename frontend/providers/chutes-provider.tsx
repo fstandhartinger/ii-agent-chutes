@@ -27,16 +27,16 @@ export const TEXT_MODELS: LLMModel[] = [
     supportsVision: false
   },
   {
-    id: "anthropic/claude-3-5-sonnet",
+    id: "claude-3-5-sonnet-20241022",
     name: "Claude Sonnet 3.5",
-    provider: "chutes",
+    provider: "anthropic",
     description: "Claude Sonnet 3.5 model",
     supportsVision: false
   },
   {
-    id: "anthropic/claude-3-opus",
+    id: "claude-3-opus-20240229",
     name: "Claude Opus 3",
-    provider: "chutes",
+    provider: "anthropic",
     description: "Claude Opus 3 model",
     supportsVision: false
   },
