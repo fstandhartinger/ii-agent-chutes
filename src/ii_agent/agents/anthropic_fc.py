@@ -366,13 +366,13 @@ try breaking down the task into smaller steps. After call this tool to update or
                         continue
 
                 if len(pending_tool_calls) > 1:
-                    # Log detailed information about the multiple tool calls
-                    self.logger_for_agent_logs.error(
-                        f"ERROR: Model attempted to call {len(pending_tool_calls)} tools in a single turn, but only one tool call per turn is supported."
+                    # Log information about multiple tool calls
+                    self.logger_for_agent_logs.info(
+                        f"Model requested {len(pending_tool_calls)} tools. Executing them in sequence."
                     )
-                    self.logger_for_agent_logs.error("Tool calls attempted:")
+                    self.logger_for_agent_logs.info("Tool calls to execute:")
                     for i, tc in enumerate(pending_tool_calls):
-                        self.logger_for_agent_logs.error(
+                        self.logger_for_agent_logs.info(
                             f"  {i+1}. {tc.tool_name} with arguments: {tc.tool_input}"
                         )
                     
@@ -381,115 +381,89 @@ try breaking down the task into smaller steps. After call this tool to update or
                         item for item in model_response if isinstance(item, TextResult)
                     ]
                     if text_results:
-                        self.logger_for_agent_logs.error(
+                        self.logger_for_agent_logs.info(
                             f"Model's reasoning: {text_results[0].text}"
                         )
-                    
-                    # Send error to websocket
+
+                # Execute all tool calls in sequence
+                for tool_call in pending_tool_calls:
                     self.message_queue.put_nowait(
                         RealtimeEvent(
-                            type=EventType.ERROR,
-                            content={
-                                "message": f"Model attempted to call {len(pending_tool_calls)} tools in one turn. Only one tool call per turn is supported. Please retry with a single tool call.",
-                                "tool_calls": [
-                                    {"name": tc.tool_name, "arguments": tc.tool_input}
-                                    for tc in pending_tool_calls
-                                ]
-                            },
-                        )
-                    )
-                    
-                    # Add a recovery prompt to guide the model
-                    recovery_prompt = (
-                        f"I notice you tried to call {len(pending_tool_calls)} tools at once "
-                        f"({', '.join(tc.tool_name for tc in pending_tool_calls)}), "
-                        "but I can only execute one tool at a time. "
-                        "Please choose the most important tool to call first, "
-                        "and we'll handle the others in subsequent turns."
-                    )
-                    
-                    self.history.add_user_prompt(recovery_prompt)
-                    
-                    # Continue to the next turn instead of raising an error
-                    continue
-
-                assert len(pending_tool_calls) == 1
-
-                tool_call = pending_tool_calls[0]
-
-                self.message_queue.put_nowait(
-                    RealtimeEvent(
-                        type=EventType.TOOL_CALL,
-                        content={
-                            "tool_call_id": tool_call.tool_call_id,
-                            "tool_name": tool_call.tool_name,
-                            "tool_input": tool_call.tool_input,
-                        },
-                    )
-                )
-
-                text_results = [
-                    item for item in model_response if isinstance(item, TextResult)
-                ]
-                if len(text_results) > 0:
-                    text_result = text_results[0]
-                    self.logger_for_agent_logs.info(
-                        f"Top-level agent planning next step: {text_result.text}\n",
-                    )
-
-                # Handle tool call by the agent
-                try:
-                    tool_result = self.tool_manager.run_tool(tool_call, self.history)
-                    self.history.add_tool_call_result(tool_call, tool_result)
-
-                    self.message_queue.put_nowait(
-                        RealtimeEvent(
-                            type=EventType.TOOL_RESULT,
+                            type=EventType.TOOL_CALL,
                             content={
                                 "tool_call_id": tool_call.tool_call_id,
                                 "tool_name": tool_call.tool_name,
-                                "result": tool_result,
+                                "tool_input": tool_call.tool_input,
                             },
                         )
                     )
-                    if self.tool_manager.should_stop():
-                        # Add a fake model response, so the next turn is the user's
-                        # turn in case they want to resume
+
+                    # Log planning for first tool call
+                    if tool_call == pending_tool_calls[0]:
+                        text_results = [
+                            item for item in model_response if isinstance(item, TextResult)
+                        ]
+                        if len(text_results) > 0:
+                            text_result = text_results[0]
+                            self.logger_for_agent_logs.info(
+                                f"Top-level agent planning next step: {text_result.text}\n",
+                            )
+
+                    # Handle tool call by the agent
+                    try:
+                        tool_result = self.tool_manager.run_tool(tool_call, self.history)
+                        self.history.add_tool_call_result(tool_call, tool_result)
+
+                        self.message_queue.put_nowait(
+                            RealtimeEvent(
+                                type=EventType.TOOL_RESULT,
+                                content={
+                                    "tool_call_id": tool_call.tool_call_id,
+                                    "tool_name": tool_call.tool_name,
+                                    "result": tool_result,
+                                },
+                            )
+                        )
+                        
+                        # Check if we should stop after this tool
+                        if self.tool_manager.should_stop():
+                            # Add a fake model response, so the next turn is the user's
+                            # turn in case they want to resume
+                            self.history.add_assistant_turn(
+                                [TextResult(text=COMPLETE_MESSAGE)]
+                            )
+                            self.message_queue.put_nowait(
+                                RealtimeEvent(
+                                    type=EventType.AGENT_RESPONSE,
+                                    content={"text": self.tool_manager.get_final_answer()},
+                                )
+                            )
+                            return ToolImplOutput(
+                                tool_output=self.tool_manager.get_final_answer(),
+                                tool_result_message="Task completed",
+                            )
+                    except KeyboardInterrupt:
+                        # Handle interruption during tool execution
+                        self.interrupted = True
+                        interrupt_message = "Tool execution was interrupted by user."
+                        self.history.add_tool_call_result(tool_call, interrupt_message)
                         self.history.add_assistant_turn(
-                            [TextResult(text=COMPLETE_MESSAGE)]
+                            [
+                                TextResult(
+                                    text="Tool execution interrupted by user. You can resume by providing a new instruction."
+                                )
+                            ]
                         )
                         self.message_queue.put_nowait(
                             RealtimeEvent(
                                 type=EventType.AGENT_RESPONSE,
-                                content={"text": self.tool_manager.get_final_answer()},
+                                content={"text": interrupt_message},
                             )
                         )
                         return ToolImplOutput(
-                            tool_output=self.tool_manager.get_final_answer(),
-                            tool_result_message="Task completed",
+                            tool_output=interrupt_message,
+                            tool_result_message=interrupt_message,
                         )
-                except KeyboardInterrupt:
-                    # Handle interruption during tool execution
-                    self.interrupted = True
-                    interrupt_message = "Tool execution was interrupted by user."
-                    self.history.add_tool_call_result(tool_call, interrupt_message)
-                    self.history.add_assistant_turn(
-                        [
-                            TextResult(
-                                text="Tool execution interrupted by user. You can resume by providing a new instruction."
-                            )
-                        ]
-                    )
-                    self.message_queue.put_nowait(
-                        RealtimeEvent(
-                            type=EventType.AGENT_RESPONSE,
-                            content={"text": interrupt_message},
-                        )
-                    )
-                    return ToolImplOutput(
-                        tool_output=interrupt_message,
-                        tool_result_message=interrupt_message,
-                    )
 
             except KeyboardInterrupt:
                 # Handle interruption during model generation or other operations

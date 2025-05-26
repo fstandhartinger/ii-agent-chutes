@@ -59,15 +59,27 @@ class MessageHistory:
 
         last_turn = self._message_lists[-1]
         tool_calls = []
+        seen_calls = set()  # Track unique tool calls
+        
         for message in last_turn:
             if isinstance(message, ToolCall):
-                tool_calls.append(
-                    ToolCallParameters(
-                        tool_call_id=message.tool_call_id,
-                        tool_name=message.tool_name,
-                        tool_input=message.tool_input,
-                    )
+                # Create a unique key based on tool name and arguments
+                # Convert tool_input dict to a sorted tuple for consistent hashing
+                tool_key = (
+                    message.tool_name,
+                    tuple(sorted(message.tool_input.items()))
                 )
+                
+                # Only add if we haven't seen this exact call before
+                if tool_key not in seen_calls:
+                    seen_calls.add(tool_key)
+                    tool_calls.append(
+                        ToolCallParameters(
+                            tool_call_id=message.tool_call_id,
+                            tool_name=message.tool_name,
+                            tool_input=message.tool_input,
+                        )
+                    )
         return tool_calls
 
     def add_tool_call_result(self, parameters: ToolCallParameters, result: str):
