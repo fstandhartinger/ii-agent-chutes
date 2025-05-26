@@ -29,7 +29,6 @@ export async function POST(request: NextRequest) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        language: null,
         audio_b64: audio_b64,
       }),
     });

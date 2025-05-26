@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
   try {
-    const { message } = await request.json();
+    const { message, modelId } = await request.json();
 
     if (!message) {
       return NextResponse.json({ error: 'Message is required' }, { status: 400 });
@@ -15,34 +15,54 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ summary: "Task in progress" });
     }
 
-    const response = await fetch('https://chutes-gpt-4o-mini.chutes.ai/chat/completions', {
+    // Use the provided model ID or default to DeepSeek R1
+    const model = modelId || 'deepseek-ai/DeepSeek-R1';
+
+    const response = await fetch('https://llm.chutes.ai/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiToken}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: model,
         messages: [
           {
             role: 'system',
-            content: 'You are a helpful assistant that creates very short task summaries. Create a summary of the user\'s request in maximum 5 words. Be concise and capture the main action or goal.'
+            content: 'You are a helpful assistant that creates very short task summaries. You must respond with a JSON object containing a "summary" field with a concise summary of the user\'s request in 3-7 words maximum. Be precise and capture the main action or goal.'
           },
           {
             role: 'user',
-            content: `Summarize this task in maximum 5 words: ${message}`
+            content: `Create a short summary for this task: ${message}`
           }
         ],
-        max_tokens: 20,
-        temperature: 0.3,
+        max_tokens: 50,
+        temperature: 0.1,
+        response_format: { type: "json_object" }
       }),
     });
 
     if (response.ok) {
       const data = await response.json();
-      const summary = data.choices?.[0]?.message?.content?.trim() || "Task in progress";
-      return NextResponse.json({ summary });
+      const content = data.choices?.[0]?.message?.content?.trim();
+      
+      if (content) {
+        try {
+          // Parse the JSON response
+          const jsonResponse = JSON.parse(content);
+          const summary = jsonResponse.summary || "Task in progress";
+          return NextResponse.json({ summary });
+        } catch (parseError) {
+          console.error('Error parsing JSON response:', parseError);
+          // Fallback: try to extract summary from content
+          const summary = content.length > 50 ? content.substring(0, 47) + "..." : content;
+          return NextResponse.json({ summary });
+        }
+      } else {
+        return NextResponse.json({ summary: "Task in progress" });
+      }
     } else {
+      console.error('Chutes API error:', response.status, response.statusText);
       return NextResponse.json({ summary: "Task in progress" });
     }
   } catch (error) {

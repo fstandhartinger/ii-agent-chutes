@@ -681,7 +681,6 @@ async def transcribe_audio_endpoint(request: Request):
                 'Content-Type': 'application/json',
             },
             json={
-                'language': None,
                 'audio_b64': audio_b64,
             },
             timeout=30

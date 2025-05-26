@@ -81,7 +81,7 @@ export default function Home() {
   const [useNativeToolCalling, setUseNativeToolCalling] = useState(false);
 
   const isReplayMode = useMemo(() => !!searchParams.get("id"), [searchParams]);
-  const { toggleChutesLLM, getOptimalModel } = useChutes();
+  const { toggleChutesLLM, getOptimalModel, selectedModel } = useChutes();
 
   // Generate task summary using LLM
   const generateTaskSummary = async (firstUserMessage: string) => {
@@ -93,6 +93,7 @@ export default function Home() {
         },
         body: JSON.stringify({
           message: firstUserMessage,
+          modelId: selectedModel.id,
         }),
       });
 
@@ -381,8 +382,7 @@ export default function Home() {
     // Store the user prompt for the first message
     if (messages.length === 0) {
       setUserPrompt(newQuestion);
-      // Generate task summary for the first message (keeping original functionality)
-      generateTaskSummary(newQuestion);
+      // Don't generate task summary immediately - wait for first LLM response
     }
 
     if (!socket || !isSocketConnected || socket.readyState !== WebSocket.OPEN) {
@@ -784,6 +784,11 @@ export default function Home() {
         ]);
         setIsCompleted(true);
         setIsLoading(false);
+        
+        // Generate task summary when LLM responds for the first time
+        if (userPrompt && !taskSummary) {
+          generateTaskSummary(userPrompt);
+        }
         break;
 
       case AgentEvent.UPLOAD_SUCCESS:
