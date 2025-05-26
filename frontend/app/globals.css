@@ -269,6 +269,17 @@
     background: rgba(255, 255, 255, 0.3);
   }
   
+  /* Hide scrollbar arrows */
+  ::-webkit-scrollbar-button {
+    display: none;
+  }
+  
+  /* Firefox scrollbar */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+  }
+  
   /* Mobile optimizations */
   @media (max-width: 768px) {
     .mobile-grid {
@@ -342,6 +353,13 @@
   scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
   /* Smooth scrolling */
   scroll-behavior: smooth;
+  /* Hide scrollbar arrows for all browsers */
+  -ms-overflow-style: -ms-autohiding-scrollbar;
+}
+
+/* Hide scrollbar arrows for Edge/IE */
+.chat-messages-container::-webkit-scrollbar-button {
+  display: none;
 }
 
 /* Desktop chat messages height constraint */
@@ -439,4 +457,24 @@
     height: 100vh !important;
     height: 100dvh !important;
   }
+}
+
+/* Ensure prompt box is bottom aligned */
+.prompt-box-container {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(10, 10, 15, 0.95);
+  backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 1rem 0;
+  z-index: 50;
+}
+
+/* Fill browser area to bottom */
+.browser-fill-bottom {
+  min-height: calc(100vh - 200px);
+  display: flex;
+  flex-direction: column;
 }

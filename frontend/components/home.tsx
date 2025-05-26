@@ -980,7 +980,7 @@ export default function Home() {
           
           <motion.div
             className={`flex items-center gap-3 ${
-              isInChatView ? "text-xl md:text-2xl font-semibold" : "hidden"
+              isInChatView ? "text-xl md:text-2xl font-semibold flex-1" : "hidden"
             }`}
             layout
             layoutId="page-title"
@@ -988,10 +988,10 @@ export default function Home() {
             {isInChatView && (
               <>
                 <ArrowLeft 
-                  className="w-6 h-6 text-white/80 hover:text-white cursor-pointer transition-colors" 
+                  className="w-6 h-6 text-white/80 hover:text-white cursor-pointer transition-colors flex-shrink-0" 
                   onClick={resetChat}
                 />
-                <div className="relative">
+                <div className="relative flex-shrink-0">
                   <Image
                     src="/logo-only.png"
                     alt="fubea Logo"
@@ -1001,7 +1001,7 @@ export default function Home() {
                   />
                   <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-lg blur-sm" />
                 </div>
-                <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent truncate max-w-[180px] md:max-w-md">
+                <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent truncate text-base md:text-xl">
                   {taskSummary || userPrompt || "fubea"}
                 </span>
               </>
@@ -1009,24 +1009,16 @@ export default function Home() {
           </motion.div>
           
           {isInChatView ? (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-shrink-0">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleShare}
-                className="hidden md:flex bg-glass border-white/20 hover:bg-white/10 transition-all-smooth hover-lift"
-              >
-                <Share className="w-4 h-4 mr-2" />
-                Share
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleShare}
-                className="md:hidden bg-glass border-white/20 hover:bg-white/10 transition-all-smooth hover-lift"
+                className="bg-glass border-white/20 hover:bg-white/10 transition-all-smooth hover-lift"
                 title="Share Session"
               >
                 <Share className="w-4 h-4" />
+                <span className="ml-2 hidden md:inline">Share</span>
               </Button>
               <Button
                 variant="outline"
@@ -1087,58 +1079,107 @@ export default function Home() {
       {/* Main Content */}
       <main className="flex-1 relative z-10 flex flex-col min-h-0">
         {!isInChatView && (
-          <motion.div
-            className="flex flex-col items-center justify-center min-h-[60vh] px-4"
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-          >
-            {/* Hero Section */}
-            <div className="text-center mb-8 md:mb-12">
-              <motion.div 
-                className="flex items-center justify-center mb-8 cursor-pointer group"
-                onClick={handleLogoClick}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+          <div className="flex-1 flex flex-col">
+            <motion.div
+              className="flex flex-col items-center justify-center flex-1 px-4"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.8, delay: 0.2 }}
+            >
+              {/* Hero Section */}
+              <div className="text-center mb-8 md:mb-12">
+                <motion.div 
+                  className="flex items-center justify-center mb-8 cursor-pointer group"
+                  onClick={handleLogoClick}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <div className="relative">
+                    <Image
+                      src="/logo-only.png"
+                      alt="fubea Logo"
+                      width={200}
+                      height={144}
+                      className="rounded-2xl shadow-2xl transition-all-smooth group-hover:shadow-glow"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all-smooth" />
+                    <Sparkles className="absolute -top-2 -right-2 w-6 h-6 text-yellow-400 animate-pulse" />
+                  </div>
+                </motion.div>
+                
+                <motion.h1
+                  className="text-3xl md:text-5xl lg:text-6xl font-bold mb-4 bg-gradient-to-r from-white via-blue-100 to-purple-100 bg-clip-text text-transparent"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8, delay: 0.4 }}
+                >
+                  How can I help you today?
+                </motion.h1>
+                
+                <motion.p
+                  className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8, delay: 0.6 }}
+                >
+                  <span 
+                    className="cursor-pointer hover:text-blue-400 transition-colors underline decoration-dotted underline-offset-4"
+                    onClick={() => router.push('/gaia')}
+                    title="Run GAIA Benchmark"
+                  >
+                    Leading
+                  </span> Deep Research Agent. For Free.
+                </motion.p>
+              </div>
+            </motion.div>
+            
+            {/* Input and Examples Container - Bottom aligned */}
+            <div className="mt-auto">
+              <motion.div
+                key="input-view"
+                className="flex items-center justify-center px-4 pb-8"
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.6 }}
               >
-                <div className="relative">
-                  <Image
-                    src="/logo-only.png"
-                    alt="fubea Logo"
-                    width={200}
-                    height={144}
-                    className="rounded-2xl shadow-2xl transition-all-smooth group-hover:shadow-glow"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all-smooth" />
-                  <Sparkles className="absolute -top-2 -right-2 w-6 h-6 text-yellow-400 animate-pulse" />
-                </div>
+                <QuestionInput
+                  placeholder="Give fubea a task to work on..."
+                  value={currentQuestion}
+                  setValue={setCurrentQuestion}
+                  handleKeyDown={handleKeyDown}
+                  handleSubmit={handleQuestionSubmit}
+                  handleFileUpload={handleFileUpload}
+                  isUploading={isUploading}
+                  isUseDeepResearch={isUseDeepResearch}
+                  setIsUseDeepResearch={setIsUseDeepResearch}
+                  isDisabled={!isSocketConnected}
+                  isLoading={isLoading}
+                  handleStopAgent={handleStopAgent}
+                  className="w-full max-w-4xl"
+                />
               </motion.div>
               
-              <motion.h1
-                className="text-3xl md:text-5xl lg:text-6xl font-bold mb-4 bg-gradient-to-r from-white via-blue-100 to-purple-100 bg-clip-text text-transparent"
-                initial={{ opacity: 0, y: 20 }}
+              {/* Examples Section */}
+              <motion.div
+                key="examples-view"
+                className="flex items-center justify-center px-4 pb-8"
+                initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.4 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ 
+                  duration: 0.6, 
+                  delay: 0.2,
+                  exit: { duration: 0.1, delay: 0 } // Fast exit animation
+                }}
               >
-                How can I help you today?
-              </motion.h1>
-              
-              <motion.p
-                className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.6 }}
-              >
-                <span 
-                  className="cursor-pointer hover:text-blue-400 transition-colors underline decoration-dotted underline-offset-4"
-                  onClick={() => router.push('/gaia')}
-                  title="Run GAIA Benchmark"
-                >
-                  Leading
-                </span> Deep Research Agent. For Free.
-              </motion.p>
+                <Examples
+                  onExampleClick={handleExampleClick}
+                  className="w-full max-w-4xl"
+                />
+              </motion.div>
             </div>
-          </motion.div>
+          </div>
         )}
 
         {isLoadingSession ? (
@@ -1156,53 +1197,7 @@ export default function Home() {
         ) : (
           <LayoutGroup>
             <AnimatePresence mode="wait">
-              {!isInChatView ? (
-                <>
-                  <motion.div
-                    key="input-view"
-                    className="flex items-center justify-center px-4 pb-8"
-                    initial={{ opacity: 0, y: 30 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    transition={{ duration: 0.6 }}
-                  >
-                    <QuestionInput
-                      placeholder="Give fubea a task to work on..."
-                      value={currentQuestion}
-                      setValue={setCurrentQuestion}
-                      handleKeyDown={handleKeyDown}
-                      handleSubmit={handleQuestionSubmit}
-                      handleFileUpload={handleFileUpload}
-                      isUploading={isUploading}
-                      isUseDeepResearch={isUseDeepResearch}
-                      setIsUseDeepResearch={setIsUseDeepResearch}
-                      isDisabled={!isSocketConnected}
-                      isLoading={isLoading}
-                      handleStopAgent={handleStopAgent}
-                      className="w-full max-w-4xl"
-                    />
-                  </motion.div>
-                  
-                  {/* Examples Section */}
-                  <motion.div
-                    key="examples-view"
-                    className="flex items-center justify-center px-4 pb-8"
-                    initial={{ opacity: 0, y: 30 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    transition={{ 
-                      duration: 0.6, 
-                      delay: 0.2,
-                      exit: { duration: 0.1, delay: 0 } // Fast exit animation
-                    }}
-                  >
-                    <Examples
-                      onExampleClick={handleExampleClick}
-                      className="w-full max-w-4xl"
-                    />
-                  </motion.div>
-                </>
-              ) : (
+              {isInChatView && (
                 <motion.div
                   key="chat-view"
                   initial={{ opacity: 0, y: 30 }}
@@ -1308,30 +1303,6 @@ export default function Home() {
                           </Button>
                         )}
                       </div>
-                      
-                      {/* VS Code button - commented out as requested
-                      {process.env.NEXT_PUBLIC_VSCODE_URL && 
-                       !process.env.NEXT_PUBLIC_VSCODE_URL.includes('127.0.0.1') && 
-                       !process.env.NEXT_PUBLIC_VSCODE_URL.includes('localhost') && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            const vscodeUrl = process.env.NEXT_PUBLIC_VSCODE_URL;
-                            if (workspaceInfo) {
-                              window.open(`${vscodeUrl}?folder=${encodeURIComponent(workspaceInfo)}`, '_blank');
-                            } else {
-                              window.open(vscodeUrl, '_blank');
-                            }
-                          }}
-                          className="bg-glass border-white/20 hover:bg-white/10 transition-all-smooth hover-lift"
-                          title="Open in VS Code"
-                        >
-                          <Code className="w-4 h-4 mr-2" />
-                          VS Code
-                        </Button>
-                      )}
-                      */}
                     </div>
 
                     {/* Tab Content */}

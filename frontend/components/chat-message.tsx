@@ -220,48 +220,47 @@ const ChatMessage = ({
                         : "text-white"
                     }`}
                   >
-                    {/* Copy Button - Always visible for latest message, hover-only for others */}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className={`absolute top-1 right-1 z-10 bg-black/30 hover:bg-black/50 border border-white/20 p-1 h-6 w-6 rounded-md transition-all-smooth hover-lift ${
-                        index === messages.length - 1 
-                          ? 'opacity-70 hover:opacity-100' 
-                          : 'opacity-0 group-hover:opacity-70 hover:!opacity-100'
-                      }`}
-                      onClick={() => copyToClipboard(message.content || "", message.id)}
-                      title="Copy message"
-                    >
-                      {copiedMessageId === message.id ? (
-                        <Check className="w-3 h-3 text-green-400" />
-                      ) : (
-                        <Copy className="w-3 h-3 text-white/80" />
+                    {/* Button container - positioned absolutely to overlay content */}
+                    <div className={`absolute top-1 right-1 z-10 flex gap-1 ${
+                      index === messages.length - 1 
+                        ? 'opacity-100' 
+                        : 'opacity-0 group-hover:opacity-100'
+                    } transition-opacity duration-200`}>
+                      {/* PDF Download Button - Only for long messages */}
+                      {message.content && message.content.length > 500 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="bg-black/50 hover:bg-black/70 border border-white/20 p-1 h-6 w-6 rounded-md transition-all-smooth hover-lift"
+                          onClick={() => downloadMessageAsPDF(message.content || "", message.id)}
+                          title="Download as PDF"
+                        >
+                          <Download className="w-3 h-3 text-white/80" />
+                        </Button>
                       )}
-                    </Button>
-
-                    {/* PDF Download Button - Only for long messages */}
-                    {message.content && message.content.length > 500 && (
+                      
+                      {/* Copy Button */}
                       <Button
                         variant="ghost"
                         size="sm"
-                        className={`absolute top-1 right-8 z-10 bg-black/30 hover:bg-black/50 border border-white/20 p-1 h-6 w-6 rounded-md transition-all-smooth hover-lift ${
-                          index === messages.length - 1 
-                            ? 'opacity-70 hover:opacity-100' 
-                            : 'opacity-0 group-hover:opacity-70 hover:!opacity-100'
-                        }`}
-                        onClick={() => downloadMessageAsPDF(message.content || "", message.id)}
-                        title="Download as PDF"
+                        className="bg-black/50 hover:bg-black/70 border border-white/20 p-1 h-6 w-6 rounded-md transition-all-smooth hover-lift"
+                        onClick={() => copyToClipboard(message.content || "", message.id)}
+                        title="Copy message"
                       >
-                        <Download className="w-3 h-3 text-white/80" />
+                        {copiedMessageId === message.id ? (
+                          <Check className="w-3 h-3 text-green-400" />
+                        ) : (
+                          <Copy className="w-3 h-3 text-white/80" />
+                        )}
                       </Button>
-                    )}
+                    </div>
 
                     {message.role === "user" ? (
-                      <div className={`text-sm md:text-base leading-relaxed ${message.content && message.content.length > 500 ? 'pr-16' : 'pr-8'}`}>
+                      <div className="text-sm md:text-base leading-relaxed">
                         {message.content}
                       </div>
                     ) : (
-                      <div className={`prose prose-invert prose-sm md:prose-base max-w-none ${message.content && message.content.length > 500 ? 'pr-16' : 'pr-8'}`}>
+                      <div className="prose prose-invert prose-sm md:prose-base max-w-none">
                         <Markdown>{message.content}</Markdown>
                       </div>
                     )}
