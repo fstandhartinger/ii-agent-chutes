@@ -62,9 +62,9 @@ The generated image will be saved to the specified local path in the workspace a
     def __init__(self, workspace_manager: WorkspaceManager):
         super().__init__()
         self.workspace_manager = workspace_manager
-        self.api_token = os.environ.get("CHUTES_API_TOKEN")
+        self.api_token = os.environ.get("CHUTES_API_KEY")
         if not self.api_token:
-            raise ValueError("CHUTES_API_TOKEN environment variable not set.")
+            raise ValueError("CHUTES_API_KEY environment variable not set.")
 
     async def _generate_image_async(self, tool_input: dict[str, Any]) -> dict:
         """Async method to generate image using Chutes API."""

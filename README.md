@@ -120,7 +120,7 @@ Create a `.env` file in the root directory with the following variables:
 OPENAI_API_KEY=your_openai_key
 OPENAI_AZURE_ENDPOINT=your_azure_endpoint
 # Image Generation Tool (using Chutes API)
-CHUTES_API_TOKEN=your_chutes_api_token
+CHUTES_API_KEY=your_chutes_api_key
 # Search Provider
 TAVILY_API_KEY=your_tavily_key
 #JINA_API_KEY=your_jina_key

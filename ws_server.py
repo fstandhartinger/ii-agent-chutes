@@ -55,6 +55,7 @@ import zipfile
 import tempfile
 from urllib.parse import quote
 import subprocess
+import requests
 
 MAX_OUTPUT_TOKENS_PER_TURN = 32768
 MAX_TURNS = 200
@@ -635,6 +636,69 @@ async def upload_file_endpoint(request: Request):
         return JSONResponse(
             status_code=500, content={"error": f"Error uploading file: {str(e)}"}
         )
+
+
+@app.post("/api/transcribe")
+async def transcribe_audio_endpoint(request: Request):
+    """API endpoint for transcribing audio using Chutes Whisper API.
+
+    Expects a JSON payload with:
+    - audio_b64: Base64 encoded audio data
+    """
+    try:
+        data = await request.json()
+        audio_b64 = data.get("audio_b64")
+
+        if not audio_b64:
+            logger.error('Transcription API: No audio data provided')
+            return create_cors_response({"error": "Audio data is required"}, 400)
+
+        logger.info(f'Transcription API: Received audio data, length: {len(audio_b64)}')
+
+        # Use CHUTES API to transcribe audio
+        api_token = os.getenv("CHUTES_API_KEY")
+        
+        logger.info('Transcription API: Checking for CHUTES_API_KEY...')
+        if not api_token:
+            logger.error('Transcription API: CHUTES_API_KEY environment variable not found')
+            available_chutes_vars = [key for key in os.environ.keys() if 'CHUTES' in key]
+            logger.error(f'Available CHUTES env vars: {available_chutes_vars}')
+            return create_cors_response({"error": "CHUTES API token not configured"}, 500)
+
+        logger.info('Transcription API: Found API key, making request to Chutes...')
+        
+        import requests
+        response = requests.post(
+            'https://chutes-whisper-large-v3.chutes.ai/transcribe',
+            headers={
+                'Authorization': f'Bearer {api_token}',
+                'Content-Type': 'application/json',
+            },
+            json={
+                'language': None,
+                'audio_b64': audio_b64,
+            },
+            timeout=30
+        )
+
+        logger.info(f'Transcription API: Chutes response status: {response.status_code}')
+        
+        if response.status_code == 200:
+            data = response.json()
+            logger.info(f'Transcription API: Chutes response data: {data}')
+            transcription = data[0].get('data', '') if data and len(data) > 0 else ''
+            logger.info(f'Transcription API: Extracted transcription: {transcription}')
+            return create_cors_response({"transcription": transcription})
+        else:
+            error_text = response.text
+            logger.error(f'CHUTES transcription failed: {response.status_code} {response.reason} {error_text}')
+            return create_cors_response({"error": "Transcription failed"}, 500)
+
+    except Exception as e:
+        logger.error(f'Error in transcription API: {str(e)}')
+        import traceback
+        traceback.print_exc()
+        return create_cors_response({"error": "Internal server error"}, 500)
 
 
 @app.get("/api/sessions/{device_id}")

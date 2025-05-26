@@ -151,7 +151,39 @@ const QuestionInput = ({
       reader.onloadend = async () => {
         const base64Audio = (reader.result as string).split(',')[1];
         
-        // Try to use the API endpoint first (which will use backend CHUTES_API_TOKEN)
+        console.log('Frontend: Starting transcription, audio length:', base64Audio.length);
+        
+        // Try to use the backend WebSocket server API endpoint first
+        try {
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+          const response = await fetch(`${apiUrl}/api/transcribe`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              audio_b64: base64Audio,
+            }),
+          });
+
+          console.log('Frontend: Backend response status:', response.status);
+
+          if (response.ok) {
+            const data = await response.json();
+            console.log('Frontend: Backend response data:', data);
+            const transcription = data.transcription || '';
+            console.log('Frontend: Extracted transcription:', transcription);
+            setValue(transcription);
+            return;
+          } else {
+            const errorData = await response.json();
+            console.error('Backend transcription failed:', response.status, errorData);
+          }
+        } catch (error) {
+          console.error('Backend transcription failed, trying Next.js API fallback:', error);
+        }
+
+        // Fallback to Next.js API route if backend fails
         try {
           const response = await fetch('/api/transcribe', {
             method: 'POST',
@@ -168,19 +200,23 @@ const QuestionInput = ({
             const transcription = data.transcription || '';
             setValue(transcription);
             return;
+          } else {
+            const errorData = await response.json();
+            console.error('Next.js API transcription failed:', response.status, errorData);
           }
         } catch (error) {
-          console.error('Backend transcription failed, trying direct API:', error);
+          console.error('Next.js API transcription failed:', error);
         }
 
-        // Fallback to direct API call if backend fails
+        // Final fallback to direct API call if both backend and Next.js API fail
         const apiToken = process.env.NEXT_PUBLIC_CHUTES_API_KEY;
         if (!apiToken) {
-          console.error('CHUTES API token not found and backend transcription failed');
+          console.error('CHUTES API token not found and all transcription methods failed');
           setValue('Transcription failed: API token not configured');
           return;
         }
 
+        console.log('Frontend: Trying direct Chutes API as final fallback...');
         const response = await fetch('https://chutes-whisper-large-v3.chutes.ai/transcribe', {
           method: 'POST',
           headers: {
@@ -198,7 +234,7 @@ const QuestionInput = ({
           const transcription = data[0]?.data || '';
           setValue(transcription);
         } else {
-          console.error('Transcription failed:', response.statusText);
+          console.error('Direct API transcription failed:', response.statusText);
           setValue('Transcription failed');
         }
       };

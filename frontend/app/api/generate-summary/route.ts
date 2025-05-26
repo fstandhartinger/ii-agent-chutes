@@ -8,8 +8,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Message is required' }, { status: 400 });
     }
 
-    // Use CHUTES API to generate a short summary
-    const apiToken = process.env.CHUTES_API_TOKEN;
+    // Use CHUTES API to generate a short summary - using CHUTES_API_KEY to match backend convention
+    const apiToken = process.env.CHUTES_API_KEY;
     
     if (!apiToken) {
       return NextResponse.json({ summary: "Task in progress" });
