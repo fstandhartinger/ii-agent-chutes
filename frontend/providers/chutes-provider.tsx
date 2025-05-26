@@ -27,18 +27,18 @@ export const TEXT_MODELS: LLMModel[] = [
     supportsVision: false
   },
   {
-    id: "claude-3-5-sonnet-20241022",
-    name: "Claude Sonnet 3.5",
+    id: "claude-opus-4-20250514",
+    name: "Claude Opus 4",
     provider: "anthropic",
-    description: "Claude Sonnet 3.5 model",
-    supportsVision: false
+    description: "Claude Opus 4 - Most capable model with vision",
+    supportsVision: true
   },
   {
-    id: "claude-3-opus-20240229",
-    name: "Claude Opus 3",
+    id: "claude-sonnet-4-20250514",
+    name: "Claude Sonnet 4",
     provider: "anthropic",
-    description: "Claude Opus 3 model",
-    supportsVision: false
+    description: "Claude Sonnet 4 - High-performance model with vision",
+    supportsVision: true
   },
   {
     id: "Qwen/Qwen3-235B-A22B",

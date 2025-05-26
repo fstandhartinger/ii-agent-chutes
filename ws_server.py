@@ -360,7 +360,7 @@ def create_agent_for_connection(
     model_id = websocket.query_params.get("model_id", "deepseek-ai/DeepSeek-V3-0324")
     
     # Check if this is an Anthropic model based on model_id
-    anthropic_models = ["claude-3-5-sonnet-20241022", "claude-3-opus-20240229", "claude-3-haiku-20240307"]
+    anthropic_models = ["claude-3-5-sonnet-20241022", "claude-3-opus-20240229", "claude-3-haiku-20240307", "claude-opus-4-20250514", "claude-sonnet-4-20250514"]
     use_anthropic = model_id in anthropic_models and not use_chutes and not use_openrouter
     
     # Setup logging

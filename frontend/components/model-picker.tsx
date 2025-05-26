@@ -19,8 +19,8 @@ const CHUTES_MODELS = [
   { id: "chutesai/Llama-4-Maverick-17B-128E-Instruct-FP8", name: "Llama 4 Maverick", isPremium: false },
   { id: "nvidia/Llama-3_1-Nemotron-Ultra-253B-v1", name: "Nemotron Ultra", isPremium: false },
   // Premium models - hidden by default
-  { id: "claude-3-5-sonnet-20241022", name: "Sonnet 3.5", isPremium: true, hidden: true },
-  { id: "claude-3-opus-20240229", name: "Opus 3", isPremium: true, hidden: true },
+  { id: "claude-opus-4-20250514", name: "Claude Opus 4", isPremium: true, hidden: true },
+  { id: "claude-sonnet-4-20250514", name: "Claude Sonnet 4", isPremium: true, hidden: true },
 ];
 
 export default function ModelPicker() {
@@ -50,12 +50,19 @@ export default function ModelPicker() {
         provider = "anthropic";
       }
       
+      // Determine vision support
+      let supportsVision = model.id.includes("V3") || model.id.includes("Maverick");
+      // Claude 4 models support vision
+      if (modelId === "claude-opus-4-20250514" || modelId === "claude-sonnet-4-20250514") {
+        supportsVision = true;
+      }
+      
       // Find the full model object from the provider
       const fullModel = {
         id: model.id,
         name: model.name,
         provider: provider,
-        supportsVision: model.id.includes("V3") || model.id.includes("Maverick")
+        supportsVision: supportsVision
       };
       setSelectedModel(fullModel);
     }
