@@ -77,6 +77,7 @@ export default function Home() {
   const [isMobileDetailPaneOpen, setIsMobileDetailPaneOpen] = useState(false);
   const [deployedUrl, setDeployedUrl] = useState<string>("");
   const [taskSummary, setTaskSummary] = useState<string>("");
+  const [userPrompt, setUserPrompt] = useState<string>("");
 
   const isReplayMode = useMemo(() => !!searchParams.get("id"), [searchParams]);
   const { toggleChutesLLM, getOptimalModel } = useChutes();
@@ -376,8 +377,10 @@ export default function Home() {
 
     setMessages((prev) => [...prev, newUserMessage]);
 
-    // Generate task summary for the first message
+    // Store the user prompt for the first message
     if (messages.length === 0) {
+      setUserPrompt(newQuestion);
+      // Generate task summary for the first message (keeping original functionality)
       generateTaskSummary(newQuestion);
     }
 
@@ -440,6 +443,7 @@ export default function Home() {
     setActiveTab(TAB.BROWSER); // Reset active tab
     setCurrentActionData(undefined); // Reset current action data
     setTaskSummary(""); // Reset task summary
+    setUserPrompt(""); // Reset user prompt
   };
 
   const parseJson = (jsonString: string) => {
@@ -955,7 +959,7 @@ export default function Home() {
                   <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-lg blur-sm" />
                 </div>
                 <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent truncate max-w-xs md:max-w-md">
-                  {taskSummary || "fubea"}
+                  {userPrompt || taskSummary || "fubea"}
                 </span>
               </>
             )}
