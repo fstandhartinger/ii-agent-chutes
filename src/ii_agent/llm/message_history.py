@@ -64,11 +64,25 @@ class MessageHistory:
         for message in last_turn:
             if isinstance(message, ToolCall):
                 # Create a unique key based on tool name and arguments
-                # Convert tool_input dict to a sorted tuple for consistent hashing
-                tool_key = (
-                    message.tool_name,
-                    tuple(sorted(message.tool_input.items()))
-                )
+                # Handle both dict and list types for tool_input
+                if isinstance(message.tool_input, dict):
+                    # Convert tool_input dict to a sorted tuple for consistent hashing
+                    tool_key = (
+                        message.tool_name,
+                        tuple(sorted(message.tool_input.items()))
+                    )
+                elif isinstance(message.tool_input, list):
+                    # Convert list to tuple (lists are not hashable)
+                    tool_key = (
+                        message.tool_name,
+                        tuple(message.tool_input)
+                    )
+                else:
+                    # For other types, convert to string representation
+                    tool_key = (
+                        message.tool_name,
+                        str(message.tool_input)
+                    )
                 
                 # Only add if we haven't seen this exact call before
                 if tool_key not in seen_calls:

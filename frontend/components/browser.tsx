@@ -13,9 +13,9 @@ const Browser = ({ className, url, screenshot, raw }: BrowserProps) => {
 
   return (
     <div
-      className={`h-[calc(100vh-178px)] border border-[#3A3B3F] rounded-xl overflow-hidden shadow-sm ${className}`}
+      className={`h-full border border-[#3A3B3F] rounded-xl overflow-hidden shadow-sm flex flex-col ${className}`}
     >
-      <div className="flex items-center gap-3 px-3 py-2.5 bg-black/80 border-b border-neutral-800">
+      <div className="flex items-center gap-3 px-3 py-2.5 bg-black/80 border-b border-neutral-800 flex-shrink-0">
         <div className="flex items-center gap-1.5">
           <div className="flex gap-1.5">
             <div className="w-3 h-3 rounded-full bg-[#ff5f57]" />
@@ -40,7 +40,7 @@ const Browser = ({ className, url, screenshot, raw }: BrowserProps) => {
           </button>
         </div>
       </div>
-      <div className="bg-black/80 h-full">
+      <div className="bg-black/80 flex-1 overflow-hidden">
         {screenshot && (
           <img
             src={`data:image/jpeg;base64,${screenshot}`}
@@ -49,7 +49,7 @@ const Browser = ({ className, url, screenshot, raw }: BrowserProps) => {
           />
         )}
         {raw && (
-          <div className="p-4 overflow-auto h-[calc(100vh-234px)]">
+          <div className="p-4 overflow-auto h-full">
             <Markdown>{raw}</Markdown>
           </div>
         )}

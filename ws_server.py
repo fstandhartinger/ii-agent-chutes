@@ -1145,10 +1145,10 @@ async def run_gaia_benchmark(request: Request):
             import datasets
             import huggingface_hub
         except ImportError as e:
-                    return create_cors_response({
-            "status": "error", 
-            "message": f"GAIA dependencies not installed. Missing: {str(e)}. Please install with: pip install datasets huggingface-hub"
-        }, 400)
+            return create_cors_response({
+                "status": "error", 
+                "message": f"GAIA dependencies not installed. Missing: {str(e)}. Please install with: pip install datasets huggingface-hub"
+            }, 400)
         
         data = await request.json()
         set_to_run = data.get("set_to_run", "validation")
@@ -1159,57 +1159,106 @@ async def run_gaia_benchmark(request: Request):
         output_dir = Path("output") / set_to_run
         output_dir.mkdir(parents=True, exist_ok=True)
         
-        # Run the benchmark
+        # Create logs directory
+        logs_dir = Path("logs")
+        logs_dir.mkdir(parents=True, exist_ok=True)
+        log_file = logs_dir / f"{run_name}.log"
+        
+        # Get workspace path from global args
+        workspace_path = global_args.workspace if global_args else "workspace"
+        
+        # Run the benchmark with all required arguments
         cmd = [
             "python", "run_gaia.py",
             "--run-name", run_name,
             "--set-to-run", set_to_run,
             "--end-index", str(max_tasks),
-            "--minimize-stdout-logs"
+            "--minimize-stdout-logs",
+            "--workspace", workspace_path,
+            "--logs-path", str(log_file)
         ]
         
         logger.info(f"Running GAIA benchmark: {' '.join(cmd)}")
         
-        # Run in background and capture output
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)  # 30 min timeout
+        # Run in background and capture output with environment variables
+        env = os.environ.copy()
+        # Disable progress bars in huggingface_hub
+        env["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
+        env["TQDM_DISABLE"] = "1"
         
-        if result.returncode == 0:
-            # Read results file
-            results_file = output_dir / f"{run_name}.jsonl"
-            if results_file.exists():
-                results = []
-                with open(results_file, 'r') as f:
-                    for line in f:
-                        if line.strip():
-                            results.append(json.loads(line))
-                
-                # Calculate basic statistics
-                total_tasks = len(results)
-                completed_tasks = len([r for r in results if r.get('prediction')])
-                
-                response_data = {
-                    "status": "success", 
-                    "results": results,
-                    "summary": {
-                        "total_tasks": total_tasks,
-                        "completed_tasks": completed_tasks,
-                        "completion_rate": completed_tasks / total_tasks if total_tasks > 0 else 0,
-                        "run_name": run_name,
-                        "set_to_run": set_to_run
+        try:
+            # Run with a longer timeout and capture both stdout and stderr
+            result = subprocess.run(
+                cmd, 
+                capture_output=True, 
+                text=True, 
+                timeout=3600,  # 60 minutes timeout
+                env=env,
+                cwd=os.getcwd()  # Ensure we run in the correct directory
+            )
+            
+            # Log the output for debugging
+            if result.stdout:
+                logger.info(f"GAIA stdout: {result.stdout[:1000]}...")  # Log first 1000 chars
+            if result.stderr:
+                logger.error(f"GAIA stderr: {result.stderr[:1000]}...")  # Log first 1000 chars
+            
+            if result.returncode == 0:
+                # Read results file
+                results_file = output_dir / f"{run_name}.jsonl"
+                if results_file.exists():
+                    results = []
+                    with open(results_file, 'r') as f:
+                        for line in f:
+                            if line.strip():
+                                try:
+                                    results.append(json.loads(line))
+                                except json.JSONDecodeError as e:
+                                    logger.warning(f"Failed to parse result line: {e}")
+                    
+                    # Calculate basic statistics
+                    total_tasks = len(results)
+                    completed_tasks = len([r for r in results if r.get('prediction')])
+                    
+                    response_data = {
+                        "status": "success", 
+                        "results": results,
+                        "summary": {
+                            "total_tasks": total_tasks,
+                            "completed_tasks": completed_tasks,
+                            "completion_rate": completed_tasks / total_tasks if total_tasks > 0 else 0,
+                            "run_name": run_name,
+                            "set_to_run": set_to_run
+                        }
                     }
-                }
-                return create_cors_response(response_data)
+                    return create_cors_response(response_data)
+                else:
+                    error_msg = "Results file not found. "
+                    if result.stderr:
+                        error_msg += f"Process error: {result.stderr}"
+                    return create_cors_response({"status": "error", "message": error_msg}, 404)
             else:
-                return create_cors_response({"status": "error", "message": "Results file not found"}, 404)
-        else:
-            logger.error(f"GAIA benchmark failed: {result.stderr}")
-            return create_cors_response({"status": "error", "message": result.stderr or "Unknown error occurred"}, 500)
+                error_msg = f"GAIA benchmark failed with return code {result.returncode}. "
+                if result.stderr:
+                    error_msg += f"Error: {result.stderr}"
+                elif result.stdout:
+                    error_msg += f"Output: {result.stdout}"
+                logger.error(error_msg)
+                return create_cors_response({"status": "error", "message": error_msg}, 500)
+                
+        except subprocess.TimeoutExpired:
+            return create_cors_response({"status": "error", "message": "Benchmark execution timed out (60 minutes)"}, 408)
+        except FileNotFoundError:
+            return create_cors_response({"status": "error", "message": "run_gaia.py script not found. Make sure you're running from the correct directory."}, 500)
+        except Exception as e:
+            logger.error(f"Subprocess error: {str(e)}")
+            return create_cors_response({"status": "error", "message": f"Failed to run benchmark: {str(e)}"}, 500)
         
-    except subprocess.TimeoutExpired:
-        return create_cors_response({"status": "error", "message": "Benchmark execution timed out (30 minutes)"}, 408)
     except Exception as e:
         logger.error(f"Error running GAIA benchmark: {str(e)}")
-        return create_cors_response({"error": f"Error running GAIA benchmark: {str(e)}"}, 500)
+        import traceback
+        traceback.print_exc()
+        return create_cors_response({"status": "error", "message": f"Error running GAIA benchmark: {str(e)}"}, 500)
 
 
 if __name__ == "__main__":

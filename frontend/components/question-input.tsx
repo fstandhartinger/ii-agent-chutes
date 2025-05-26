@@ -519,7 +519,7 @@ const QuestionInput = ({
           {/* Gradient Border Effect */}
           <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-emerald-500/20 rounded-2xl blur-sm opacity-50" />
           
-          <div className="relative bg-black/20 rounded-2xl">
+          <div className="relative bg-black/20 rounded-2xl bottom-aligned-textarea">
             <Textarea
               ref={textareaRef}
               className={`w-full p-6 pb-20 bg-transparent border-0 text-lg placeholder:text-muted-foreground/70 focus:ring-0 resize-none text-white ${textareaClassName}`}
@@ -659,7 +659,7 @@ const QuestionInput = ({
                 {isLoading && handleStopAgent ? (
                   <Button
                     onClick={handleStopAgent}
-                    className="border-0 p-3 w-12 h-12 font-bold rounded-xl transition-all-smooth shadow-lg cursor-pointer bg-red-500 hover:bg-red-600 hover:scale-105 active:scale-95 shadow-glow hover-lift text-white"
+                    className="border-0 p-3 w-12 h-12 font-bold rounded-lg transition-all-smooth shadow-lg cursor-pointer bg-red-500 hover:bg-red-600 hover:scale-105 active:scale-95 shadow-glow hover-lift text-white"
                     title="Stop agent run"
                   >
                     <Square className="w-5 h-5" />
@@ -668,7 +668,7 @@ const QuestionInput = ({
                   <Button
                     disabled={!isButtonEnabled}
                     onClick={() => handleSubmit(value)}
-                    className={`border-0 p-3 w-12 h-12 font-bold rounded-xl transition-all-smooth shadow-lg ${
+                    className={`border-0 p-3 w-12 h-12 font-bold rounded-lg transition-all-smooth shadow-lg ${
                       !isButtonEnabled 
                         ? "cursor-not-allowed opacity-50 bg-muted" 
                         : "cursor-pointer bg-gradient-skyblue-lavender hover:scale-105 active:scale-95 shadow-glow hover-lift text-black"

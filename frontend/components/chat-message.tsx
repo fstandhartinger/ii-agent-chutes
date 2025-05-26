@@ -221,7 +221,9 @@ const ChatMessage = ({
                     }`}
                   >
                     {/* Button container - positioned absolutely to overlay content */}
-                    <div className={`absolute top-1 right-1 z-10 flex gap-1 ${
+                    <div className={`absolute top-1 ${
+                      message.role === "user" ? "right-1" : "-right-12"
+                    } z-10 flex gap-1 ${
                       index === messages.length - 1 
                         ? 'opacity-100' 
                         : 'opacity-0 group-hover:opacity-100'

@@ -294,7 +294,7 @@ const Action = ({ workspaceInfo, type, value, onClick }: ActionProps) => {
       <Button
         variant="ghost"
         size="sm"
-        className="absolute top-1 right-1 z-10 bg-black/30 hover:bg-black/50 border border-white/20 p-1 h-6 w-6 rounded-md transition-all-smooth hover-lift message-copy-button"
+        className="absolute top-1 right-1 z-10 bg-black/30 hover:bg-black/50 border border-white/20 p-1 h-6 w-6 rounded-md transition-all-smooth hover-lift message-copy-button opacity-0 group-hover:opacity-100"
         onClick={(e) => {
           e.stopPropagation();
           copyToClipboard(copyText, actionId);
@@ -314,13 +314,13 @@ const Action = ({ workspaceInfo, type, value, onClick }: ActionProps) => {
           <span className="text-neutral-100 font-medium group-hover:text-white">
             {step_title}
           </span>
-          <span className="text-neutral-400 font-medium truncate group-hover:text-neutral-300 max-w-full">
+          <span className="text-neutral-400 font-medium truncate group-hover:text-neutral-300 max-w-full block pr-4">
             {step_value}
           </span>
         </div>
         
         {/* Mobile Right Arrow Indicator */}
-        <div className="md:hidden flex items-center justify-center self-center">
+        <div className="md:hidden flex items-center justify-center self-center absolute right-3">
           <ChevronRight className="w-5 h-5 text-neutral-400 group-hover:text-neutral-300" />
         </div>
       </div>

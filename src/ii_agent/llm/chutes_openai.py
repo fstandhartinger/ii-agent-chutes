@@ -62,6 +62,9 @@ class ChutesOpenAIClient(LLMClient):
         self.no_fallback = no_fallback
         self.use_native_tool_calling = use_native_tool_calling
         
+        # Initialize logger_for_agent_logs to use standard logging
+        self.logger_for_agent_logs = logging.getLogger(__name__)
+        
         # Default fallback models for different scenarios
         if fallback_models is None:
             self.fallback_models = [
@@ -74,6 +77,13 @@ class ChutesOpenAIClient(LLMClient):
             
         # Log provider info
         logging.info(f"=== Using CHUTES LLM provider with model: {model_name} ===")
+        
+        # Check if model supports native tool calling
+        models_without_native_tools = ["Qwen/Qwen3-235B-A22B", "Qwen/Qwen2.5-VL-32B-Instruct"]
+        if self.use_native_tool_calling and model_name in models_without_native_tools:
+            logging.warning(f"=== Model {model_name} may not support native tool calling properly ===")
+            logging.warning(f"=== Consider using JSON workaround mode instead ===")
+        
         if self.use_native_tool_calling:
             logging.info("=== NATIVE TOOL CALLING MODE ENABLED ===")
         else:
@@ -391,6 +401,18 @@ class ChutesOpenAIClient(LLMClient):
             for retry in range(self.max_retries):
                 try:
                     response = self.client.chat.completions.create(**payload)
+                    
+                    # Log successful response details
+                    logging.info(f"[CHUTES] API call successful for model: {current_model}")
+                    if response:
+                        logging.info(f"[CHUTES] Response received - has choices: {hasattr(response, 'choices') and response.choices is not None}")
+                        if hasattr(response, 'choices') and response.choices:
+                            logging.info(f"[CHUTES] Number of choices: {len(response.choices)}")
+                            if len(response.choices) > 0:
+                                logging.info(f"[CHUTES] First choice has message: {hasattr(response.choices[0], 'message') and response.choices[0].message is not None}")
+                    else:
+                        logging.warning(f"[CHUTES] Response is None or falsy immediately after API call")
+                    
                     # Success! Update the model name to reflect which one worked
                     if model_idx > 0:
                         logging.info(f"[CHUTES] Successfully used fallback model: {current_model}")
@@ -442,6 +464,17 @@ class ChutesOpenAIClient(LLMClient):
                         
                 except Exception as e:
                     logging.error(f"[CHUTES] Unexpected error for model {current_model}: {e}")
+                    logging.error(f"[CHUTES] Error type: {type(e)}")
+                    logging.error(f"[CHUTES] Error details: {str(e)}")
+                    
+                    # Log the full traceback for debugging
+                    import traceback
+                    logging.error(f"[CHUTES] Full traceback:\n{traceback.format_exc()}")
+                    
+                    # If this is a JSON decode error or similar, it might be a response format issue
+                    if "json" in str(e).lower() or "decode" in str(e).lower():
+                        logging.error(f"[CHUTES] Possible response format issue detected")
+                    
                     break
             
             # If we got a response, break out of the model loop
@@ -479,7 +512,36 @@ class ChutesOpenAIClient(LLMClient):
         # Check if response is valid and has content
         if response and (not response.choices or not response.choices[0].message):
             if _retry_count < 3:
+                # Enhanced logging to understand the malformed response
                 logging.warning(f"[CHUTES] Received malformed response (no choices/message), attempting retry {_retry_count + 1}/3")
+                
+                # Log detailed response structure for debugging
+                if response:
+                    logging.error(f"[CHUTES] Malformed response details:")
+                    logging.error(f"[CHUTES] - Response type: {type(response)}")
+                    logging.error(f"[CHUTES] - Has choices: {hasattr(response, 'choices')}")
+                    if hasattr(response, 'choices'):
+                        logging.error(f"[CHUTES] - Choices: {response.choices}")
+                        logging.error(f"[CHUTES] - Choices length: {len(response.choices) if response.choices else 0}")
+                        if response.choices and len(response.choices) > 0:
+                            logging.error(f"[CHUTES] - First choice: {response.choices[0]}")
+                            logging.error(f"[CHUTES] - Has message: {hasattr(response.choices[0], 'message')}")
+                            if hasattr(response.choices[0], 'message'):
+                                logging.error(f"[CHUTES] - Message: {response.choices[0].message}")
+                    
+                    # Log other response attributes
+                    logging.error(f"[CHUTES] - Response attributes: {dir(response)}")
+                    
+                    # Try to log the raw response if possible
+                    try:
+                        if hasattr(response, 'model_dump'):
+                            logging.error(f"[CHUTES] - Raw response dump: {response.model_dump()}")
+                        elif hasattr(response, '__dict__'):
+                            logging.error(f"[CHUTES] - Raw response dict: {response.__dict__}")
+                    except Exception as e:
+                        logging.error(f"[CHUTES] - Could not dump raw response: {e}")
+                else:
+                    logging.error(f"[CHUTES] - Response is None or falsy")
                 
                 # Add a clarifying instruction to the system prompt for retry
                 enhanced_system_prompt = system_prompt or ""
@@ -510,6 +572,13 @@ class ChutesOpenAIClient(LLMClient):
             logging.info(f"[CHUTES DEBUG] Raw response message: {message}")
             logging.info(f"[CHUTES DEBUG] Message content: {message.content}")
             logging.info(f"[CHUTES DEBUG] Message tool_calls: {message.tool_calls}")
+            
+            # Check if message content is None and no tool calls
+            if message.content is None and not message.tool_calls:
+                logging.warning(f"[CHUTES] Response has null content and no tool calls")
+                # Try to extract any useful information from the response
+                if hasattr(message, '__dict__'):
+                    logging.warning(f"[CHUTES] Message attributes: {message.__dict__}")
             
             # Handle tool calls based on the mode
             if tools and not self.use_native_tool_calling:

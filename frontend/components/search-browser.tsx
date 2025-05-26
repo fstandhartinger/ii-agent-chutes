@@ -15,9 +15,9 @@ const SearchBrowser = ({
 
   return (
     <div
-      className={`h-[calc(100vh-178px)] flex rounded-xl flex-col overflow-hidden border border-[#3A3B3F] ${className}`}
+      className={`h-full flex rounded-xl flex-col overflow-hidden border border-[#3A3B3F] ${className}`}
     >
-      <div className="flex items-center gap-3 px-3 py-2.5 bg-black/80 backdrop-blur-xl border-b border-neutral-800">
+      <div className="flex items-center gap-3 px-3 py-2.5 bg-black/80 backdrop-blur-xl border-b border-neutral-800 flex-shrink-0">
         <div className="flex items-center gap-1.5">
           <div className="flex gap-1.5">
             <div className="w-3 h-3 rounded-full bg-[#ff5f57]" />
@@ -39,20 +39,20 @@ const SearchBrowser = ({
           search_results?.map((item, index) => (
             <div
               key={index}
-              className="flex flex-col gap-y-2 py-6 hover:bg-neutral-900 transition-colors"
+              className="flex flex-col gap-y-2 py-6 hover:bg-neutral-900/50 transition-all duration-200 px-4 -mx-4 rounded-lg"
             >
               <a
                 href={item.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-semibold text-blue-400 hover:underline text-lg"
+                className="font-semibold text-blue-400 hover:text-blue-300 hover:underline text-lg transition-colors"
               >
                 {item.title}
               </a>
-              <p className="text-neutral-400 text-sm line-clamp-2">
+              <p className="text-neutral-300 text-sm line-clamp-3 leading-relaxed">
                 {item.content}
               </p>
-              <span className="text-green-400 text-xs">{item.url}</span>
+              <span className="text-emerald-400/80 text-xs font-medium">{item.url}</span>
             </div>
           ))}
       </div>

@@ -7,6 +7,10 @@ It integrates with the existing CLI infrastructure while adding GAIA-specific ev
 """
 
 import os
+# Disable progress bars early before imports
+os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
+os.environ["TQDM_DISABLE"] = "1"
+
 import json
 import argparse
 from datetime import datetime
@@ -118,40 +122,69 @@ def parse_args():
 
 def load_gaia_dataset(use_raw_dataset: bool, set_to_run: str) -> Dataset:
     """Load the GAIA dataset, downloading if necessary."""
-    if not os.path.exists("data/gaia"):
-        if use_raw_dataset:
-            snapshot_download(
-                repo_id="gaia-benchmark/GAIA",
-                repo_type="dataset",
-                local_dir="data/gaia",
-                ignore_patterns=[".gitattributes", "README.md"],
-            )
+    data_dir = Path("data/gaia")
+    
+    try:
+        if not data_dir.exists():
+            print(f"GAIA dataset not found at {data_dir}, downloading...")
+            if use_raw_dataset:
+                print("Downloading from gaia-benchmark/GAIA...")
+                snapshot_download(
+                    repo_id="gaia-benchmark/GAIA",
+                    repo_type="dataset",
+                    local_dir=str(data_dir),
+                    ignore_patterns=[".gitattributes", "README.md"],
+                    resume_download=True,
+                    max_workers=1,  # Reduce parallel downloads to avoid issues
+                )
+            else:
+                # WARNING: this dataset is gated: make sure you visit the repo to require access
+                print("Downloading from smolagents/GAIA-annotated...")
+                print("NOTE: This dataset is gated. Make sure you have access on Hugging Face.")
+                snapshot_download(
+                    repo_id="smolagents/GAIA-annotated",
+                    repo_type="dataset",
+                    local_dir=str(data_dir),
+                    ignore_patterns=[".gitattributes", "README.md"],
+                    resume_download=True,
+                    max_workers=1,  # Reduce parallel downloads to avoid issues
+                )
+            print("Download completed successfully!")
         else:
-            # WARNING: this dataset is gated: make sure you visit the repo to require access
-            snapshot_download(
-                repo_id="smolagents/GAIA-annotated",
-                repo_type="dataset",
-                local_dir="data/gaia",
-                ignore_patterns=[".gitattributes", "README.md"],
-            )
+            print(f"Using existing GAIA dataset at {data_dir}")
 
-    def preprocess_file_paths(row):
-        if len(row["file_name"]) > 0:
-            row["file_name"] = f"data/gaia/2023/{set_to_run}/" + row["file_name"]
-        return row
+        def preprocess_file_paths(row):
+            if len(row["file_name"]) > 0:
+                row["file_name"] = f"data/gaia/2023/{set_to_run}/" + row["file_name"]
+            return row
 
-    eval_ds = load_dataset(
-        "data/gaia/GAIA.py",
-        name="2023_all",
-        split=set_to_run,
-        trust_remote_code=True,
-    )
+        # Check if the dataset script exists
+        dataset_script = data_dir / "GAIA.py"
+        if not dataset_script.exists():
+            raise FileNotFoundError(f"Dataset script not found at {dataset_script}. The download may have failed.")
 
-    eval_ds = eval_ds.rename_columns(
-        {"Question": "question", "Final answer": "true_answer", "Level": "task"}
-    )
-    eval_ds = eval_ds.map(preprocess_file_paths)
-    return eval_ds
+        print(f"Loading dataset from {dataset_script}...")
+        eval_ds = load_dataset(
+            str(dataset_script),
+            name="2023_all",
+            split=set_to_run,
+            trust_remote_code=True,
+            download_mode="reuse_dataset_if_exists",
+        )
+
+        eval_ds = eval_ds.rename_columns(
+            {"Question": "question", "Final answer": "true_answer", "Level": "task"}
+        )
+        eval_ds = eval_ds.map(preprocess_file_paths)
+        
+        print(f"Successfully loaded {len(eval_ds)} examples from {set_to_run} split")
+        return eval_ds
+        
+    except Exception as e:
+        print(f"Error loading GAIA dataset: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise
 
 
 def append_answer(entry: dict, jsonl_file: str) -> None:
@@ -485,11 +518,19 @@ def main():
         # Create tasks with semaphore
         tasks = [process_with_semaphore(example) for example in tasks_to_run]
 
-        # Process tasks with progress bar
-        for f in tqdm(
-            asyncio.as_completed(tasks), total=len(tasks), desc="Processing GAIA tasks"
-        ):
-            await f
+        # Process tasks with progress bar (if not disabled)
+        if os.environ.get("TQDM_DISABLE", "0") == "1":
+            # No progress bar
+            print(f"Processing {len(tasks)} GAIA tasks...")
+            for f in asyncio.as_completed(tasks):
+                await f
+            print("All tasks completed.")
+        else:
+            # With progress bar
+            for f in tqdm(
+                asyncio.as_completed(tasks), total=len(tasks), desc="Processing GAIA tasks"
+            ):
+                await f
 
     # Run the async task processing
     asyncio.run(process_tasks())
