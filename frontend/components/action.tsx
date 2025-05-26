@@ -310,7 +310,7 @@ const Action = ({ workspaceInfo, type, value, onClick }: ActionProps) => {
 
       <div onClick={onClick} className="flex items-start gap-3 flex-1">
         {step_icon}
-        <div className="flex flex-col gap-2 text-sm min-w-0 flex-1 pr-8">
+        <div className="flex flex-col gap-2 text-sm min-w-0 flex-1 pr-12 md:pr-8">
           <span className="text-neutral-100 font-medium group-hover:text-white">
             {step_title}
           </span>
@@ -320,7 +320,7 @@ const Action = ({ workspaceInfo, type, value, onClick }: ActionProps) => {
         </div>
         
         {/* Mobile Right Arrow Indicator */}
-        <div className="md:hidden flex items-center justify-center">
+        <div className="md:hidden flex items-center justify-center self-center">
           <ChevronRight className="w-4 h-4 text-neutral-400 group-hover:text-neutral-300" />
         </div>
       </div>
