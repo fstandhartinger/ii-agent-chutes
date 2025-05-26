@@ -167,7 +167,7 @@ IMPORTANT: You can call multiple tools per turn when needed. The system will exe
   2. Then IMMEDIATELY call the static_deploy tool with the file path to get the public URL
   3. Finally use the complete tool with the real URL from static_deploy
 - NEVER include placeholder URLs like "static-deploy-url", "/path/to/file", or made-up URLs - always call static_deploy first to get the real URL
-- The static_deploy tool returns a URL like: http://localhost:8000/workspace/{uuid}/{filename}
+- The static_deploy tool returns a URL like: http://localhost:8000/workspace/{{uuid}}/{{filename}}
 - You must use this exact URL when providing links to the user
 - After deployment test the website
 - If a user asks for a PDF report, document, or any downloadable file:
