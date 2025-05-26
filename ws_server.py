@@ -691,7 +691,8 @@ async def transcribe_audio_endpoint(request: Request):
         if response.status_code == 200:
             data = response.json()
             logger.info(f'Transcription API: Chutes response data: {data}')
-            transcription = data[0].get('data', '') if data and len(data) > 0 else ''
+            transcription = data[0].get('text', '') if data and len(data) > 0 else ''
+            transcription = transcription.strip()  # Trim whitespace
             logger.info(f'Transcription API: Extracted transcription: {transcription}')
             return create_cors_response({"transcription": transcription})
         else:

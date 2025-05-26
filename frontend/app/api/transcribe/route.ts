@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     if (response.ok) {
       const data = await response.json();
       console.log('Transcription API: Chutes response data:', data);
-      const transcription = data[0]?.data || '';
+      const transcription = (data[0]?.text || '').trim();
       console.log('Transcription API: Extracted transcription:', transcription);
       return NextResponse.json({ transcription });
     } else {

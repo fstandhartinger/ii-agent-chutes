@@ -79,9 +79,11 @@ export default function Home() {
   const [taskSummary, setTaskSummary] = useState<string>("");
   const [userPrompt, setUserPrompt] = useState<string>("");
   const [useNativeToolCalling, setUseNativeToolCalling] = useState(false);
+  const [logoClickCount, setLogoClickCount] = useState(0);
+  const [showNativeToolToggle, setShowNativeToolToggle] = useState(false);
 
   const isReplayMode = useMemo(() => !!searchParams.get("id"), [searchParams]);
-  const { toggleChutesLLM, getOptimalModel, selectedModel } = useChutes();
+  const { getOptimalModel, selectedModel } = useChutes();
 
   // Generate task summary using LLM
   const generateTaskSummary = async (firstUserMessage: string) => {
@@ -301,6 +303,16 @@ export default function Home() {
     },
     50
   );
+
+  const handleLogoClick = () => {
+    const newCount = logoClickCount + 1;
+    setLogoClickCount(newCount);
+    
+    if (newCount >= 5) {
+      setShowNativeToolToggle(true);
+      toast.success("Hidden feature unlocked! Native Tool Calling toggle is now available.");
+    }
+  };
 
   const handleExampleClick = async (text: string, isDeepResearch: boolean, fileUrl?: string) => {
     // Set the question text
@@ -998,23 +1010,25 @@ export default function Home() {
             </div>
           ) : (
             <div className="flex-1 flex justify-end items-center gap-4">
-              {/* Native Tool Calling Toggle */}
-              <div className="flex items-center gap-2 bg-glass border border-white/20 rounded-lg px-3 py-2">
-                <span className="text-sm text-white/80">Native Tool Calling</span>
-                <button
-                  onClick={() => setUseNativeToolCalling(!useNativeToolCalling)}
-                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                    useNativeToolCalling ? 'bg-blue-500' : 'bg-gray-600'
-                  }`}
-                  title={useNativeToolCalling ? "Using native tool calling (Squad-style)" : "Using JSON workaround (default)"}
-                >
-                  <span
-                    className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
-                      useNativeToolCalling ? 'translate-x-5' : 'translate-x-1'
+              {/* Native Tool Calling Toggle - Hidden until logo is clicked 5 times */}
+              {showNativeToolToggle && (
+                <div className="flex items-center gap-2 bg-glass border border-white/20 rounded-lg px-3 py-2">
+                  <span className="text-sm text-white/80">Native Tool Calling</span>
+                  <button
+                    onClick={() => setUseNativeToolCalling(!useNativeToolCalling)}
+                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                      useNativeToolCalling ? 'bg-blue-500' : 'bg-gray-600'
                     }`}
-                  />
-                </button>
-              </div>
+                    title={useNativeToolCalling ? "Using native tool calling (Squad-style)" : "Using JSON workaround (default)"}
+                  >
+                    <span
+                      className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
+                        useNativeToolCalling ? 'translate-x-5' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+              )}
               <ModelPicker />
             </div>
           )}
@@ -1054,7 +1068,7 @@ export default function Home() {
             <div className="text-center mb-8 md:mb-12">
               <motion.div 
                 className="flex items-center justify-center mb-8 cursor-pointer group"
-                onDoubleClick={toggleChutesLLM}
+                onClick={handleLogoClick}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
