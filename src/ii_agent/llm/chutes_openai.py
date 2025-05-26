@@ -2,6 +2,7 @@ import os
 import random
 import time
 import logging
+import json
 from typing import Any, Tuple, cast, Dict, List, Optional
 
 from openai import OpenAI
@@ -41,6 +42,7 @@ class ChutesOpenAIClient(LLMClient):
         fallback_models=None,
         test_mode=False,
         no_fallback=False,
+        use_native_tool_calling=False,
     ):
         """Initialize the Chutes OpenAI-compatible client."""
         api_key = os.getenv("CHUTES_API_KEY")
@@ -58,6 +60,7 @@ class ChutesOpenAIClient(LLMClient):
         self.use_caching = use_caching
         self.test_mode = test_mode
         self.no_fallback = no_fallback
+        self.use_native_tool_calling = use_native_tool_calling
         
         # Default fallback models for different scenarios
         if fallback_models is None:
@@ -71,6 +74,10 @@ class ChutesOpenAIClient(LLMClient):
             
         # Log provider info
         logging.info(f"=== Using CHUTES LLM provider with model: {model_name} ===")
+        if self.use_native_tool_calling:
+            logging.info("=== NATIVE TOOL CALLING MODE ENABLED ===")
+        else:
+            logging.info("=== JSON WORKAROUND MODE (default) ===")
         if self.no_fallback:
             logging.info(f"=== Fallback models DISABLED (no_fallback=True) ===")
         else:
@@ -253,20 +260,54 @@ class ChutesOpenAIClient(LLMClient):
                             logging.warning(f"[CHUTES] Model {self.model_name} does not support vision, skipping image...")
                             continue
                 elif str(type(message)) == str(ToolCall):
-                    # Chutes doesn't support tool calls - skip them with warning
                     message = cast(ToolCall, message)
-                    logging.warning(f"[CHUTES] Skipping ToolCall message (tool_name: {message.tool_name}) - not supported by Chutes API")
-                    continue
+                    if self.use_native_tool_calling and role == "assistant":
+                        # Native tool calling mode - add tool call to assistant message
+                        tool_call_dict = {
+                            "id": message.tool_call_id,
+                            "type": "function",
+                            "function": {
+                                "name": message.tool_name,
+                                "arguments": json.dumps(message.tool_input) if isinstance(message.tool_input, dict) else str(message.tool_input)
+                            }
+                        }
+                        
+                        # Find the last assistant message and add tool call to it
+                        if openai_messages and openai_messages[-1]["role"] == "assistant":
+                            if "tool_calls" not in openai_messages[-1]:
+                                openai_messages[-1]["tool_calls"] = []
+                            openai_messages[-1]["tool_calls"].append(tool_call_dict)
+                        else:
+                            # Create new assistant message with tool call
+                            openai_messages.append({
+                                "role": "assistant",
+                                "content": None,
+                                "tool_calls": [tool_call_dict]
+                            })
+                        logging.info(f"[CHUTES] Added native tool call to assistant message: {message.tool_name}")
+                    else:
+                        # JSON workaround mode or user role - skip with warning
+                        logging.warning(f"[CHUTES] Skipping ToolCall message (tool_name: {message.tool_name}) - not supported in current mode")
+                        continue
                 elif str(type(message)) == str(ToolFormattedResult):
-                    # Chutes doesn't support tool results - convert to regular text message
                     message = cast(ToolFormattedResult, message)
-                    logging.warning(f"[CHUTES] Converting ToolFormattedResult to text message - Chutes doesn't support tool results")
-                    if role == "user":
-                        # Convert tool result to a regular user message
+                    if self.use_native_tool_calling and role == "user":
+                        # Native tool calling mode - add tool result message
                         openai_messages.append({
-                            "role": "user",
-                            "content": f"Tool result: {str(message.tool_output)}",
+                            "role": "tool",
+                            "tool_call_id": message.tool_call_id,
+                            "content": str(message.tool_output)
                         })
+                        logging.info(f"[CHUTES] Added native tool result message")
+                    else:
+                        # JSON workaround mode - convert to regular text message
+                        logging.warning(f"[CHUTES] Converting ToolFormattedResult to text message - using workaround mode")
+                        if role == "user":
+                            # Convert tool result to a regular user message
+                            openai_messages.append({
+                                "role": "user",
+                                "content": f"Tool result: {str(message.tool_output)}",
+                            })
 
         # Build the request payload - only include what's needed
         payload = {
@@ -276,27 +317,53 @@ class ChutesOpenAIClient(LLMClient):
             "temperature": temperature,
         }
         
-        # JSON Workaround for tools when they are provided
+        # Handle tools based on the mode
         if tools:
-            logging.info(f"[CHUTES] Implementing JSON workaround for {len(tools)} tools")
-            # Add a system message that instructs the model to output tool calls as JSON
-            tool_instructions = "\n\nIMPORTANT: When you need to use a tool, you MUST output a JSON object in the following EXACT format:\n```json\n{\n  \"tool_call\": {\n    \"id\": \"call_<unique_id>\",\n    \"name\": \"<tool_name>\",\n    \"arguments\": {<tool_arguments>}\n  }\n}\n```\n\nRULES:\n- Use ONLY ONE tool call per response\n- Do NOT call the same tool repeatedly without making progress\n- For sequential_thinking: Only use when you need to break down a complex problem. Do NOT use for simple tasks.\n- Always provide substantive reasoning in your response along with the tool call\n- If a tool fails, try a different approach rather than repeating the same call\n- The JSON block MUST be properly formatted and complete\n- Always include the closing braces and backticks\n- For research tasks: Continue using tools until you have comprehensive information, then provide a complete summary\n- When you have sufficient information to answer the question, provide your final answer WITHOUT using tools\n\nAvailable tools:\n"
-            for tool in tools:
-                tool_instructions += f"- {tool.name}: {tool.description}\n"
-                tool_instructions += f"  Parameters: {tool.input_schema}\n"
-            
-            # Add examples for common tools
-            tool_instructions += "\n\nEXAMPLES:\n"
-            tool_instructions += "For web search:\n```json\n{\n  \"tool_call\": {\n    \"id\": \"call_123\",\n    \"name\": \"web_search\",\n    \"arguments\": {\"query\": \"your search query here\"}\n  }\n}\n```\n"
-            tool_instructions += "For sequential thinking:\n```json\n{\n  \"tool_call\": {\n    \"id\": \"call_456\",\n    \"name\": \"sequential_thinking\",\n    \"arguments\": {\"thought\": \"your thought here\", \"nextThoughtNeeded\": true, \"thoughtNumber\": 1, \"totalThoughts\": 3}\n  }\n}\n```\n"
-            
-            # Append to system prompt or create new one
-            if openai_messages and openai_messages[0]["role"] == "system":
-                openai_messages[0]["content"] += tool_instructions
+            if self.use_native_tool_calling:
+                logging.info(f"[CHUTES] Using native tool calling for {len(tools)} tools")
+                # Convert tools to OpenAI format for native tool calling
+                openai_tools = []
+                for tool in tools:
+                    openai_tool = {
+                        "type": "function",
+                        "function": {
+                            "name": tool.name,
+                            "description": tool.description,
+                            "parameters": tool.input_schema
+                        }
+                    }
+                    openai_tools.append(openai_tool)
+                
+                # Add tools to payload
+                payload["tools"] = openai_tools
+                
+                # Set tool choice if provided
+                if tool_choice:
+                    payload["tool_choice"] = tool_choice
+                else:
+                    payload["tool_choice"] = "auto"
+                
+                logging.info(f"[CHUTES] Added {len(openai_tools)} tools to payload for native calling")
             else:
-                openai_messages.insert(0, {"role": "system", "content": tool_instructions})
-            
-            logging.info(f"[CHUTES] Added enhanced tool instructions to system prompt")
+                logging.info(f"[CHUTES] Implementing JSON workaround for {len(tools)} tools")
+                # Add a system message that instructs the model to output tool calls as JSON
+                tool_instructions = "\n\nIMPORTANT: When you need to use a tool, you MUST output a JSON object in the following EXACT format:\n```json\n{\n  \"tool_call\": {\n    \"id\": \"call_<unique_id>\",\n    \"name\": \"<tool_name>\",\n    \"arguments\": {<tool_arguments>}\n  }\n}\n```\n\nRULES:\n- Use ONLY ONE tool call per response\n- Do NOT call the same tool repeatedly without making progress\n- For sequential_thinking: Only use when you need to break down a complex problem. Do NOT use for simple tasks.\n- Always provide substantive reasoning in your response along with the tool call\n- If a tool fails, try a different approach rather than repeating the same call\n- The JSON block MUST be properly formatted and complete\n- Always include the closing braces and backticks\n- For research tasks: Continue using tools until you have comprehensive information, then provide a complete summary\n- When you have sufficient information to answer the question, provide your final answer WITHOUT using tools\n\nAvailable tools:\n"
+                for tool in tools:
+                    tool_instructions += f"- {tool.name}: {tool.description}\n"
+                    tool_instructions += f"  Parameters: {tool.input_schema}\n"
+                
+                # Add examples for common tools
+                tool_instructions += "\n\nEXAMPLES:\n"
+                tool_instructions += "For web search:\n```json\n{\n  \"tool_call\": {\n    \"id\": \"call_123\",\n    \"name\": \"web_search\",\n    \"arguments\": {\"query\": \"your search query here\"}\n  }\n}\n```\n"
+                tool_instructions += "For sequential thinking:\n```json\n{\n  \"tool_call\": {\n    \"id\": \"call_456\",\n    \"name\": \"sequential_thinking\",\n    \"arguments\": {\"thought\": \"your thought here\", \"nextThoughtNeeded\": true, \"thoughtNumber\": 1, \"totalThoughts\": 3}\n  }\n}\n```\n"
+                
+                # Append to system prompt or create new one
+                if openai_messages and openai_messages[0]["role"] == "system":
+                    openai_messages[0]["content"] += tool_instructions
+                else:
+                    openai_messages.insert(0, {"role": "system", "content": tool_instructions})
+                
+                logging.info(f"[CHUTES] Added enhanced tool instructions to system prompt")
 
         response = None
         
@@ -445,22 +512,24 @@ class ChutesOpenAIClient(LLMClient):
             logging.info(f"[CHUTES DEBUG] Message content: {message.content}")
             logging.info(f"[CHUTES DEBUG] Message tool_calls: {message.tool_calls}")
             
-            # Check if content contains JSON tool calls (our workaround)
-            if message.content and tools:
-                import json
-                import re
-                
-                # Look for JSON blocks in the content with multiple patterns
-                json_patterns = [
-                    r'```json\s*(\{.*?\})\s*```',  # Standard JSON blocks
-                    r'```\s*(\{.*?"tool_call".*?\})\s*```',  # JSON blocks without json label
-                    r'(\{[^{}]*"tool_call"[^{}]*\{[^{}]*\}[^{}]*\})',  # Inline JSON with tool_call
-                ]
-                
-                json_matches = []
-                for pattern in json_patterns:
-                    matches = re.findall(pattern, message.content, re.DOTALL | re.IGNORECASE)
-                    json_matches.extend(matches)
+            # Handle tool calls based on the mode
+            if tools and not self.use_native_tool_calling:
+                # JSON workaround mode - check if content contains JSON tool calls
+                if message.content:
+                    import json
+                    import re
+                    
+                    # Look for JSON blocks in the content with multiple patterns
+                    json_patterns = [
+                        r'```json\s*(\{.*?\})\s*```',  # Standard JSON blocks
+                        r'```\s*(\{.*?"tool_call".*?\})\s*```',  # JSON blocks without json label
+                        r'(\{[^{}]*"tool_call"[^{}]*\{[^{}]*\}[^{}]*\})',  # Inline JSON with tool_call
+                    ]
+                    
+                    json_matches = []
+                    for pattern in json_patterns:
+                        matches = re.findall(pattern, message.content, re.DOTALL | re.IGNORECASE)
+                        json_matches.extend(matches)
                 
                 # Also try to find incomplete JSON blocks (missing closing braces)
                 if not json_matches:
@@ -560,8 +629,44 @@ class ChutesOpenAIClient(LLMClient):
                     logging.warning(f"[CHUTES] Content mentions 'tool_call' but no valid JSON was extracted")
                     logging.warning(f"[CHUTES] Response excerpt: {message.content[:500]}...")
                 
-                # Add remaining content as TextResult if any
-                if message.content.strip():
+                    # Add remaining content as TextResult if any
+                    if message.content.strip():
+                        internal_messages.append(TextResult(text=message.content))
+            elif self.use_native_tool_calling and message.tool_calls:
+                # Native tool calling mode - process tool calls directly
+                logging.info(f"[CHUTES] Processing {len(message.tool_calls)} native tool calls")
+                for i, tool_call in enumerate(message.tool_calls):
+                    logging.info(f"[CHUTES] Native tool call {i}: id={tool_call.id}, name={tool_call.function.name}")
+                    
+                    # Parse the tool arguments properly
+                    try:
+                        # Try to parse as JSON if it's a string
+                        if isinstance(tool_call.function.arguments, str):
+                            import json
+                            tool_input = json.loads(tool_call.function.arguments)
+                            logging.info(f"[CHUTES] Native tool call {i} parsed JSON: {tool_input}")
+                        else:
+                            tool_input = tool_call.function.arguments
+                            logging.info(f"[CHUTES] Native tool call {i} using direct arguments: {tool_input}")
+                    except (json.JSONDecodeError, TypeError) as e:
+                        # If parsing fails, wrap the string in a dict
+                        tool_input = {"arguments": str(tool_call.function.arguments)}
+                        logging.error(f"[CHUTES] Native tool call {i} JSON parsing failed: {e}, wrapped in dict: {tool_input}")
+                    
+                    # Apply recursively_remove_invoke_tag and log the result
+                    final_tool_input = recursively_remove_invoke_tag(tool_input)
+                    logging.info(f"[CHUTES] Native tool call {i} final tool_input: {final_tool_input}")
+                    
+                    internal_messages.append(
+                        ToolCall(
+                            tool_call_id=tool_call.id,
+                            tool_name=tool_call.function.name,
+                            tool_input=final_tool_input,
+                        )
+                    )
+                
+                # Add content as TextResult if any
+                if message.content and message.content.strip():
                     internal_messages.append(TextResult(text=message.content))
             elif message.content:
                 internal_messages.append(TextResult(text=message.content))

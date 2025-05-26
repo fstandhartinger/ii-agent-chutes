@@ -356,6 +356,7 @@ def create_agent_for_connection(
     device_id = websocket.query_params.get("device_id")
     use_chutes = websocket.query_params.get("use_chutes", "false").lower() == "true"
     use_openrouter = websocket.query_params.get("use_openrouter", "false").lower() == "true"
+    use_native_tool_calling = websocket.query_params.get("use_native_tool_calling", "false").lower() == "true"
     model_id = websocket.query_params.get("model_id", "deepseek-ai/DeepSeek-V3-0324")
     
     # Setup logging
@@ -388,11 +389,16 @@ def create_agent_for_connection(
         logger_for_agent_logs.info("=========================================")
         logger_for_agent_logs.info("USING CHUTES LLM PROVIDER")
         logger_for_agent_logs.info(f"Model: {model_id}")
+        if use_native_tool_calling:
+            logger_for_agent_logs.info("Native Tool Calling: ENABLED")
+        else:
+            logger_for_agent_logs.info("Native Tool Calling: DISABLED (using JSON workaround)")
         logger_for_agent_logs.info("=========================================")
         client = get_client(
             "chutes-openai",
             model_name=model_id,
             use_caching=False,
+            use_native_tool_calling=use_native_tool_calling,
         )
     elif use_openrouter:
         logger_for_agent_logs.info("=========================================")

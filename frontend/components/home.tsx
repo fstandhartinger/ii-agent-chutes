@@ -78,6 +78,7 @@ export default function Home() {
   const [deployedUrl, setDeployedUrl] = useState<string>("");
   const [taskSummary, setTaskSummary] = useState<string>("");
   const [userPrompt, setUserPrompt] = useState<string>("");
+  const [useNativeToolCalling, setUseNativeToolCalling] = useState(false);
 
   const isReplayMode = useMemo(() => !!searchParams.get("id"), [searchParams]);
   const { toggleChutesLLM, getOptimalModel } = useChutes();
@@ -830,8 +831,13 @@ export default function Home() {
       const modelToUse = optimalModel;
       wsUrl += `&use_chutes=true&model_id=${encodeURIComponent(modelToUse.id)}`;
       
+      // Add native tool calling parameter if enabled
+      if (useNativeToolCalling) {
+        wsUrl += `&use_native_tool_calling=true`;
+      }
+      
       // Log model selection for debugging
-      console.log(`Using model: ${modelToUse.name} (${modelToUse.id}) - Images in context: ${hasImagesInContext}`);
+      console.log(`Using model: ${modelToUse.name} (${modelToUse.id}) - Images in context: ${hasImagesInContext} - Native tool calling: ${useNativeToolCalling}`);
     }
 
     const ws = new WebSocket(wsUrl);
@@ -885,7 +891,7 @@ export default function Home() {
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [deviceId, isReplayMode, optimalModel]);
+  }, [deviceId, isReplayMode, optimalModel, useNativeToolCalling]);
 
   const isBrowserTool = useMemo(
     () =>
@@ -986,7 +992,24 @@ export default function Home() {
               </Button>
             </div>
           ) : (
-            <div className="flex-1 flex justify-end">
+            <div className="flex-1 flex justify-end items-center gap-4">
+              {/* Native Tool Calling Toggle */}
+              <div className="flex items-center gap-2 bg-glass border border-white/20 rounded-lg px-3 py-2">
+                <span className="text-sm text-white/80">Native Tool Calling</span>
+                <button
+                  onClick={() => setUseNativeToolCalling(!useNativeToolCalling)}
+                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                    useNativeToolCalling ? 'bg-blue-500' : 'bg-gray-600'
+                  }`}
+                  title={useNativeToolCalling ? "Using native tool calling (Squad-style)" : "Using JSON workaround (default)"}
+                >
+                  <span
+                    className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
+                      useNativeToolCalling ? 'translate-x-5' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
               <ModelPicker />
             </div>
           )}
