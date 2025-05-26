@@ -130,7 +130,6 @@ class ChutesOpenAIClient(LLMClient):
                         args_match = re.search(r'"arguments"\s*:\s*(\{[^}]*\})', content)
                         if args_match:
                             try:
-                                import json
                                 args = json.loads(args_match.group(1))
                                 recent_tool_details.append((extracted_name, args))
                             except:
@@ -516,7 +515,6 @@ class ChutesOpenAIClient(LLMClient):
             if tools and not self.use_native_tool_calling:
                 # JSON workaround mode - check if content contains JSON tool calls
                 if message.content:
-                    import json
                     import re
                     
                     # Look for JSON blocks in the content with multiple patterns
@@ -642,7 +640,6 @@ class ChutesOpenAIClient(LLMClient):
                     try:
                         # Try to parse as JSON if it's a string
                         if isinstance(tool_call.function.arguments, str):
-                            import json
                             tool_input = json.loads(tool_call.function.arguments)
                             logging.info(f"[CHUTES] Native tool call {i} parsed JSON: {tool_input}")
                         else:
@@ -683,7 +680,6 @@ class ChutesOpenAIClient(LLMClient):
                     try:
                         # Try to parse as JSON if it's a string
                         if isinstance(tool_call.function.arguments, str):
-                            import json
                             tool_input = json.loads(tool_call.function.arguments)
                             logging.info(f"[CHUTES DEBUG] Tool call {i} parsed JSON: {tool_input}")
                         else:

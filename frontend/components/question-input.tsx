@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { ArrowUp, Loader2, Paperclip, Sparkles, Mic, Square, StopCircle } from "lucide-react";
+import { ArrowUp, Loader2, Paperclip, Sparkles, Mic, Square } from "lucide-react";
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
 import { useState, useEffect, useRef } from "react";
@@ -182,7 +182,12 @@ const QuestionInput = ({
       };
 
       mediaRecorder.onstop = async () => {
+        console.log('MediaRecorder stopped - starting transcription');
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
+        
+        // Ensure isTranscribing is true (it should already be set by stopRecording)
+        setIsTranscribing(true);
+        
         await transcribeAudio(audioBlob);
         
         // Stop all tracks to release microphone
@@ -199,14 +204,20 @@ const QuestionInput = ({
 
   const stopRecording = () => {
     if (mediaRecorderRef.current && isRecording) {
+      console.log('Stop button clicked - setting isTranscribing to true');
       // Set transcribing state BEFORE stopping to ensure immediate UI update
       setIsTranscribing(true);
       setIsRecording(false);
-      mediaRecorderRef.current.stop();
+      
+      // Use setTimeout with 0 delay to ensure state update is processed before stopping
+      setTimeout(() => {
+        mediaRecorderRef.current?.stop();
+      }, 0);
     }
   };
 
   const transcribeAudio = async (audioBlob: Blob) => {
+    console.log('transcribeAudio started - isTranscribing should already be true');
     try {
       // Convert blob to base64
       const reader = new FileReader();
@@ -311,6 +322,12 @@ const QuestionInput = ({
   };
 
   const handleMicrophoneClick = () => {
+    // Prevent any action during transcription
+    if (isTranscribing) {
+      console.log('Click ignored - currently transcribing');
+      return;
+    }
+    
     if (isRecording) {
       stopRecording();
     } else {
@@ -581,7 +598,7 @@ const QuestionInput = ({
                   className={`p-2 hover:bg-white/10 transition-colors relative ${
                     isRecording ? 'bg-red-500/20' : ''
                   } ${
-                    isTranscribing ? 'bg-blue-500/20' : ''
+                    isTranscribing ? 'bg-blue-500/20 cursor-wait' : ''
                   }`}
                   onClick={handleMicrophoneClick}
                   disabled={isUploading || isTranscribing}
@@ -598,6 +615,7 @@ const QuestionInput = ({
                       initial={{ scale: 0, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1 }}
                       transition={{ duration: 0.2, ease: "easeOut" }}
+                      className="flex items-center justify-center"
                     >
                       <TranscriptionProgressCircle />
                     </motion.div>
@@ -644,7 +662,7 @@ const QuestionInput = ({
                     className="border-0 p-3 w-12 h-12 font-bold rounded-xl transition-all-smooth shadow-lg cursor-pointer bg-red-500 hover:bg-red-600 hover:scale-105 active:scale-95 shadow-glow hover-lift text-white"
                     title="Stop agent run"
                   >
-                    <StopCircle className="w-5 h-5" />
+                    <Square className="w-5 h-5" />
                   </Button>
                 ) : (
                   <Button
