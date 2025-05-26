@@ -138,6 +138,26 @@ You should:
             },
         },
         "required": ["thought", "nextThoughtNeeded", "thoughtNumber", "totalThoughts"],
+        "allOf": [
+            {
+                "if": {
+                    "properties": {"isRevision": {"const": True}},
+                    "required": ["isRevision"]
+                },
+                "then": {
+                    "required": ["revisesThought"]
+                }
+            },
+            {
+                "if": {
+                    "properties": {"branchFromThought": {"type": "integer"}},
+                    "required": ["branchFromThought"]
+                },
+                "then": {
+                    "required": ["branchId"]
+                }
+            }
+        ]
     }
 
     def __init__(self, verbose: bool = False):
@@ -175,17 +195,37 @@ You should:
         if not isinstance(input_data.get("nextThoughtNeeded"), bool):
             raise ValueError("Invalid nextThoughtNeeded: must be a boolean")
 
-        return {
+        # Build the validated data with required fields
+        validated_data: ThoughtData = {
             "thought": input_data["thought"],
             "thoughtNumber": input_data["thoughtNumber"],
             "totalThoughts": input_data["totalThoughts"],
             "nextThoughtNeeded": input_data["nextThoughtNeeded"],
-            "isRevision": input_data.get("isRevision"),
-            "revisesThought": input_data.get("revisesThought"),
-            "branchFromThought": input_data.get("branchFromThought"),
-            "branchId": input_data.get("branchId"),
-            "needsMoreThoughts": input_data.get("needsMoreThoughts"),
         }
+        
+        # Handle optional fields - only include them if they have meaningful values
+        if input_data.get("isRevision") is True:
+            validated_data["isRevision"] = True
+            # Only validate revisesThought if isRevision is True
+            if input_data.get("revisesThought") and input_data["revisesThought"] > 0:
+                validated_data["revisesThought"] = input_data["revisesThought"]
+            elif input_data.get("isRevision"):
+                raise ValueError("revisesThought must be provided and > 0 when isRevision is True")
+        
+        # Only include branchFromThought if it's a positive integer
+        if input_data.get("branchFromThought") and input_data["branchFromThought"] > 0:
+            validated_data["branchFromThought"] = input_data["branchFromThought"]
+            # branchId is required when branchFromThought is provided
+            if input_data.get("branchId"):
+                validated_data["branchId"] = input_data["branchId"]
+            else:
+                raise ValueError("branchId must be provided when branchFromThought is specified")
+        
+        # Only include needsMoreThoughts if it's explicitly True
+        if input_data.get("needsMoreThoughts") is True:
+            validated_data["needsMoreThoughts"] = True
+        
+        return validated_data
 
     def _format_thought(self, thought_data: ThoughtData) -> str:
         """Format a thought for display.

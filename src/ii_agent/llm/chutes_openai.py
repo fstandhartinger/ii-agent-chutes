@@ -277,12 +277,13 @@ class ChutesOpenAIClient(LLMClient):
                             "type": "function",
                             "function": {
                                 "name": message.tool_name,
-                                "arguments": json.dumps(message.tool_input) if isinstance(message.tool_input, dict) else str(message.tool_input)
+                                "arguments": json.dumps(message.tool_input),
                             }
                         }
                         
-                        # Find the last assistant message and add tool call to it
+                        # Check if we need to append to existing assistant message
                         if openai_messages and openai_messages[-1]["role"] == "assistant":
+                            # Append to existing assistant message
                             if "tool_calls" not in openai_messages[-1]:
                                 openai_messages[-1]["tool_calls"] = []
                             openai_messages[-1]["tool_calls"].append(tool_call_dict)
@@ -295,9 +296,20 @@ class ChutesOpenAIClient(LLMClient):
                             })
                         logging.info(f"[CHUTES] Added native tool call to assistant message: {message.tool_name}")
                     else:
-                        # JSON workaround mode or user role - skip with warning
-                        logging.warning(f"[CHUTES] Skipping ToolCall message (tool_name: {message.tool_name}) - not supported in current mode")
-                        continue
+                        # JSON workaround mode - convert tool call to a text representation
+                        # This helps maintain context even without native tool calling
+                        if role == "assistant":
+                            # Add as assistant message showing the tool was called
+                            tool_call_text = f"I'll use the {message.tool_name} tool with these parameters: {json.dumps(message.tool_input, indent=2)}"
+                            openai_messages.append({
+                                "role": "assistant",
+                                "content": tool_call_text,
+                            })
+                            logging.info(f"[CHUTES] Converted ToolCall to assistant text message: {message.tool_name}")
+                        else:
+                            # Skip tool calls in user messages
+                            logging.warning(f"[CHUTES] Skipping ToolCall message in user role: {message.tool_name}")
+                            continue
                 elif str(type(message)) == str(ToolFormattedResult):
                     message = cast(ToolFormattedResult, message)
                     if self.use_native_tool_calling and role == "user":
@@ -309,14 +321,15 @@ class ChutesOpenAIClient(LLMClient):
                         })
                         logging.info(f"[CHUTES] Added native tool result message")
                     else:
-                        # JSON workaround mode - convert to regular text message
-                        logging.warning(f"[CHUTES] Converting ToolFormattedResult to text message - using workaround mode")
+                        # JSON workaround mode - convert to regular text message with clear formatting
                         if role == "user":
-                            # Convert tool result to a regular user message
+                            # Format tool result clearly so the model understands it's a tool result
+                            result_text = f"Tool result from {message.tool_name}:\n{str(message.tool_output)}"
                             openai_messages.append({
                                 "role": "user",
-                                "content": f"Tool result: {str(message.tool_output)}",
+                                "content": result_text,
                             })
+                            logging.info(f"[CHUTES] Converted ToolFormattedResult to formatted user message")
 
         # Build the request payload - only include what's needed
         payload = {
@@ -365,6 +378,7 @@ class ChutesOpenAIClient(LLMClient):
                 tool_instructions += "\n\nEXAMPLES:\n"
                 tool_instructions += "For web search:\n```json\n{\n  \"tool_call\": {\n    \"id\": \"call_123\",\n    \"name\": \"web_search\",\n    \"arguments\": {\"query\": \"your search query here\"}\n  }\n}\n```\n"
                 tool_instructions += "For sequential thinking:\n```json\n{\n  \"tool_call\": {\n    \"id\": \"call_456\",\n    \"name\": \"sequential_thinking\",\n    \"arguments\": {\"thought\": \"your thought here\", \"nextThoughtNeeded\": true, \"thoughtNumber\": 1, \"totalThoughts\": 3}\n  }\n}\n```\n"
+                tool_instructions += "\nIMPORTANT for sequential_thinking: Do NOT include optional fields (isRevision, revisesThought, branchFromThought, branchId, needsMoreThoughts) unless you're actually using them. Never set them to 0 or empty strings.\n"
                 
                 # Append to system prompt or create new one
                 if openai_messages and openai_messages[0]["role"] == "system":
