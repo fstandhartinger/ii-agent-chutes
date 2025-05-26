@@ -20,24 +20,24 @@ export const TEXT_MODELS: LLMModel[] = [
     supportsVision: false
   },
   {
-    id: "claude-sonnet-3.5-20241022",
-    name: "Sonnet 3.5",
+    id: "nvidia/Llama-3_1-Nemotron-Ultra-253B-v1",
+    name: "Nemotron Ultra",
+    provider: "chutes",
+    description: "NVIDIA's ultra-powerful model",
+    supportsVision: false
+  },
+  {
+    id: "anthropic/claude-3-5-sonnet",
+    name: "Claude Sonnet 3.5",
     provider: "chutes",
     description: "Claude Sonnet 3.5 model",
     supportsVision: false
   },
   {
-    id: "claude-opus-4-20250514",
-    name: "Claude Opus 4",
+    id: "anthropic/claude-3-opus",
+    name: "Claude Opus 3",
     provider: "chutes",
-    description: "Claude Opus 4 model",
-    supportsVision: false
-  },
-  {
-    id: "claude-sonnet-4-20250514",
-    name: "Sonnet 4",
-    provider: "chutes",
-    description: "Claude Sonnet 4 model",
+    description: "Claude Opus 3 model",
     supportsVision: false
   },
   {

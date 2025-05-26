@@ -305,7 +305,11 @@ export default function Home() {
     
     if (newCount >= 5) {
       setShowNativeToolToggle(true);
-      toast.success("Hidden feature unlocked! Native Tool Calling toggle is now available.");
+      // Also unlock hidden models
+      localStorage.setItem("hiddenModelsUnlocked", "true");
+      toast.success("Hidden features unlocked! Native Tool Calling toggle and premium models are now available.");
+      // Trigger a re-render of the model picker
+      window.dispatchEvent(new Event('storage'));
     }
   };
 

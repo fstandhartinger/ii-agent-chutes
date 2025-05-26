@@ -9,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useState, useEffect } from "react";
 
 // Define the available models with premium indicators
 const CHUTES_MODELS = [
@@ -16,17 +17,27 @@ const CHUTES_MODELS = [
   { id: "deepseek-ai/DeepSeek-V3-0324", name: "DeepSeek V3", isPremium: false },
   { id: "Qwen/Qwen3-235B-A22B", name: "Qwen3 235B", isPremium: false },
   { id: "chutesai/Llama-4-Maverick-17B-128E-Instruct-FP8", name: "Llama 4 Maverick", isPremium: false },
-  // Premium models
-  { id: "claude-sonnet-3.5-20241022", name: "Sonnet 3.5", isPremium: true },
-  { id: "claude-sonnet-4-20250514", name: "Sonnet 4", isPremium: true },
-  { id: "claude-opus-4-20250514", name: "Opus 4", isPremium: true },
+  { id: "nvidia/Llama-3_1-Nemotron-Ultra-253B-v1", name: "Nemotron Ultra", isPremium: false },
+  // Premium models - hidden by default
+  { id: "anthropic/claude-3-5-sonnet", name: "Sonnet 3.5", isPremium: true, hidden: true },
+  { id: "anthropic/claude-3-opus", name: "Opus 3", isPremium: true, hidden: true },
 ];
 
 export default function ModelPicker() {
   const { selectedModel, setSelectedModel } = useChutes();
+  const [showHiddenModels, setShowHiddenModels] = useState(false);
+
+  // Load hidden models state from localStorage
+  useEffect(() => {
+    const hiddenModelsUnlocked = localStorage.getItem("hiddenModelsUnlocked") === "true";
+    setShowHiddenModels(hiddenModelsUnlocked);
+  }, []);
+
+  // Filter models based on whether hidden models are shown
+  const visibleModels = CHUTES_MODELS.filter(model => !model.hidden || showHiddenModels);
 
   // Find the current model name or default to R1
-  const currentModel = CHUTES_MODELS.find(m => m.id === selectedModel.id);
+  const currentModel = visibleModels.find(m => m.id === selectedModel.id);
   const currentModelName = currentModel?.name || "R1";
   const isCurrentModelPremium = currentModel?.isPremium || false;
 
@@ -62,7 +73,7 @@ export default function ModelPicker() {
           </SelectValue>
         </SelectTrigger>
         <SelectContent className="bg-glass-dark border-white/20 backdrop-blur-xl">
-          {CHUTES_MODELS.map((model) => (
+          {visibleModels.map((model) => (
             <SelectItem 
               key={model.id} 
               value={model.id}
