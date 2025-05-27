@@ -1,6 +1,6 @@
 from datetime import datetime
 import uuid
-from sqlalchemy import Column, String, DateTime, ForeignKey
+from sqlalchemy import Column, String, DateTime, ForeignKey, Integer
 from sqlalchemy.orm import relationship, declarative_base
 from sqlalchemy.dialects.sqlite import JSON as SQLiteJSON
 from typing import Optional
@@ -67,6 +67,32 @@ class Event(Base):
         self.session_id = str(session_id)  # Convert UUID to string for storage
         self.event_type = event_type
         self.event_payload = event_payload
+
+
+class ProUsage(Base):
+    """Database model for tracking Pro user usage."""
+
+    __tablename__ = "pro_usage"
+
+    # Store UUID as string in SQLite
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    pro_key = Column(String(8), nullable=False, index=True)  # 8-character hex key
+    month_year = Column(String(7), nullable=False)  # Format: YYYY-MM
+    sonnet_requests = Column(Integer, default=0)  # Number of Sonnet 4 requests
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def __init__(self, pro_key: str, month_year: str, sonnet_requests: int = 0):
+        """Initialize Pro usage tracking.
+
+        Args:
+            pro_key: The Pro key (8-character hex string)
+            month_year: The month and year in YYYY-MM format
+            sonnet_requests: Number of Sonnet 4 requests (default: 0)
+        """
+        self.pro_key = pro_key
+        self.month_year = month_year
+        self.sonnet_requests = sonnet_requests
 
 
 def init_db(engine):

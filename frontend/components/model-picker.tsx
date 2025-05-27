@@ -10,6 +10,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useState, useEffect } from "react";
+import { hasProAccess } from "@/utils/pro-utils";
+import { useRouter } from "next/navigation";
 
 // Define the available models with premium indicators
 const CHUTES_MODELS = [
@@ -18,23 +20,22 @@ const CHUTES_MODELS = [
   { id: "Qwen/Qwen3-235B-A22B", name: "Qwen3 235B", isPremium: false },
   { id: "chutesai/Llama-4-Maverick-17B-128E-Instruct-FP8", name: "Llama 4 Maverick", isPremium: false },
   { id: "nvidia/Llama-3_1-Nemotron-Ultra-253B-v1", name: "Nemotron Ultra", isPremium: false },
-  // Premium models - hidden by default
-  { id: "claude-opus-4-20250514", name: "Claude Opus 4", isPremium: true, hidden: true },
-  { id: "claude-sonnet-4-20250514", name: "Claude Sonnet 4", isPremium: true, hidden: true },
+  // Premium models - only Sonnet 4 is offered now
+  { id: "claude-sonnet-4-20250514", name: "Claude Sonnet 4", isPremium: true, hidden: false },
 ];
 
 export default function ModelPicker() {
   const { selectedModel, setSelectedModel } = useChutes();
-  const [showHiddenModels, setShowHiddenModels] = useState(false);
+  const [userHasProAccess, setUserHasProAccess] = useState(false);
+  const router = useRouter();
 
-  // Load hidden models state from localStorage
+  // Check Pro access on component mount
   useEffect(() => {
-    const hiddenModelsUnlocked = localStorage.getItem("hiddenModelsUnlocked") === "true";
-    setShowHiddenModels(hiddenModelsUnlocked);
+    setUserHasProAccess(hasProAccess());
   }, []);
 
-  // Filter models based on whether hidden models are shown
-  const visibleModels = CHUTES_MODELS.filter(model => !model.hidden || showHiddenModels);
+  // Filter models - show all models including Sonnet 4
+  const visibleModels = CHUTES_MODELS;
 
   // Find the current model name or default to R1
   const currentModel = visibleModels.find(m => m.id === selectedModel.id);
@@ -44,6 +45,12 @@ export default function ModelPicker() {
   const handleModelChange = (modelId: string) => {
     const model = CHUTES_MODELS.find(m => m.id === modelId);
     if (model) {
+      // Check if user is trying to select Sonnet 4 without Pro access
+      if (model.isPremium && !userHasProAccess) {
+        router.push("/pro-upgrade");
+        return;
+      }
+
       // Determine the provider based on the model ID
       let provider: "anthropic" | "chutes" | "openrouter" = "chutes";
       if (modelId.startsWith("claude-")) {
@@ -53,7 +60,7 @@ export default function ModelPicker() {
       // Determine vision support
       let supportsVision = model.id.includes("V3") || model.id.includes("Maverick");
       // Claude 4 models support vision
-      if (modelId === "claude-opus-4-20250514" || modelId === "claude-sonnet-4-20250514") {
+      if (modelId === "claude-sonnet-4-20250514") {
         supportsVision = true;
       }
       

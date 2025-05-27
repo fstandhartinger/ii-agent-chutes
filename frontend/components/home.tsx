@@ -24,6 +24,8 @@ import SidebarButton from "@/components/sidebar-button";
 import { useChutes } from "@/providers/chutes-provider";
 import Examples from "@/components/examples";
 import ModelPicker from "@/components/model-picker";
+import ProUpgradeButton from "@/components/pro-upgrade-button";
+import { hasProAccess } from "@/utils/pro-utils";
 
 import Browser from "@/components/browser";
 import CodeEditor from "@/components/code-editor";
@@ -287,11 +289,7 @@ export default function Home() {
     
     if (newCount >= 5) {
       setShowNativeToolToggle(true);
-      // Also unlock hidden models
-      localStorage.setItem("hiddenModelsUnlocked", "true");
-      toast.success("Hidden features unlocked! Native Tool Calling toggle and premium models are now available.");
-      // Trigger a re-render of the model picker
-      window.dispatchEvent(new Event('storage'));
+      toast.success("Hidden features unlocked! Native Tool Calling toggle is now available.");
     }
   };
 
@@ -844,8 +842,14 @@ export default function Home() {
         wsUrl += `&use_native_tool_calling=true`;
       }
       
+      // Add Pro key parameter if available
+      const proKey = new URLSearchParams(window.location.search).get('pro_user_key');
+      if (proKey) {
+        wsUrl += `&pro_user_key=${encodeURIComponent(proKey)}`;
+      }
+      
       // Log model selection for debugging
-      console.log(`Using model: ${modelToUse.name} (${modelToUse.id}) - Provider: ${modelToUse.provider} - Native tool calling: ${useNativeToolCalling}`);
+      console.log(`Using model: ${modelToUse.name} (${modelToUse.id}) - Provider: ${modelToUse.provider} - Native tool calling: ${useNativeToolCalling} - Pro key: ${proKey ? 'Yes' : 'No'}`);
     }
 
     const ws = new WebSocket(wsUrl);
@@ -1027,6 +1031,9 @@ export default function Home() {
             </div>
           ) : (
             <div className="flex-1 flex justify-end items-center gap-4">
+              {/* Pro Upgrade Button - Show only if user doesn't have Pro access */}
+              {!hasProAccess() && <ProUpgradeButton />}
+              
               {/* Native Tool Calling Toggle - Hidden until logo is clicked 5 times */}
               {showNativeToolToggle && (
                 <div className="flex items-center gap-2 bg-glass border border-white/20 rounded-lg px-3 py-2">

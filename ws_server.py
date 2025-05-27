@@ -364,9 +364,23 @@ def create_agent_for_connection(
     use_native_tool_calling = websocket.query_params.get("use_native_tool_calling", "false").lower() == "true"
     model_id = websocket.query_params.get("model_id", "deepseek-ai/DeepSeek-V3-0324")
     
+    # Check for Pro access
+    from ii_agent.utils.pro_utils import extract_pro_key_from_query
+    pro_key = extract_pro_key_from_query(dict(websocket.query_params))
+    has_pro_access = pro_key is not None
+    
     # Check if this is an Anthropic model based on model_id
-    anthropic_models = ["claude-3-5-sonnet-20241022", "claude-3-opus-20240229", "claude-3-haiku-20240307", "claude-opus-4-20250514", "claude-sonnet-4-20250514"]
+    anthropic_models = ["claude-3-5-sonnet-20241022", "claude-3-opus-20240229", "claude-3-haiku-20240307", "claude-sonnet-4-20250514"]
     use_anthropic = model_id in anthropic_models and not use_chutes and not use_openrouter
+    
+    # Check if user is trying to use Sonnet 4 without Pro access
+    if model_id == "claude-sonnet-4-20250514" and not has_pro_access:
+        logger_for_agent_logs = logging.getLogger(f"agent_logs_{id(websocket)}")
+        logger_for_agent_logs.error(f"Access denied: Sonnet 4 requires Pro access. Model ID: {model_id}")
+        # Fall back to default model
+        model_id = "deepseek-ai/DeepSeek-V3-0324"
+        use_anthropic = False
+        use_chutes = True
     
     # Setup logging
     logger_for_agent_logs = logging.getLogger(f"agent_logs_{id(websocket)}")
@@ -489,6 +503,11 @@ def create_agent_for_connection(
 
     # Store the session ID in the agent for event tracking
     agent.session_id = session_id
+    
+    # Store the Pro key in the agent for usage tracking
+    if pro_key:
+        agent.pro_key = pro_key
+        logger_for_agent_logs.info(f"Pro access enabled for key: {pro_key[:4]}****")
 
     return agent
 
@@ -1155,6 +1174,49 @@ async def download_zip_endpoint(request: Request):
         logger.error(f"Error creating zip download: {str(e)}")
         return JSONResponse(
             status_code=500, content={"error": f"Error creating zip download: {str(e)}"}
+        )
+
+
+@app.post("/api/pro/generate-key")
+async def generate_pro_key_endpoint():
+    """Generate a new Pro key for testing purposes."""
+    try:
+        from ii_agent.utils.pro_utils import generate_pro_key
+        
+        new_key = generate_pro_key()
+        logger.info(f"Generated new Pro key: {new_key}")
+        
+        return {
+            "pro_key": new_key,
+            "url_example": f"/?pro_user_key={new_key}",
+            "message": "Pro key generated successfully"
+        }
+    except Exception as e:
+        logger.error(f"Error generating Pro key: {str(e)}")
+        return JSONResponse(
+            status_code=500, content={"error": f"Error generating Pro key: {str(e)}"}
+        )
+
+
+@app.get("/api/pro/usage/{pro_key}")
+async def get_pro_usage_endpoint(pro_key: str):
+    """Get usage statistics for a Pro key."""
+    try:
+        from ii_agent.utils.pro_utils import validate_pro_key
+        
+        if not validate_pro_key(pro_key):
+            return JSONResponse(
+                status_code=400, content={"error": "Invalid Pro key"}
+            )
+        
+        db_manager = DatabaseManager()
+        usage_stats = db_manager.get_pro_usage(pro_key)
+        
+        return usage_stats
+    except Exception as e:
+        logger.error(f"Error getting Pro usage: {str(e)}")
+        return JSONResponse(
+            status_code=500, content={"error": f"Error getting Pro usage: {str(e)}"}
         )
 
 

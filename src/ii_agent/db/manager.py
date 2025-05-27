@@ -5,9 +5,10 @@ import os
 from pathlib import Path
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session as DBSession
-from ii_agent.db.models import Base, Session, Event
+from ii_agent.db.models import Base, Session, Event, ProUsage
 from ii_agent.core.event import RealtimeEvent
 from ii_agent.utils.constants import PERSISTENT_DATA_ROOT, PERSISTENT_DB_PATH
+from datetime import datetime
 
 
 def get_default_db_path() -> str:
@@ -154,3 +155,70 @@ class DatabaseManager:
         """
         with self.get_session() as session:
             return session.query(Session).filter(Session.device_id == device_id).first()
+
+    def track_pro_usage(self, pro_key: str) -> bool:
+        """Track a Sonnet 4 request for a Pro user.
+
+        Args:
+            pro_key: The Pro key (8-character hex string)
+
+        Returns:
+            True if tracking was successful, False if usage limit exceeded
+        """
+        current_month = datetime.now().strftime("%Y-%m")
+        
+        with self.get_session() as session:
+            # Get or create usage record for this month
+            usage_record = (
+                session.query(ProUsage)
+                .filter(ProUsage.pro_key == pro_key, ProUsage.month_year == current_month)
+                .first()
+            )
+            
+            if usage_record is None:
+                # Create new usage record
+                usage_record = ProUsage(pro_key=pro_key, month_year=current_month, sonnet_requests=1)
+                session.add(usage_record)
+            else:
+                # Check if user has exceeded limit (e.g., 1000 requests per month)
+                if usage_record.sonnet_requests >= 1000:
+                    return False
+                
+                # Increment usage
+                usage_record.sonnet_requests += 1
+                usage_record.updated_at = datetime.utcnow()
+            
+            return True
+
+    def get_pro_usage(self, pro_key: str) -> dict:
+        """Get usage statistics for a Pro user.
+
+        Args:
+            pro_key: The Pro key (8-character hex string)
+
+        Returns:
+            Dictionary with usage statistics
+        """
+        current_month = datetime.now().strftime("%Y-%m")
+        
+        with self.get_session() as session:
+            usage_record = (
+                session.query(ProUsage)
+                .filter(ProUsage.pro_key == pro_key, ProUsage.month_year == current_month)
+                .first()
+            )
+            
+            if usage_record is None:
+                return {
+                    "month": current_month,
+                    "sonnet_requests": 0,
+                    "limit": 1000,
+                    "remaining": 1000
+                }
+            
+            return {
+                "month": current_month,
+                "sonnet_requests": usage_record.sonnet_requests,
+                "limit": 1000,
+                "remaining": max(0, 1000 - usage_record.sonnet_requests)
+            }

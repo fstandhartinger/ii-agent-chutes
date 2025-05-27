@@ -251,6 +251,25 @@ try breaking down the task into smaller steps. After call this tool to update or
                 # We need to update the message list in the `history` object to use the truncated version.
                 self.history.set_message_list(truncated_messages_for_llm)
 
+                # Track Pro usage if using Sonnet 4
+                if hasattr(self, 'pro_key') and self.pro_key and hasattr(self.client, 'model_name'):
+                    if self.client.model_name == "claude-sonnet-4-20250514":
+                        # Track the usage before making the request
+                        if not self.db_manager.track_pro_usage(self.pro_key):
+                            # Usage limit exceeded
+                            error_message = "Monthly usage limit exceeded for Pro plan. Please wait until next month or contact support."
+                            self.logger_for_agent_logs.error(error_message)
+                            self.message_queue.put_nowait(
+                                RealtimeEvent(
+                                    type=EventType.AGENT_RESPONSE,
+                                    content={"text": error_message},
+                                )
+                            )
+                            return ToolImplOutput(
+                                tool_output=error_message,
+                                tool_result_message=error_message,
+                            )
+
                 model_response, _ = self.client.generate(
                     messages=truncated_messages_for_llm,
                     max_tokens=self.max_output_tokens,
