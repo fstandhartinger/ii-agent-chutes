@@ -87,7 +87,6 @@ export default function Home() {
   const [showNativeToolToggle, setShowNativeToolToggle] = useState(false);
   const [showConsentDialog, setShowConsentDialog] = useState(false);
   const [pendingQuestion, setPendingQuestion] = useState<string>("");
-  const [showViralBanner, setShowViralBanner] = useState(false);
 
   const isReplayMode = useMemo(() => !!searchParams.get("id"), [searchParams]);
   const { selectedModel, setSelectedModel } = useChutes();
@@ -1023,55 +1022,10 @@ export default function Home() {
     setPendingQuestion("");
   };
 
-  useEffect(() => {
-    // Check if we should show the viral banner
-    const bannerStartTime = localStorage.getItem('viralBannerStartTime');
-    const currentTime = Date.now();
-    const twelveHours = 12 * 60 * 60 * 1000; // 12 hours in milliseconds
-    
-    if (!bannerStartTime) {
-      // First time showing the banner
-      localStorage.setItem('viralBannerStartTime', currentTime.toString());
-      setShowViralBanner(true);
-    } else {
-      // Check if 12 hours have passed
-      const startTime = parseInt(bannerStartTime);
-      if (currentTime - startTime < twelveHours) {
-        setShowViralBanner(true);
-      }
-    }
-    
-    // Hide banner after 3 seconds
-    if (showViralBanner) {
-      const timer = setTimeout(() => {
-        setShowViralBanner(false);
-      }, 3000);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [showViralBanner]);
-
   return (
     <div className="flex flex-col h-screen bg-background relative overflow-hidden">
       {/* PWA Handler */}
       <PWAHandler />
-      
-      {/* Viral Banner */}
-      <AnimatePresence>
-        {showViralBanner && (
-          <motion.div
-            initial={{ opacity: 0, y: -50 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -50 }}
-            transition={{ duration: 0.3 }}
-            className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-orange-500 to-red-500 text-white py-3 px-4 text-center shadow-lg"
-          >
-            <p className="text-sm md:text-base font-medium">
-              We have gone viral - servers are under heavy load. Please bear with us, it will soon get better!
-            </p>
-          </motion.div>
-        )}
-      </AnimatePresence>
       
       {/* Background Elements */}
       <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-purple-500/5 to-emerald-500/5" />
