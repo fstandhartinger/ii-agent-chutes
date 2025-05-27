@@ -33,9 +33,10 @@ interface ActionProps {
   type: TOOL;
   value: ActionStep["data"];
   onClick: () => void;
+  isLatest?: boolean;
 }
 
-const Action = ({ workspaceInfo, type, value, onClick }: ActionProps) => {
+const Action = ({ workspaceInfo, type, value, onClick, isLatest = false }: ActionProps) => {
   // Use a ref to track if this component has already been animated
   const hasAnimated = useRef(false);
   const [copiedActionId, setCopiedActionId] = useState<string | null>(null);
@@ -290,23 +291,25 @@ const Action = ({ workspaceInfo, type, value, onClick }: ActionProps) => {
       active:scale-[0.98] overflow-hidden
       ${hasAnimated.current ? "animate-none" : "animate-fadeIn"}`}
     >
-      {/* Copy Button */}
-      <Button
-        variant="ghost"
-        size="sm"
-        className="absolute top-1 right-1 z-10 bg-black/30 hover:bg-black/50 border border-white/20 p-1 h-6 w-6 rounded-md transition-all-smooth hover-lift message-copy-button opacity-0 group-hover:opacity-100"
-        onClick={(e) => {
-          e.stopPropagation();
-          copyToClipboard(copyText, actionId);
-        }}
-        title="Copy action details"
-      >
-        {copiedActionId === actionId ? (
-          <Check className="w-3 h-3 text-green-400" />
-        ) : (
-          <Copy className="w-3 h-3 text-white/80" />
-        )}
-      </Button>
+      {/* Copy Button - Only show for latest message */}
+      {isLatest && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="absolute top-1 right-1 z-10 bg-black/30 hover:bg-black/50 border border-white/20 p-1 h-6 w-6 rounded-md transition-all-smooth hover-lift message-copy-button"
+          onClick={(e) => {
+            e.stopPropagation();
+            copyToClipboard(copyText, actionId);
+          }}
+          title="Copy action details"
+        >
+          {copiedActionId === actionId ? (
+            <Check className="w-3 h-3 text-green-400" />
+          ) : (
+            <Copy className="w-3 h-3 text-white/80" />
+          )}
+        </Button>
+      )}
 
       <div onClick={onClick} className="flex items-start gap-3 flex-1">
         {step_icon}
@@ -314,7 +317,7 @@ const Action = ({ workspaceInfo, type, value, onClick }: ActionProps) => {
           <span className="text-neutral-100 font-medium group-hover:text-white">
             {step_title}
           </span>
-          <span className="text-neutral-400 font-medium truncate group-hover:text-neutral-300 max-w-full block pr-4">
+          <span className="text-neutral-400 font-medium truncate group-hover:text-neutral-300 max-w-full block pr-4 md:pr-0">
             {step_value}
           </span>
         </div>

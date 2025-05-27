@@ -283,6 +283,7 @@ const ChatMessage = ({
                     type={message.action.type}
                     value={message.action.data}
                     onClick={() => handleClickAction(message.action, true)}
+                    isLatest={index === messages.length - 1}
                   />
                 </motion.div>
               )}

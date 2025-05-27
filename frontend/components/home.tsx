@@ -951,7 +951,7 @@ export default function Home() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-background relative overflow-hidden">
+    <div className="flex flex-col min-h-screen bg-background relative overflow-hidden mobile-viewport-height">
       {/* PWA Handler */}
       <PWAHandler />
       
@@ -964,7 +964,7 @@ export default function Home() {
       
       {/* Header */}
       <motion.header 
-        className="relative z-10 mobile-header-safe flex-shrink-0"
+        className="relative z-10 mobile-header-safe flex-shrink-0 mobile-header-fixed md:relative"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
@@ -1200,10 +1200,14 @@ export default function Home() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
                   transition={{ duration: 0.6 }}
-                  className="w-full flex-1 chat-grid-layout px-4 pb-4"
+                  className="w-full flex-1 chat-grid-layout px-0 pb-0 md:px-4 md:pb-4"
                 >
                   {/* Chat Messages Panel */}
-                  <div className={`${isMobileDetailPaneOpen ? 'hidden' : 'flex'} md:flex chat-panel-container`}>
+                  <div className={`
+                    ${isMobileDetailPaneOpen ? 'hidden md:flex' : 'flex'} 
+                    chat-panel-container px-4 pb-4 md:px-0 md:pb-0
+                    ${isMobileDetailPaneOpen ? 'mobile-slide-left' : 'mobile-slide-in-from-left'}
+                  `}>
                     <ChatMessage
                       messages={messages}
                       isLoading={isLoading}
@@ -1229,8 +1233,12 @@ export default function Home() {
                     />
                   </div>
 
-                  {/* Tools Panel */}
-                  <div className={`${!isMobileDetailPaneOpen ? 'hidden' : 'flex'} md:flex detail-panel-container bg-glass-dark rounded-2xl border border-white/10 overflow-hidden`}>
+                  {/* Tools Panel - Hidden on mobile by default */}
+                  <div className={`
+                    ${isMobileDetailPaneOpen ? 'flex' : 'hidden'} 
+                    md:flex detail-panel-container bg-glass-dark rounded-2xl border border-white/10 overflow-hidden
+                    ${isMobileDetailPaneOpen ? 'mobile-slide-in-from-right' : 'mobile-slide-right'}
+                  `}>
                     {/* Tab Navigation */}
                     <div className="flex items-center justify-between p-4 pt-6 border-b border-white/10 bg-black/20 flex-shrink-0">
                       <div className="flex gap-2 overflow-x-auto pb-2">
