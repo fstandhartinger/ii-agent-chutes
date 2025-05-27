@@ -67,11 +67,11 @@ async def async_main():
     workspace_path = workspace_manager.root
 
     # Create a new session and get its workspace directory
-    db_manager.create_session(
+    actual_session_id, actual_workspace_path = db_manager.create_session(
         session_uuid=session_id, workspace_path=workspace_manager.root
     )
     logger_for_agent_logs.info(
-        f"Created new session {session_id} with workspace at {workspace_manager.root}"
+        f"Using session {actual_session_id} with workspace at {actual_workspace_path}"
     )
 
     # Log storage type

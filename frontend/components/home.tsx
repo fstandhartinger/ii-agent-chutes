@@ -25,7 +25,7 @@ import { useChutes } from "@/providers/chutes-provider";
 import Examples from "@/components/examples";
 import ModelPicker from "@/components/model-picker";
 import ProUpgradeButton from "@/components/pro-upgrade-button";
-import { hasProAccess } from "@/utils/pro-utils";
+import { hasProAccess, getProKey } from "@/utils/pro-utils";
 
 import Browser from "@/components/browser";
 import CodeEditor from "@/components/code-editor";
@@ -89,7 +89,7 @@ export default function Home() {
   const [pendingQuestion, setPendingQuestion] = useState<string>("");
 
   const isReplayMode = useMemo(() => !!searchParams.get("id"), [searchParams]);
-  const { selectedModel } = useChutes();
+  const { selectedModel, setSelectedModel } = useChutes();
 
   // Generate task summary using LLM
   const generateTaskSummary = async (firstUserMessage: string) => {
@@ -212,6 +212,26 @@ export default function Home() {
     // Set the device ID in state
     setDeviceId(existingDeviceId);
   }, []);
+
+  // Auto-switch Pro users to Sonnet 4 (backup logic in case ModelPicker doesn't handle it)
+  useEffect(() => {
+    const proAccess = hasProAccess();
+    const manualSwitch = localStorage.getItem("userManuallySwitchedModel");
+    
+    // Only auto-switch if user has Pro access, hasn't manually switched, and current model isn't Sonnet 4
+    if (proAccess && manualSwitch !== "true" && selectedModel.id !== "claude-sonnet-4-20250514") {
+      console.log("Home: Auto-switching Pro user to Claude Sonnet 4");
+      
+      const sonnet4Model = {
+        id: "claude-sonnet-4-20250514",
+        name: "Claude Sonnet 4",
+        provider: "anthropic" as const,
+        supportsVision: true
+      };
+      
+      setSelectedModel(sonnet4Model);
+    }
+  }, [selectedModel, setSelectedModel]);
 
   const handleClickAction = debounce(
     (data: ActionStep | undefined, showTabOnly = false) => {
@@ -853,8 +873,8 @@ export default function Home() {
         wsUrl += `&use_native_tool_calling=true`;
       }
       
-      // Add Pro key parameter if available
-      const proKey = new URLSearchParams(window.location.search).get('pro_user_key');
+      // Add Pro key parameter if available (from URL or local storage)
+      const proKey = getProKey();
       if (proKey) {
         wsUrl += `&pro_user_key=${encodeURIComponent(proKey)}`;
       }

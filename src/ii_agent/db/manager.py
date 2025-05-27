@@ -74,6 +74,19 @@ class DatabaseManager:
 
         # Create session in database
         with self.get_session() as session:
+            # Check if a session with this workspace_dir already exists
+            existing_session = (
+                session.query(Session)
+                .filter(Session.workspace_dir == str(workspace_path))
+                .first()
+            )
+            
+            if existing_session:
+                # Session already exists, just return the existing one
+                print(f"Session already exists for workspace {workspace_path}, using existing session {existing_session.id}")
+                return uuid.UUID(existing_session.id), workspace_path
+            
+            # Create new session
             db_session = Session(
                 id=session_uuid, workspace_dir=str(workspace_path), device_id=device_id
             )

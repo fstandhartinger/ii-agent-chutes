@@ -292,13 +292,13 @@ async def answer_single_question(
                 )
 
     try:
-        db_manager.create_session(
+        actual_session_id, actual_workspace_path = db_manager.create_session(
             session_uuid=session_id,
             workspace_path=workspace_path,
             device_id="gaia-eval",
         )
         logger.info(
-            f"Created new session {session_id} with workspace at {workspace_path}"
+            f"Using session {actual_session_id} with workspace at {actual_workspace_path}"
         )
     except sqlalchemy.exc.IntegrityError as e:
         logger.error(f"Failed to create session: {e}")

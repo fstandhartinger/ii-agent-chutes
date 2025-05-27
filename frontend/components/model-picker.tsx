@@ -27,12 +27,38 @@ const CHUTES_MODELS = [
 export default function ModelPicker() {
   const { selectedModel, setSelectedModel } = useChutes();
   const [userHasProAccess, setUserHasProAccess] = useState(false);
+  const [hasAutoSwitched, setHasAutoSwitched] = useState(false);
   const router = useRouter();
 
-  // Check Pro access on component mount
+  // Check Pro access on component mount and handle auto-switching
   useEffect(() => {
-    setUserHasProAccess(hasProAccess());
-  }, []);
+    const proAccess = hasProAccess();
+    setUserHasProAccess(proAccess);
+
+    // Check if user has manually switched models before
+    const manualSwitch = localStorage.getItem("userManuallySwitchedModel");
+
+    // Auto-switch to Sonnet 4 for Pro users if they haven't manually switched
+    if (proAccess && !hasAutoSwitched && manualSwitch !== "true") {
+      // Only auto-switch if current model is not already Sonnet 4
+      if (selectedModel.id !== "claude-sonnet-4-20250514") {
+        console.log("Auto-switching Pro user to Claude Sonnet 4");
+        
+        const sonnet4Model = {
+          id: "claude-sonnet-4-20250514",
+          name: "Claude Sonnet 4",
+          provider: "anthropic" as const,
+          supportsVision: true
+        };
+        
+        setSelectedModel(sonnet4Model);
+        setHasAutoSwitched(true);
+        
+        // Mark that we've auto-switched, but don't mark as manual switch
+        localStorage.setItem("hasAutoSwitchedToSonnet4", "true");
+      }
+    }
+  }, [hasProAccess, selectedModel.id, setSelectedModel, hasAutoSwitched]);
 
   // Filter models - show all models including Sonnet 4
   const visibleModels = CHUTES_MODELS;
@@ -50,6 +76,9 @@ export default function ModelPicker() {
         router.push("/pro-upgrade");
         return;
       }
+
+      // Mark that user has manually switched models
+      localStorage.setItem("userManuallySwitchedModel", "true");
 
       // Determine the provider based on the model ID
       let provider: "anthropic" | "chutes" | "openrouter" = "chutes";
