@@ -951,7 +951,7 @@ export default function Home() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-background relative overflow-hidden chat-view-container">
+    <div className="flex flex-col min-h-screen bg-background relative overflow-hidden">
       {/* PWA Handler */}
       <PWAHandler />
       
@@ -1085,7 +1085,7 @@ export default function Home() {
               {/* Hero Section */}
               <div className="text-center mb-8 md:mb-12">
                 <motion.div 
-                  className="flex items-center justify-center mb-8 cursor-pointer group"
+                  className="flex items-center justify-center mb-6 md:mb-8 cursor-pointer group"
                   onClick={handleLogoClick}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
@@ -1094,17 +1094,17 @@ export default function Home() {
                     <Image
                       src="/logo-only.png"
                       alt="fubea Logo"
-                      width={200}
-                      height={144}
-                      className="rounded-2xl shadow-2xl transition-all-smooth group-hover:shadow-glow"
+                      width={150}
+                      height={108}
+                      className="w-[150px] h-[108px] md:w-[200px] md:h-[144px] rounded-2xl shadow-2xl transition-all-smooth group-hover:shadow-glow"
                     />
                     <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all-smooth" />
-                    <Sparkles className="absolute -top-2 -right-2 w-6 h-6 text-yellow-400 animate-pulse" />
+                    <Sparkles className="absolute -top-2 -right-2 w-5 h-5 md:w-6 md:h-6 text-yellow-400 animate-pulse" />
                   </div>
                 </motion.div>
                 
                 <motion.h1
-                  className="text-3xl md:text-5xl lg:text-6xl font-bold mb-4 bg-gradient-to-r from-white via-blue-100 to-purple-100 bg-clip-text text-transparent"
+                  className="text-2xl sm:text-3xl md:text-5xl lg:text-6xl font-bold mb-3 md:mb-4 bg-gradient-to-r from-white via-blue-100 to-purple-100 bg-clip-text text-transparent"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.8, delay: 0.4 }}
@@ -1113,7 +1113,7 @@ export default function Home() {
                 </motion.h1>
                 
                 <motion.p
-                  className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto"
+                  className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.8, delay: 0.6 }}
@@ -1380,45 +1380,51 @@ export default function Home() {
       {/* Footer */}
       {!isInChatView && (
         <motion.footer
-          className="relative z-10 text-center py-6 mobile-safe-area"
+          className="relative z-10 text-center py-4 px-4 mobile-safe-area"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.8, delay: 1 }}
         >
-          <div className="text-sm text-muted-foreground">
-            <div className="flex flex-wrap items-center justify-center gap-1 md:gap-2">
-              <span>fubea is</span>
-              <a 
-                href="https://github.com/fstandhartinger/ii-agent-chutes/tree/main" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-blue-400 hover:text-blue-300 transition-colors hover-lift underline"
-              >
-                open source
-              </a>
-              <span>and free</span>
-              <span className="text-muted-foreground/60 mx-1 md:mx-2">•</span>
-              <span>based on the amazing</span>
-              <a 
-                href="https://github.com/Intelligent-Internet/ii-agent" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-blue-400 hover:text-blue-300 transition-colors hover-lift underline"
-              >
-                ii-agent
-              </a>
-              <span className="text-muted-foreground/60 mx-1 md:mx-2">•</span>
-              <span>powered by</span>
-              <a 
-                href="https://chutes.ai" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="hover:text-foreground transition-colors hover-lift inline-flex items-center gap-1"
-              >
-                <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent font-semibold">
-                  Chutes
-                </span>
-              </a>
+          <div className="text-xs sm:text-sm text-muted-foreground">
+            <div className="flex flex-col sm:flex-row flex-wrap items-center justify-center gap-1 sm:gap-2">
+              <div className="flex items-center gap-1">
+                <span>fubea is</span>
+                <a 
+                  href="https://github.com/fstandhartinger/ii-agent-chutes/tree/main" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-blue-400 hover:text-blue-300 transition-colors hover-lift underline"
+                >
+                  open source
+                </a>
+                <span>and free</span>
+              </div>
+              <span className="hidden sm:inline text-muted-foreground/60 mx-1">•</span>
+              <div className="flex items-center gap-1">
+                <span>based on the amazing</span>
+                <a 
+                  href="https://github.com/Intelligent-Internet/ii-agent" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-blue-400 hover:text-blue-300 transition-colors hover-lift underline"
+                >
+                  ii-agent
+                </a>
+              </div>
+              <span className="hidden sm:inline text-muted-foreground/60 mx-1">•</span>
+              <div className="flex items-center gap-1">
+                <span>powered by</span>
+                <a 
+                  href="https://chutes.ai" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="hover:text-foreground transition-colors hover-lift inline-flex items-center gap-1"
+                >
+                  <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent font-semibold">
+                    Chutes
+                  </span>
+                </a>
+              </div>
             </div>
           </div>
         </motion.footer>

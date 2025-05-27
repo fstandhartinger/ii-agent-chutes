@@ -409,8 +409,7 @@
   }
 
   .mobile-safe-area {
-    height: calc(100vh - 120px) !important;
-    max-height: calc(100vh - 120px) !important;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 
   .mobile-header-safe {
@@ -488,14 +487,6 @@
 
 .bottom-aligned-textarea textarea {
   min-height: 60px !important;
-}
-
-/* Fix for chat view layout to prevent overflow */
-.chat-view-container {
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
 }
 
 /* Main chat grid layout */
