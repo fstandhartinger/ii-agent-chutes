@@ -13,7 +13,7 @@ import json
 import logging
 import uuid
 from pathlib import Path
-from typing import Dict, List, Set, Any
+from typing import Dict, List, Set, Any, Optional, Tuple
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -60,6 +60,11 @@ import requests
 MAX_OUTPUT_TOKENS_PER_TURN = 32768
 MAX_TURNS = 200
 
+# Set up Playwright browsers path if persistent storage is available
+persistent_playwright = Path("/var/data/playwright")
+if persistent_playwright.exists():
+    os.environ["PLAYWRIGHT_BROWSERS_PATH"] = str(persistent_playwright)
+    print(f"Using persistent Playwright browsers at {persistent_playwright}")
 
 app = FastAPI(title="Agent WebSocket API")
 

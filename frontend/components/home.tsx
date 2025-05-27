@@ -951,7 +951,7 @@ export default function Home() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-background relative overflow-hidden mobile-viewport-height">
+    <div className="flex flex-col h-screen bg-background relative overflow-hidden">
       {/* PWA Handler */}
       <PWAHandler />
       
@@ -964,7 +964,7 @@ export default function Home() {
       
       {/* Header */}
       <motion.header 
-        className="relative z-10 mobile-header-safe flex-shrink-0 mobile-header-fixed md:relative"
+        className="relative z-10 mobile-header-safe flex-shrink-0"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
@@ -1073,7 +1073,7 @@ export default function Home() {
       </motion.header>
 
       {/* Main Content */}
-      <main className="flex-1 relative z-10 flex flex-col min-h-0 overflow-hidden">
+      <main className="flex-1 relative z-10 flex flex-col min-h-0 overflow-hidden h-full">
         {!isInChatView && (
           <div className="flex-1 flex flex-col">
             <motion.div
@@ -1200,7 +1200,7 @@ export default function Home() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
                   transition={{ duration: 0.6 }}
-                  className="w-full flex-1 chat-grid-layout px-0 pb-0 md:px-4 md:pb-4"
+                  className="w-full h-full chat-grid-layout px-0 pb-0 md:px-4 md:pb-4"
                 >
                   {/* Chat Messages Panel */}
                   <div className={`

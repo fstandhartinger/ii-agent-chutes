@@ -513,6 +513,7 @@
   gap: 1rem;
   min-height: 0;
   overflow: hidden;
+  height: 100%;
 }
 
 /* Chat panel (left side) */
@@ -521,6 +522,7 @@
   flex-direction: column;
   min-height: 0;
   overflow: hidden;
+  height: 100%;
 }
 
 /* Detail panel (right side) */
@@ -529,6 +531,7 @@
   flex-direction: column;
   min-height: 0;
   overflow: hidden;
+  height: 100%;
 }
 
 /* Tab content area */
@@ -572,6 +575,7 @@
 @media (min-width: 768px) {
   .chat-grid-layout {
     grid-template-columns: 4fr 6fr;
+    height: calc(100vh - 120px); /* Account for header and padding */
   }
   
   /* Override the existing chat messages container height */
@@ -579,6 +583,11 @@
     max-height: none !important;
     flex: 1;
     overflow-y: auto;
+  }
+  
+  /* Ensure main element takes full height */
+  main {
+    height: calc(100vh - 80px); /* Account for header */
   }
 }
 

@@ -93,7 +93,7 @@ const ChatMessage = ({
     <div className="flex flex-col h-full bg-glass-dark rounded-2xl border border-white/10 overflow-hidden">
       {/* Messages Container */}
       <motion.div
-        className="flex-1 p-4 md:p-6 overflow-y-auto space-y-4 md:space-y-6 chat-messages-container"
+        className="flex-1 p-4 md:p-6 overflow-y-auto space-y-4 md:space-y-6 chat-messages-container min-h-0"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.2, duration: 0.3 }}

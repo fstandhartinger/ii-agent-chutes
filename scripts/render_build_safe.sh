@@ -14,15 +14,16 @@ pip install --upgrade pip
 echo "Installing application dependencies..."
 pip install .
 
-# Install Playwright browsers
+# Install Playwright browsers using persistent storage if available
 echo "Installing Playwright browsers..."
-python -m playwright install chromium
-
-# Try to install system dependencies, but don't fail if it doesn't work
-echo "Attempting to install Playwright system dependencies..."
-python -m playwright install-deps chromium 2>/dev/null || {
-    echo "Warning: Could not install system dependencies. This is expected on some hosting platforms."
-    echo "The application will attempt to run in headless mode with fallback options."
+python scripts/install_playwright_persistent.py || {
+    echo "Falling back to standard Playwright installation..."
+    python -m playwright install chromium
+    # Try to install system dependencies, but don't fail if it doesn't work
+    python -m playwright install-deps chromium 2>/dev/null || {
+        echo "Warning: Could not install system dependencies. This is expected on some hosting platforms."
+        echo "The application will attempt to run in headless mode with fallback options."
+    }
 }
 
 # Verify Playwright installation
