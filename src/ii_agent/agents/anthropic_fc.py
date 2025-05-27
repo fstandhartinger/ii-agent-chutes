@@ -255,8 +255,24 @@ try breaking down the task into smaller steps. After call this tool to update or
                 if hasattr(self, 'pro_key') and self.pro_key and hasattr(self.client, 'model_name'):
                     if self.client.model_name == "claude-sonnet-4-20250514":
                         # Track the usage before making the request
-                        if not self.db_manager.track_pro_usage(self.pro_key):
-                            # Usage limit exceeded
+                        usage_result = self.db_manager.track_pro_usage(self.pro_key)
+                        
+                        if not usage_result['allowed'] or usage_result['use_fallback']:
+                            # Switch to DeepSeek V3 as fallback
+                            print(f"🔄 FALLBACK: Switching from Sonnet 4 to DeepSeek V3 for Pro user {self.pro_key}")
+                            self.model = "deepseek-chat"  # Use DeepSeek V3 instead
+                            
+                            # Update client to use DeepSeek
+                            from openai import OpenAI
+                            self.client = OpenAI(
+                                api_key=os.getenv("DEEPSEEK_API_KEY"),
+                                base_url="https://api.deepseek.com"
+                            )
+                        elif usage_result['warning_threshold']:
+                            print(f"⚠️  WARNING: Pro user {self.pro_key} approaching usage limit ({usage_result['current_usage']}/1000)")
+                        
+                                                # Only show error if we couldn't switch to fallback
+                        if not usage_result['allowed'] and not usage_result['use_fallback']:
                             error_message = "Monthly usage limit exceeded for Pro plan. Please wait until next month or contact support."
                             self.logger_for_agent_logs.error(error_message)
                             self.message_queue.put_nowait(

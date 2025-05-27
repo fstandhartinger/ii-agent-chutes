@@ -156,16 +156,24 @@ class DatabaseManager:
         with self.get_session() as session:
             return session.query(Session).filter(Session.device_id == device_id).first()
 
-    def track_pro_usage(self, pro_key: str) -> bool:
+    def track_pro_usage(self, pro_key: str) -> dict:
         """Track a Sonnet 4 request for a Pro user.
 
         Args:
             pro_key: The Pro key (8-character hex string)
 
         Returns:
-            True if tracking was successful, False if usage limit exceeded
+            dict: {
+                'allowed': bool,  # True if Sonnet 4 request is allowed
+                'current_usage': int,  # Current request count
+                'limit_reached': bool,  # True if monthly limit reached
+                'warning_threshold': bool,  # True if warning threshold reached
+                'use_fallback': bool  # True if should use DeepSeek V3 instead
+            }
         """
         current_month = datetime.now().strftime("%Y-%m")
+        monthly_limit = 1000
+        warning_threshold = 300
         
         with self.get_session() as session:
             # Get or create usage record for this month
@@ -179,16 +187,39 @@ class DatabaseManager:
                 # Create new usage record
                 usage_record = ProUsage(pro_key=pro_key, month_year=current_month, sonnet_requests=1)
                 session.add(usage_record)
+                current_usage = 1
             else:
-                # Check if user has exceeded limit (e.g., 1000 requests per month)
-                if usage_record.sonnet_requests >= 1000:
-                    return False
+                current_usage = usage_record.sonnet_requests
+                
+                # Check if user has exceeded limit
+                if current_usage >= monthly_limit:
+                    print(f"🔴 CRITICAL: Pro user {pro_key} has exceeded monthly limit ({monthly_limit}) in {current_month}")
+                    print(f"🔴 FALLBACK: Switching to DeepSeek V3 for this user")
+                    return {
+                        'allowed': False,
+                        'current_usage': current_usage,
+                        'limit_reached': True,
+                        'warning_threshold': True,
+                        'use_fallback': True
+                    }
+                
+                # Log warning at 300 requests
+                if current_usage == warning_threshold:
+                    print(f"🚨 WARNING: Pro user {pro_key} has reached {warning_threshold} Sonnet 4 requests in {current_month}!")
+                    print(f"🚨 ALERT: Monitor this user closely - approaching monthly limit of {monthly_limit}")
                 
                 # Increment usage
                 usage_record.sonnet_requests += 1
                 usage_record.updated_at = datetime.utcnow()
+                current_usage += 1
             
-            return True
+            return {
+                'allowed': True,
+                'current_usage': current_usage,
+                'limit_reached': False,
+                'warning_threshold': current_usage >= warning_threshold,
+                'use_fallback': False
+            }
 
     def get_pro_usage(self, pro_key: str) -> dict:
         """Get usage statistics for a Pro user.
