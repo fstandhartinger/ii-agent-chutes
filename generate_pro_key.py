@@ -15,6 +15,14 @@ def main():
     print("Pro Key Generator")
     print("================")
     
+    # Check if PRO_PRIME is set
+    import os
+    if not os.getenv('PRO_PRIME'):
+        print("WARNING: PRO_PRIME environment variable not set!")
+        print("Please set PRO_PRIME in your environment or .env file")
+        print("Example: export PRO_PRIME=1299827")
+        print()
+    
     # Generate a new key
     new_key = generate_pro_key()
     print(f"Generated Pro Key: {new_key}")
@@ -30,6 +38,7 @@ def main():
     print("1. Copy the URL above")
     print("2. Open it in your browser")
     print("3. Try selecting Claude Sonnet 4 from the model dropdown")
+    print("\nNote: Make sure NEXT_PUBLIC_PRO_PRIME is set in your frontend environment!")
 
 if __name__ == "__main__":
     main() 

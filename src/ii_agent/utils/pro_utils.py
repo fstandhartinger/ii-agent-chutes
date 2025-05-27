@@ -1,7 +1,24 @@
 """Utilities for Pro plan validation and management."""
 
-# Prime number for Pro key validation (large prime in the hundreds of thousands range)
-PRO_PRIME = 982451  # A large prime number
+import os
+
+def get_prime_number() -> int:
+    """Get the prime number from environment variables.
+    
+    Returns:
+        The prime number for Pro key validation
+    """
+    # Get from environment variable
+    prime_from_env = os.getenv('PRO_PRIME')
+    if prime_from_env:
+        try:
+            return int(prime_from_env)
+        except ValueError:
+            pass
+    
+    # Fallback for development (this should be overridden in production)
+    print("WARNING: PRO_PRIME not set in environment variables, using fallback")
+    return 982451  # Development fallback
 
 def validate_pro_key(pro_key: str) -> bool:
     """Validates if a Pro key is valid based on the prime number logic.
@@ -13,6 +30,8 @@ def validate_pro_key(pro_key: str) -> bool:
         bool indicating if the key is valid
     """
     try:
+        PRO_PRIME = get_prime_number()
+        
         # Convert hex to decimal
         decimal_value = int(pro_key, 16)
         
@@ -31,6 +50,8 @@ def generate_pro_key() -> str:
         A hex string that is a valid Pro key
     """
     import random
+    
+    PRO_PRIME = get_prime_number()
     
     # Generate a random multiplier (1-1000)
     multiplier = random.randint(1, 1000)

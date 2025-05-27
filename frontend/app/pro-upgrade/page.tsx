@@ -59,7 +59,7 @@ export default function ProUpgradePage() {
             </div>
             
             <p className="text-xl text-gray-300 max-w-2xl mx-auto">
-              Unlock the power of Claude Sonnet 4 - the most advanced AI model for dramatically better performance and results.
+              Unlock the power of Claude Sonnet 4 - the advanced AI model for dramatically better performance and results.
             </p>
           </motion.div>
 

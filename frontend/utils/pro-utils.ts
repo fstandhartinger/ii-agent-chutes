@@ -1,5 +1,16 @@
-// Prime number for Pro key validation (large prime in the hundreds of thousands range)
-const PRO_PRIME = 982451; // A large prime number
+// Get prime number from environment variable
+const getPrimeNumber = (): number => {
+  // In production, this should come from environment variables
+  // For development, we use a fallback value
+  const primeFromEnv = process.env.NEXT_PUBLIC_PRO_PRIME;
+  if (primeFromEnv) {
+    return parseInt(primeFromEnv, 10);
+  }
+  
+  // Fallback for development (this should be overridden in production)
+  console.warn('PRO_PRIME not set in environment variables, using fallback');
+  return 982451; // Development fallback
+};
 
 /**
  * Validates if a Pro key is valid based on the prime number logic
@@ -8,6 +19,8 @@ const PRO_PRIME = 982451; // A large prime number
  */
 export function validateProKey(proKey: string): boolean {
   try {
+    const PRO_PRIME = getPrimeNumber();
+    
     // Convert hex to decimal
     const decimalValue = parseInt(proKey, 16);
     
@@ -27,6 +40,8 @@ export function validateProKey(proKey: string): boolean {
  * @returns A hex string that is a valid Pro key
  */
 export function generateProKey(): string {
+  const PRO_PRIME = getPrimeNumber();
+  
   // Generate a random multiplier (1-1000)
   const multiplier = Math.floor(Math.random() * 1000) + 1;
   

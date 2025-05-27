@@ -103,8 +103,15 @@ The Pro mode is implemented using a simple prime number-based validation system 
 
 ## Configuration
 
-### Prime Number
-The validation prime is set to `982451` in both frontend and backend utils. This can be changed if needed, but both sides must use the same value.
+### Prime Number (Environment Variable)
+The validation prime is now configured via environment variables for security:
+
+**Backend**: Set `PRO_PRIME` environment variable
+**Frontend**: Set `NEXT_PUBLIC_PRO_PRIME` environment variable
+
+Both must use the same value. Copy `env.example` to `.env` and set your secret prime number.
+
+**Important**: Never commit the actual prime number to version control!
 
 ### Usage Limits
 Monthly limit is set to 1000 requests in `DatabaseManager.track_pro_usage()`. This can be adjusted as needed.
