@@ -533,6 +533,12 @@
   flex-direction: column;
 }
 
+/* Tab content items should fill the container */
+.tab-content-container > * {
+  flex: 1;
+  min-height: 0;
+}
+
 /* Browser view specific */
 .browser-container {
   height: 100%;

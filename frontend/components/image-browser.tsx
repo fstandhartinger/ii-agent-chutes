@@ -7,11 +7,11 @@ interface BrowserProps {
 }
 
 const ImageBrowser = ({ className, url, image }: BrowserProps) => {
-  if (!url) return;
+  if (!url) return null;
 
   return (
     <div
-      className={`browser-container border border-[#3A3B3F] rounded-xl overflow-hidden shadow-sm ${className}`}
+      className={`browser-container border border-[#3A3B3F] rounded-xl overflow-hidden shadow-sm ${className || ''}`}
     >
       <div className="flex items-center gap-3 px-3 py-2.5 bg-black/80 border-b border-neutral-800 flex-shrink-0">
         <div className="flex items-center gap-1.5">

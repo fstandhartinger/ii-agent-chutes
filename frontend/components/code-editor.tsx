@@ -360,7 +360,7 @@ const CodeEditor = ({
 
   return (
     <div
-      className={`browser-container rounded-xl border border-[#3A3B3F] shadow-sm overflow-hidden ${className}`}
+      className={`browser-container rounded-xl border border-[#3A3B3F] shadow-sm overflow-hidden ${className || ''}`}
     >
       <div className="flex flex-1 h-full">
         {/* File Explorer */}

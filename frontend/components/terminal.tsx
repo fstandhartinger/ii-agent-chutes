@@ -150,7 +150,7 @@ const Terminal = (
     <div
       className={clsx(
         "browser-container bg-black/80 border border-[#3A3B3F] shadow-sm rounded-xl overflow-hidden",
-        className
+        className || ''
       )}
     >
       <div

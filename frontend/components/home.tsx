@@ -1303,70 +1303,69 @@ export default function Home() {
 
                     {/* Tab Content */}
                     <div className="tab-content-container">
-                      <Browser
-                        className={`tab-content-enter ${
-                          activeTab === TAB.BROWSER &&
-                          (currentActionData?.type === TOOL.VISIT || isBrowserTool)
-                            ? ""
-                            : "hidden"
-                        }`}
-                        url={currentActionData?.data?.tool_input?.url || browserUrl}
-                        screenshot={
-                          isBrowserTool
-                            ? (currentActionData?.data.result as string)
-                            : undefined
-                        }
-                        raw={
-                          currentActionData?.type === TOOL.VISIT
-                            ? (currentActionData?.data?.result as string)
-                            : undefined
-                        }
-                      />
-                      <SearchBrowser
-                        className={`tab-content-enter ${
-                          activeTab === TAB.BROWSER &&
-                          currentActionData?.type === TOOL.WEB_SEARCH
-                            ? ""
-                            : "hidden"
-                        }`}
-                        keyword={currentActionData?.data.tool_input?.query}
-                        search_results={
-                          currentActionData?.type === TOOL.WEB_SEARCH &&
-                          currentActionData?.data?.result
-                            ? parseJson(currentActionData?.data?.result as string)
-                            : undefined
-                        }
-                      />
-                      <ImageBrowser
-                        className={`tab-content-enter ${
-                          activeTab === TAB.BROWSER &&
-                          currentActionData?.type === TOOL.IMAGE_GENERATE
-                            ? ""
-                            : "hidden"
-                        }`}
-                        url={currentActionData?.data.tool_input?.output_filename}
-                        image={getRemoteURL(
-                          currentActionData?.data.tool_input?.output_filename
-                        )}
-                      />
-                      <CodeEditor
-                        currentActionData={currentActionData}
-                        activeTab={activeTab}
-                        className={`tab-content-enter ${activeTab === TAB.CODE ? "" : "hidden"}`}
-                        workspaceInfo={workspaceInfo}
-                        activeFile={activeFileCodeEditor}
-                        setActiveFile={setActiveFileCodeEditor}
-                        filesContent={filesContent}
-                        isReplayMode={isReplayMode}
-                      />
-                      <Terminal
-                        ref={xtermRef}
-                        className={`tab-content-enter ${activeTab === TAB.TERMINAL ? "" : "hidden"}`}
-                      />
-                      {deployedUrl && (
+                      {activeTab === TAB.BROWSER && (
+                        <>
+                          {(currentActionData?.type === TOOL.VISIT || isBrowserTool) && (
+                            <Browser
+                              className="tab-content-enter"
+                              url={currentActionData?.data?.tool_input?.url || browserUrl}
+                              screenshot={
+                                isBrowserTool
+                                  ? (currentActionData?.data.result as string)
+                                  : undefined
+                              }
+                              raw={
+                                currentActionData?.type === TOOL.VISIT
+                                  ? (currentActionData?.data?.result as string)
+                                  : undefined
+                              }
+                            />
+                          )}
+                          {currentActionData?.type === TOOL.WEB_SEARCH && (
+                            <SearchBrowser
+                              className="tab-content-enter"
+                              keyword={currentActionData?.data.tool_input?.query}
+                              search_results={
+                                currentActionData?.type === TOOL.WEB_SEARCH &&
+                                currentActionData?.data?.result
+                                  ? parseJson(currentActionData?.data?.result as string)
+                                  : undefined
+                              }
+                            />
+                          )}
+                          {currentActionData?.type === TOOL.IMAGE_GENERATE && (
+                            <ImageBrowser
+                              className="tab-content-enter"
+                              url={currentActionData?.data.tool_input?.output_filename}
+                              image={getRemoteURL(
+                                currentActionData?.data.tool_input?.output_filename
+                              )}
+                            />
+                          )}
+                        </>
+                      )}
+                      {activeTab === TAB.CODE && (
+                        <CodeEditor
+                          currentActionData={currentActionData}
+                          activeTab={activeTab}
+                          className="tab-content-enter"
+                          workspaceInfo={workspaceInfo}
+                          activeFile={activeFileCodeEditor}
+                          setActiveFile={setActiveFileCodeEditor}
+                          filesContent={filesContent}
+                          isReplayMode={isReplayMode}
+                        />
+                      )}
+                      {activeTab === TAB.TERMINAL && (
+                        <Terminal
+                          ref={xtermRef}
+                          className="tab-content-enter"
+                        />
+                      )}
+                      {activeTab === TAB.WEBSITE && deployedUrl && (
                         <WebsiteViewer
                           url={deployedUrl}
-                          className={`tab-content-enter ${activeTab === TAB.WEBSITE ? "" : "hidden"}`}
+                          className="tab-content-enter"
                         />
                       )}
                     </div>

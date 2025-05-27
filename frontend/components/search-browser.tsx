@@ -11,11 +11,11 @@ const SearchBrowser = ({
   keyword,
   search_results,
 }: SearchBrowserProps) => {
-  if (!keyword) return;
+  if (!keyword) return null;
 
   return (
     <div
-      className={`browser-container flex rounded-xl flex-col overflow-hidden border border-[#3A3B3F] ${className}`}
+      className={`browser-container flex rounded-xl flex-col overflow-hidden border border-[#3A3B3F] ${className || ''}`}
     >
       <div className="flex items-center gap-3 px-3 py-2.5 bg-black/80 border-b border-neutral-800 flex-shrink-0">
         <div className="flex items-center gap-1.5">
