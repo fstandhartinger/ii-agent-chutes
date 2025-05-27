@@ -486,10 +486,10 @@ def main():
     if args.model_id and args.model_provider:
         model_name = args.model_id
         provider = args.model_provider
-        # For chutes provider, we need to use the chutes client
+        # For chutes provider, we need to use the chutes-openai client
         if provider == "chutes":
             client = get_client(
-                "chutes",
+                "chutes-openai",
                 model_name=model_name,
                 use_caching=False,
                 project_id=args.project_id,
