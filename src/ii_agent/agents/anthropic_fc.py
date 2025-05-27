@@ -2,6 +2,7 @@ import asyncio
 import logging
 from typing import Any, Optional
 import uuid
+import os
 
 from typing import List
 from fastapi import WebSocket
@@ -172,22 +173,35 @@ try breaking down the task into smaller steps. After call this tool to update or
 
             # Then process images for image blocks
             for file in files:
-                ext = file.split(".")[-1]
+                ext = file.split(".")[-1].lower()
                 if ext == "jpg":
                     ext = "jpeg"
                 if ext in ["png", "gif", "jpeg", "webp"]:
-                    base64_image = encode_image(
-                        str(self.workspace_manager.workspace_path(file))
-                    )
-                    image_blocks.append(
-                        {
-                            "source": {
-                                "type": "base64",
-                                "media_type": f"image/{ext}",
-                                "data": base64_image,
+                    try:
+                        full_path = str(self.workspace_manager.workspace_path(file))
+                        self.logger_for_agent_logs.info(f"Processing image file: {file}")
+                        self.logger_for_agent_logs.info(f"Full path: {full_path}")
+                        
+                        # Check if file exists
+                        if not os.path.exists(full_path):
+                            self.logger_for_agent_logs.error(f"Image file not found: {full_path}")
+                            continue
+                            
+                        base64_image = encode_image(full_path)
+                        image_blocks.append(
+                            {
+                                "source": {
+                                    "type": "base64",
+                                    "media_type": f"image/{ext}",
+                                    "data": base64_image,
+                                }
                             }
-                        }
-                    )
+                        )
+                        self.logger_for_agent_logs.info(f"Successfully processed image: {file}")
+                    except Exception as e:
+                        self.logger_for_agent_logs.error(f"Error processing image {file}: {str(e)}")
+                        import traceback
+                        self.logger_for_agent_logs.error(traceback.format_exc())
 
         self.history.add_user_prompt(instruction, image_blocks)
         self.interrupted = False

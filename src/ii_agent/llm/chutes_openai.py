@@ -68,9 +68,9 @@ class ChutesOpenAIClient(LLMClient):
         # Default fallback models for different scenarios
         if fallback_models is None:
             self.fallback_models = [
-                "chutesai/Llama-4-Maverick-17B-128E-Instruct-FP8",
-                "Qwen/Qwen2.5-VL-32B-Instruct",
-                "deepseek-ai/DeepSeek-R1",
+                "chutesai/Llama-4-Maverick-17B-128E-Instruct-FP8",  # Vision capable
+                "Qwen/Qwen2.5-VL-32B-Instruct",  # Vision capable
+                "deepseek-ai/DeepSeek-R1",  # Text only
             ]
         else:
             self.fallback_models = fallback_models
@@ -237,7 +237,11 @@ class ChutesOpenAIClient(LLMClient):
                     message = cast(ImageBlock, message)
                     if role == "user":
                         # Check if this is a vision-capable model
-                        vision_models = ["deepseek-ai/DeepSeek-V3-0324", "chutesai/Llama-4-Maverick-17B-128E-Instruct-FP8"]
+                        vision_models = [
+                            "deepseek-ai/DeepSeek-V3-0324", 
+                            "chutesai/Llama-4-Maverick-17B-128E-Instruct-FP8",
+                            "Qwen/Qwen2.5-VL-32B-Instruct"
+                        ]
                         if self.model_name in vision_models:
                             # Convert to OpenAI vision format
                             image_content = {

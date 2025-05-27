@@ -409,7 +409,7 @@ export default function Home() {
         content: {
           text: newQuestion,
           resume: messages.length > 0,
-          files: uploadedFiles?.map((file) => `.${file}`),
+          files: uploadedFiles?.map((file) => file.startsWith('/') ? file.substring(1) : file),
         },
       })
     );

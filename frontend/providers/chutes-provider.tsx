@@ -80,7 +80,7 @@ type LLMContextType = {
 const LLMContext = createContext<LLMContextType | undefined>(undefined);
 
 export function ChutesProvider({ children }: { children: ReactNode }) {
-  const [selectedModel, setSelectedModelState] = useState<LLMModel>(TEXT_MODELS[0]);
+  const [selectedModel, setSelectedModelState] = useState<LLMModel>(VISION_MODELS[0]);
 
   // Keep backward compatibility 
   const useChutesLLM = selectedModel.provider === "chutes";
@@ -105,13 +105,13 @@ export function ChutesProvider({ children }: { children: ReactNode }) {
         setSelectedModelState(model);
       }
     } else {
-      // Try to migrate from old useChutesLLM setting or set default to DeepSeek R1
+      // Try to migrate from old useChutesLLM setting or set default to DeepSeek V3
       const savedChutesValue = localStorage.getItem("useChutesLLM");
       if (savedChutesValue === "true") {
-        setSelectedModelState(TEXT_MODELS[0]); // DeepSeek R1 is now first
+        setSelectedModelState(VISION_MODELS[0]); // DeepSeek V3 is now default
       } else {
-        // Default to DeepSeek R1 for new users
-        setSelectedModelState(TEXT_MODELS[0]);
+        // Default to DeepSeek V3 for new users
+        setSelectedModelState(VISION_MODELS[0]);
       }
     }
   }, []);
