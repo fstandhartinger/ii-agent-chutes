@@ -43,8 +43,24 @@ class ChutesOpenAIClient(LLMClient):
         test_mode=False,
         no_fallback=False,
         use_native_tool_calling=False,
+        project_id=None,
+        region=None,
+        thinking_tokens=None,
     ):
-        """Initialize the Chutes OpenAI-compatible client."""
+        """Initialize the Chutes OpenAI-compatible client.
+        
+        Args:
+            model_name: The model name to use.
+            max_retries: Maximum number of retries for failed requests.
+            use_caching: Whether to use caching (not implemented for Chutes).
+            fallback_models: List of fallback models to try if primary fails.
+            test_mode: Whether to use reduced backoff times for testing.
+            no_fallback: Whether to disable fallback models.
+            use_native_tool_calling: Whether to use native tool calling or JSON workaround.
+            project_id: Project ID (accepted for compatibility, not used by Chutes).
+            region: Region (accepted for compatibility, not used by Chutes).
+            thinking_tokens: Thinking tokens (accepted for compatibility, not used by Chutes).
+        """
         api_key = os.getenv("CHUTES_API_KEY")
         if not api_key:
             raise ValueError("CHUTES_API_KEY environment variable must be set")

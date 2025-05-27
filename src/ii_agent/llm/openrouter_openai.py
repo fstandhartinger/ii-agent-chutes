@@ -39,8 +39,21 @@ class OpenRouterOpenAIClient(LLMClient):
         max_retries=3,
         use_caching=True,
         fallback_models=None,
+        project_id=None,
+        region=None,
+        thinking_tokens=None,
     ):
-        """Initialize the OpenRouter OpenAI-compatible client."""
+        """Initialize the OpenRouter OpenAI-compatible client.
+        
+        Args:
+            model_name: The model name to use.
+            max_retries: Maximum number of retries for failed requests.
+            use_caching: Whether to use caching (not implemented for OpenRouter).
+            fallback_models: List of fallback models to try if primary fails.
+            project_id: Project ID (accepted for compatibility, not used by OpenRouter).
+            region: Region (accepted for compatibility, not used by OpenRouter).
+            thinking_tokens: Thinking tokens (accepted for compatibility, not used by OpenRouter).
+        """
         api_key = os.getenv("OPENROUTER_API_KEY")
         if not api_key:
             raise ValueError("OPENROUTER_API_KEY environment variable must be set")

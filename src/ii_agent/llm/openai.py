@@ -35,8 +35,17 @@ from ii_agent.llm.base import (
 class OpenAIDirectClient(LLMClient):
     """Use OpenAI models via first party API."""
 
-    def __init__(self, model_name: str, max_retries=2, cot_model: bool = True):
-        """Initialize the OpenAI first party client."""
+    def __init__(self, model_name: str, max_retries=2, cot_model: bool = True, project_id=None, region=None, thinking_tokens=None):
+        """Initialize the OpenAI first party client.
+        
+        Args:
+            model_name: The model name to use.
+            max_retries: Maximum number of retries for failed requests.
+            cot_model: Whether this is a chain-of-thought model.
+            project_id: Project ID (accepted for compatibility, not used by OpenAI direct).
+            region: Region (accepted for compatibility, not used by OpenAI direct).
+            thinking_tokens: Thinking tokens (accepted for compatibility, not used by OpenAI direct).
+        """
         api_key = os.getenv("OPENAI_API_KEY", "EMPTY")
         base_url = os.getenv("OPENAI_BASE_URL", "http://0.0.0.0:2323")
         self.client = openai.OpenAI(

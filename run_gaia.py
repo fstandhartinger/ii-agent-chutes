@@ -486,25 +486,27 @@ def main():
     if args.model_id and args.model_provider:
         model_name = args.model_id
         provider = args.model_provider
-        # For chutes provider, we need to use the chutes-openai client
+        # Map provider names to client names
         if provider == "chutes":
-            client = get_client(
-                "chutes-openai",
-                model_name=model_name,
-                use_caching=False,
-                project_id=args.project_id,
-                region=args.region,
-            )
+            client_name = "chutes-openai"
+        elif provider == "anthropic":
+            client_name = "anthropic-direct"
+        elif provider == "openai":
+            client_name = "openai-direct"
+        elif provider == "openrouter":
+            client_name = "openrouter-openai"
         else:
-            # For anthropic or other providers
-            client = get_client(
-                provider,
-                model_name=model_name,
-                use_caching=False,
-                project_id=args.project_id,
-                region=args.region,
-                thinking_tokens=2048 if provider == "anthropic-direct" else None,
-            )
+            # Assume it's already in the correct format (e.g., "anthropic-direct")
+            client_name = provider
+        
+        client = get_client(
+            client_name,
+            model_name=model_name,
+            use_caching=False,
+            project_id=args.project_id,
+            region=args.region,
+            thinking_tokens=2048 if client_name == "anthropic-direct" else None,
+        )
     else:
         # Default to anthropic-direct with DEFAULT_MODEL
         client = get_client(

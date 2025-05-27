@@ -16,7 +16,9 @@ const EXAMPLES = [
   //"design a calendar app with all the appointments of my kids. style it like attached style guide file. my kids appointments are: eva: mo-fr school until 1pm, eva: monday afternoon sports, thursday afternoon: theater, jon: mon-thu: kindergarten 8-11 am, fri 9-10: painting for kids (file: https://help.apple.com/pdf/applestyleguide/en_US/apple-style-guide.pdf)",
   "research all about siamese cats (Deep Research)",
   //"tell me where to travel in southeast asia in september, I know not all places have good weather. answer with a report and a scrollable map app that shows red/orange/green indicators.",
-  "write a letter to my boss saying thank you for the dinner invitation last time."
+  "write a letter to my boss saying thank you for the dinner invitation last time.",
+  "what breed is this? (file: https://upload.wikimedia.org/wikipedia/commons/thumb/7/75/Cute_grey_kitten.jpg/960px-Cute_grey_kitten.jpg?20110625205814)",
+  "design a todo app, styled like attached style guide file. (file: https://help.apple.com/pdf/applestyleguide/en_US/apple-style-guide.pdf)",
 ];
 
 const Examples = ({ onExampleClick, className }: ExamplesProps) => {
