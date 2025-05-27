@@ -6,6 +6,7 @@ import { Loader2, Play, CheckCircle, ArrowLeft, AlertCircle } from "lucide-react
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useChutes } from "@/providers/chutes-provider";
 
 interface GaiaResult {
   agent_name: string;
@@ -41,6 +42,7 @@ export default function GaiaPage() {
   const [maxTasks, setMaxTasks] = useState(5);
   const [setToRun, setSetToRun] = useState<"validation" | "test">("validation");
   const router = useRouter();
+  const { selectedModel } = useChutes();
 
   const runGaiaBenchmark = async () => {
     setIsRunning(true);
@@ -53,7 +55,9 @@ export default function GaiaPage() {
         body: JSON.stringify({ 
           set_to_run: setToRun,
           run_name: `gaia-run-${Date.now()}`,
-          max_tasks: maxTasks
+          max_tasks: maxTasks,
+          model_id: selectedModel.id,
+          model_provider: selectedModel.provider
         })
       });
       
@@ -134,6 +138,11 @@ export default function GaiaPage() {
             transition={{ duration: 0.6, delay: 0.2 }}
           >
             <h2 className="text-xl font-semibold mb-4">Configuration</h2>
+            <div className="mb-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+              <p className="text-sm text-blue-400">
+                <strong>Selected Model:</strong> {selectedModel.name} ({selectedModel.provider})
+              </p>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
               <div>
                 <label className="block text-sm font-medium mb-2">Dataset</label>
@@ -181,7 +190,7 @@ export default function GaiaPage() {
             <Loader2 className="w-12 h-12 text-blue-400 animate-spin mb-4 mx-auto" />
             <h2 className="text-2xl font-semibold mb-2">Running GAIA Benchmark</h2>
             <p className="text-muted-foreground mb-4">
-              Evaluating fubea on {maxTasks} tasks from the {setToRun} set...
+              Evaluating fubea with {selectedModel.name} on {maxTasks} tasks from the {setToRun} set...
             </p>
             <div className="text-sm text-muted-foreground">
               This may take several minutes depending on task complexity.

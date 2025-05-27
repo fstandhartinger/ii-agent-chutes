@@ -117,6 +117,18 @@ def parse_args():
         nargs="+",
         help="Specify one or more task UUIDs to run only those specific tasks",
     )
+    parser.add_argument(
+        "--model-id",
+        type=str,
+        default=None,
+        help="Model ID to use for evaluation (e.g., 'deepseek-ai/DeepSeek-R1')",
+    )
+    parser.add_argument(
+        "--model-provider",
+        type=str,
+        default=None,
+        help="Model provider to use (e.g., 'chutes', 'anthropic')",
+    )
 
     return parser.parse_args()
 
@@ -470,14 +482,39 @@ def main():
         logger.addHandler(logging.StreamHandler())
 
     # Initialize LLM client
-    client = get_client(
-        "anthropic-direct",
-        model_name=DEFAULT_MODEL,
-        use_caching=False,
-        project_id=args.project_id,
-        region=args.region,
-        thinking_tokens=2048,
-    )
+    # Use provided model or fall back to default
+    if args.model_id and args.model_provider:
+        model_name = args.model_id
+        provider = args.model_provider
+        # For chutes provider, we need to use the chutes client
+        if provider == "chutes":
+            client = get_client(
+                "chutes",
+                model_name=model_name,
+                use_caching=False,
+                project_id=args.project_id,
+                region=args.region,
+            )
+        else:
+            # For anthropic or other providers
+            client = get_client(
+                provider,
+                model_name=model_name,
+                use_caching=False,
+                project_id=args.project_id,
+                region=args.region,
+                thinking_tokens=2048 if provider == "anthropic-direct" else None,
+            )
+    else:
+        # Default to anthropic-direct with DEFAULT_MODEL
+        client = get_client(
+            "anthropic-direct",
+            model_name=DEFAULT_MODEL,
+            use_caching=False,
+            project_id=args.project_id,
+            region=args.region,
+            thinking_tokens=2048,
+        )
 
     # Initialize token counter and context manager
     token_counter = TokenCounter()

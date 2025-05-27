@@ -1171,6 +1171,8 @@ async def run_gaia_benchmark(request: Request):
         set_to_run = data.get("set_to_run", "validation")
         run_name = data.get("run_name", f"api-run-{uuid.uuid4()}")
         max_tasks = data.get("max_tasks", 5)  # Limit for demo/testing
+        model_id = data.get("model_id", None)
+        model_provider = data.get("model_provider", None)
         
         # Create output directory
         output_dir = Path("output") / set_to_run
@@ -1194,6 +1196,10 @@ async def run_gaia_benchmark(request: Request):
             "--workspace", workspace_path,
             "--logs-path", str(log_file)
         ]
+        
+        # Add model parameters if provided
+        if model_id and model_provider:
+            cmd.extend(["--model-id", model_id, "--model-provider", model_provider])
         
         logger.info(f"Running GAIA benchmark: {' '.join(cmd)}")
         
