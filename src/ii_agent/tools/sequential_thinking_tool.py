@@ -123,7 +123,7 @@ You should:
             },
             "revisesThought": {
                 "type": "integer",
-                "description": "Which thought is being reconsidered",
+                "description": "Which thought is being reconsidered (required when isRevision is true)",
                 "minimum": 1,
             },
             "branchFromThought": {
@@ -131,33 +131,13 @@ You should:
                 "description": "Branching point thought number",
                 "minimum": 1,
             },
-            "branchId": {"type": "string", "description": "Branch identifier"},
+            "branchId": {"type": "string", "description": "Branch identifier (required when branchFromThought is provided)"},
             "needsMoreThoughts": {
                 "type": "boolean",
                 "description": "If more thoughts are needed",
             },
         },
-        "required": ["thought", "nextThoughtNeeded", "thoughtNumber", "totalThoughts"],
-        "allOf": [
-            {
-                "if": {
-                    "properties": {"isRevision": {"const": True}},
-                    "required": ["isRevision"]
-                },
-                "then": {
-                    "required": ["revisesThought"]
-                }
-            },
-            {
-                "if": {
-                    "properties": {"branchFromThought": {"type": "integer"}},
-                    "required": ["branchFromThought"]
-                },
-                "then": {
-                    "required": ["branchId"]
-                }
-            }
-        ]
+        "required": ["thought", "nextThoughtNeeded", "thoughtNumber", "totalThoughts"]
     }
 
     def __init__(self, verbose: bool = False):
