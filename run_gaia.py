@@ -43,11 +43,12 @@ from ii_agent.tools.browser_tools import (
     BrowserViewTool,
     BrowserWaitTool,
 )
-from ii_agent.tools.advanced_tools.gemini import (
-    AudioUnderstandingTool,
-    AudioTranscribeTool,
-    YoutubeVideoUnderstandingTool,
-)
+# Gemini tools disabled - no API key available
+# from ii_agent.tools.advanced_tools.gemini import (
+#     AudioUnderstandingTool,
+#     AudioTranscribeTool,
+#     YoutubeVideoUnderstandingTool,
+# )
 from ii_agent.tools.sequential_thinking_tool import SequentialThinkingTool
 from ii_agent.tools.str_replace_tool_relative import StrReplaceEditorTool
 from ii_agent.tools.text_inspector_tool import TextInspectorTool
@@ -333,9 +334,10 @@ async def answer_single_question(
         BrowserSelectDropdownOptionTool(browser=browser),
         TextInspectorTool(workspace_manager=workspace_manager),
         DisplayImageTool(workspace_manager=workspace_manager),
-        YoutubeVideoUnderstandingTool(workspace_manager=workspace_manager),
-        AudioUnderstandingTool(workspace_manager=workspace_manager),
-        AudioTranscribeTool(workspace_manager=workspace_manager),
+        # Gemini tools disabled - no API key available
+        # YoutubeVideoUnderstandingTool(workspace_manager=workspace_manager),
+        # AudioUnderstandingTool(workspace_manager=workspace_manager),
+        # AudioTranscribeTool(workspace_manager=workspace_manager),
         YoutubeTranscriptTool(),
     ]
 
