@@ -17,7 +17,6 @@ const EXAMPLES = [
   "research all about siamese cats (Deep Research)",
   //"tell me where to travel in southeast asia in september, I know not all places have good weather. answer with a report and a scrollable map app that shows red/orange/green indicators.",
   "write a letter to my boss saying thank you for the dinner invitation last time.",
-  "what breed is this? (file: https://upload.wikimedia.org/wikipedia/commons/thumb/7/75/Cute_grey_kitten.jpg/960px-Cute_grey_kitten.jpg?20110625205814)",
   "design a todo app, styled like attached style guide file. (file: https://help.apple.com/pdf/applestyleguide/en_US/apple-style-guide.pdf)",
 ];
 

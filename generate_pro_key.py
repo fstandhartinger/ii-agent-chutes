@@ -32,7 +32,7 @@ def main():
     print(f"Key is valid: {is_valid}")
     
     # Show example URL
-    print(f"\nExample URL: http://localhost:3000/?pro_user_key={new_key}")
+    print(f"\nExample URL: https://fubea.cloud/?pro_user_key={new_key}")
     
     print("\nTo use this key:")
     print("1. Copy the URL above")
