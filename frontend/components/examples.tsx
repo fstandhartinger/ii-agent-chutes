@@ -9,13 +9,13 @@ interface ExamplesProps {
 }
 
 const EXAMPLES = [
-  "research how chutes.ai's role as a bittensor subnet allows them to provide llm inference for free, while everyone else serves it so expensive. provide the report as a pdf download. (Deep Research)",
-  "create a presentation about the psychological benefits of working on something you love.",
-  "build a 3d game of tic tac toe with cats for my cat loving girl friend. host it online, so that I can send it to her.",
+  "research how chutes.ai's role as a bittensor subnet allows them to provide llm inference for free. (Deep Research)",
+  "create a report about the psychological benefits of working on something you love.",
+  "build a game of tic tac toe with cats for my cat loving girl friend. host it online, so that I can send it to her.",
   "find out everything there is to know about fusion reactors and how far we are from getting them into production use. (Deep Research)",
-  "design a calendar app with all the appointments of my kids. style it like attached style guide file. my kids appointments are: eva: mo-fr school until 1pm, eva: monday afternoon sports, thursday afternoon: theater, jon: mon-thu: kindergarten 8-11 am, fri 9-10: painting for kids (file: https://help.apple.com/pdf/applestyleguide/en_US/apple-style-guide.pdf)",
+  //"design a calendar app with all the appointments of my kids. style it like attached style guide file. my kids appointments are: eva: mo-fr school until 1pm, eva: monday afternoon sports, thursday afternoon: theater, jon: mon-thu: kindergarten 8-11 am, fri 9-10: painting for kids (file: https://help.apple.com/pdf/applestyleguide/en_US/apple-style-guide.pdf)",
   "research all about siamese cats (Deep Research)",
-  "tell me where to travel in southeast asia in september, I know not all places have good weather. answer with a report and a scrollable map app that shows red/orange/green indicators.",
+  //"tell me where to travel in southeast asia in september, I know not all places have good weather. answer with a report and a scrollable map app that shows red/orange/green indicators.",
   "write a letter to my boss saying thank you for the dinner invitation last time."
 ];
 

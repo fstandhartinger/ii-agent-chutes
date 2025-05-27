@@ -11,9 +11,9 @@ const ImageBrowser = ({ className, url, image }: BrowserProps) => {
 
   return (
     <div
-      className={`h-[calc(100vh-178px)] border border-[#3A3B3F] rounded-xl overflow-hidden shadow-sm ${className}`}
+      className={`browser-container border border-[#3A3B3F] rounded-xl overflow-hidden shadow-sm ${className}`}
     >
-      <div className="flex items-center gap-3 px-3 py-2.5 bg-black/80 border-b border-neutral-800">
+      <div className="flex items-center gap-3 px-3 py-2.5 bg-black/80 border-b border-neutral-800 flex-shrink-0">
         <div className="flex items-center gap-1.5">
           <div className="flex gap-1.5">
             <div className="w-3 h-3 rounded-full bg-[#ff5f57]" />
@@ -38,12 +38,12 @@ const ImageBrowser = ({ className, url, image }: BrowserProps) => {
           </button>
         </div>
       </div>
-      <div className="bg-black/80 h-full">
+      <div className="bg-black/80 browser-content">
         {image && (
           <img
             src={image}
             alt="Browser"
-            className="w-full h-full object-contain object-center"
+            className="browser-screenshot"
           />
         )}
       </div>

@@ -951,7 +951,7 @@ export default function Home() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-background relative overflow-hidden">
+    <div className="flex flex-col min-h-screen bg-background relative overflow-hidden chat-view-container">
       {/* PWA Handler */}
       <PWAHandler />
       
@@ -964,7 +964,7 @@ export default function Home() {
       
       {/* Header */}
       <motion.header 
-        className="relative z-10 mobile-header-safe"
+        className="relative z-10 mobile-header-safe flex-shrink-0"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
@@ -1073,7 +1073,7 @@ export default function Home() {
       </motion.header>
 
       {/* Main Content */}
-      <main className="flex-1 relative z-10 flex flex-col min-h-0">
+      <main className="flex-1 relative z-10 flex flex-col min-h-0 overflow-hidden">
         {!isInChatView && (
           <div className="flex-1 flex flex-col">
             <motion.div
@@ -1200,10 +1200,10 @@ export default function Home() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
                   transition={{ duration: 0.6 }}
-                  className="w-full flex-1 flex flex-col md:grid md:grid-cols-10 gap-4 px-4 pb-4 mobile-safe-area mobile-chat-view"
+                  className="w-full flex-1 chat-grid-layout px-4 pb-4"
                 >
                   {/* Chat Messages Panel */}
-                  <div className={`${isMobileDetailPaneOpen ? 'hidden' : 'flex'} md:flex md:order-1 md:col-span-4 flex-col flex-1 min-h-0`}>
+                  <div className={`${isMobileDetailPaneOpen ? 'hidden' : 'flex'} md:flex chat-panel-container`}>
                     <ChatMessage
                       messages={messages}
                       isLoading={isLoading}
@@ -1230,9 +1230,9 @@ export default function Home() {
                   </div>
 
                   {/* Tools Panel */}
-                  <div className={`${!isMobileDetailPaneOpen ? 'hidden' : 'flex'} md:flex md:order-2 md:col-span-6 bg-glass-dark rounded-2xl border border-white/10 overflow-hidden flex-1 min-h-0 flex-col`}>
+                  <div className={`${!isMobileDetailPaneOpen ? 'hidden' : 'flex'} md:flex detail-panel-container bg-glass-dark rounded-2xl border border-white/10 overflow-hidden`}>
                     {/* Tab Navigation */}
-                    <div className="flex items-center justify-between p-4 pt-6 border-b border-white/10 bg-black/20">
+                    <div className="flex items-center justify-between p-4 pt-6 border-b border-white/10 bg-black/20 flex-shrink-0">
                       <div className="flex gap-2 overflow-x-auto pb-2">
                         {/* Mobile back button */}
                         <Button
@@ -1302,7 +1302,7 @@ export default function Home() {
                     </div>
 
                     {/* Tab Content */}
-                    <div className="flex-1 overflow-hidden">
+                    <div className="tab-content-container">
                       <Browser
                         className={`tab-content-enter ${
                           activeTab === TAB.BROWSER &&

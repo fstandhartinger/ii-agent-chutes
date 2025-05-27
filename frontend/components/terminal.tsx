@@ -149,13 +149,13 @@ const Terminal = (
   return (
     <div
       className={clsx(
-        "bg-black/80 border border-[#3A3B3F] shadow-sm p-4 h-[calc(100vh-178px)] rounded-xl overflow-auto",
+        "browser-container bg-black/80 border border-[#3A3B3F] shadow-sm rounded-xl overflow-hidden",
         className
       )}
     >
       <div
         ref={terminalRef}
-        className="h-full w-full"
+        className="h-full w-full p-4"
         style={{ width: "100%", height: "100%" }}
       />
     </div>

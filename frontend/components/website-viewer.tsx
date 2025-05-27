@@ -10,8 +10,8 @@ interface WebsiteViewerProps {
 
 const WebsiteViewer = ({ url, className }: WebsiteViewerProps) => {
   return (
-    <div className={`flex flex-col h-full ${className}`}>
-      <div className="flex-1 bg-white rounded-lg overflow-hidden">
+    <div className={`browser-container ${className}`}>
+      <div className="browser-content bg-white rounded-lg overflow-hidden">
         <iframe
           src={url}
           className="w-full h-full border-0"
@@ -19,7 +19,7 @@ const WebsiteViewer = ({ url, className }: WebsiteViewerProps) => {
           sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
         />
       </div>
-      <div className="p-4 bg-glass-dark border-t border-white/10">
+      <div className="p-4 bg-glass-dark border-t border-white/10 flex-shrink-0">
         <Button
           variant="outline"
           size="sm"

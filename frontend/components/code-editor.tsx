@@ -360,7 +360,7 @@ const CodeEditor = ({
 
   return (
     <div
-      className={`flex flex-col h-[calc(100vh-178px)] rounded-xl border border-[#3A3B3F] shadow-sm overflow-hidden ${className}`}
+      className={`browser-container rounded-xl border border-[#3A3B3F] shadow-sm overflow-hidden ${className}`}
     >
       <div className="flex flex-1 h-full">
         {/* File Explorer */}
@@ -374,26 +374,28 @@ const CodeEditor = ({
         </div>
 
         {/* Editor Section */}
-        <div className="flex-1 flex flex-col overflow-y-auto">
+        <div className="flex-1 flex flex-col overflow-hidden">
           {renderBreadcrumb()}
-          <Editor
-            theme="vs-dark"
-            language={activeLanguage}
-            height="100%"
-            value={fileContent}
-            options={{
-              minimap: { enabled: false },
-              scrollBeyondLastLine: false,
-              automaticLayout: true,
-              readOnly: false,
-            }}
-            beforeMount={(monaco) => {
-              monacoRef.current = monaco;
-            }}
-            onMount={(editor) => {
-              editorRef.current = editor;
-            }}
-          />
+          <div className="flex-1 overflow-hidden">
+            <Editor
+              theme="vs-dark"
+              language={activeLanguage}
+              height="100%"
+              value={fileContent}
+              options={{
+                minimap: { enabled: false },
+                scrollBeyondLastLine: false,
+                automaticLayout: true,
+                readOnly: false,
+              }}
+              beforeMount={(monaco) => {
+                monacoRef.current = monaco;
+              }}
+              onMount={(editor) => {
+                editorRef.current = editor;
+              }}
+            />
+          </div>
         </div>
       </div>
     </div>

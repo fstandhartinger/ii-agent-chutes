@@ -90,10 +90,10 @@ const ChatMessage = ({
   };
 
   return (
-    <div className="flex flex-col h-full bg-glass-dark rounded-2xl border border-white/10 overflow-hidden mobile-chat-panel">
+    <div className="flex flex-col h-full bg-glass-dark rounded-2xl border border-white/10 overflow-hidden">
       {/* Messages Container */}
       <motion.div
-        className="flex-1 p-4 md:p-6 overflow-y-auto space-y-4 md:space-y-6 mobile-chat-messages chat-messages-container mobile-messages-container"
+        className="flex-1 p-4 md:p-6 overflow-y-auto space-y-4 md:space-y-6 chat-messages-container"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.2, duration: 0.3 }}
@@ -346,7 +346,7 @@ const ChatMessage = ({
 
       {/* Input Section */}
       <motion.div
-        className="border-t border-white/10 bg-black/20 backdrop-blur-sm mobile-input-section"
+        className="border-t border-white/10 bg-black/20 backdrop-blur-sm flex-shrink-0"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4, duration: 0.3 }}

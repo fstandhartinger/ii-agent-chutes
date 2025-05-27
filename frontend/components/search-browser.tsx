@@ -15,9 +15,9 @@ const SearchBrowser = ({
 
   return (
     <div
-      className={`h-full flex rounded-xl flex-col overflow-hidden border border-[#3A3B3F] ${className}`}
+      className={`browser-container flex rounded-xl flex-col overflow-hidden border border-[#3A3B3F] ${className}`}
     >
-      <div className="flex items-center gap-3 px-3 py-2.5 bg-black/80 backdrop-blur-xl border-b border-neutral-800 flex-shrink-0">
+      <div className="flex items-center gap-3 px-3 py-2.5 bg-black/80 border-b border-neutral-800 flex-shrink-0">
         <div className="flex items-center gap-1.5">
           <div className="flex gap-1.5">
             <div className="w-3 h-3 rounded-full bg-[#ff5f57]" />
@@ -25,16 +25,16 @@ const SearchBrowser = ({
             <div className="w-3 h-3 rounded-full bg-[#28c840]" />
           </div>
         </div>
-        <div className="flex-1 flex items-center">
+        <div className="flex-1 flex items-center overflow-hidden">
           <div className="bg-[#35363a] px-3 py-1.5 rounded-lg w-full flex items-center gap-2 group transition-colors">
             <SearchIcon className="h-3.5 w-3.5 text-white flex-shrink-0" />
-            <span className="text-sm text-white truncate font-medium">
-              {keyword}
+            <span className="text-sm text-white truncate flex-1 font-medium">
+              Search: {keyword}
             </span>
           </div>
         </div>
       </div>
-      <div className="flex-1 bg-black/80 px-6 divide-y divide-y-neutral-200 overflow-auto">
+      <div className="bg-black/80 browser-content p-4">
         {Array.isArray(search_results) &&
           search_results?.map((item, index) => (
             <div
