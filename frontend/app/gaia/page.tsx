@@ -120,25 +120,26 @@ export default function GaiaPage() {
           </div>
         </motion.div>
 
-        {/* Record Achievement Banner */}
+        {/* Standing on Shoulders of Giants */}
         <motion.div
-          className="bg-gradient-to-r from-yellow-500/20 via-orange-500/20 to-red-500/20 rounded-2xl border border-yellow-400/30 p-6 mb-8"
+          className="bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-emerald-500/20 rounded-2xl border border-blue-400/30 p-6 mb-8"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.1 }}
         >
           <div className="flex items-center gap-3 mb-4">
-            <Star className="w-6 h-6 text-yellow-400" />
-            <h2 className="text-2xl font-bold text-yellow-400">Record-Breaking Performance</h2>
+            <Star className="w-6 h-6 text-blue-400" />
+            <h2 className="text-2xl font-bold text-blue-400">Standing on Shoulders of Giants</h2>
           </div>
           <p className="text-lg text-white/90 mb-4">
-            <strong>fubea</strong>, our AI agent powered by <strong>ii-agent</strong>, holds the current record on the GAIA benchmark - 
-            the most important benchmark for Deep Research AI capabilities.
+            <strong>fubea</strong>, our AI agent powered by <strong>ii-agent</strong>, benefits from this record-breaking 
+            benchmark result achieved by the ii-agent team. We use exactly this same agent engine internally and are 
+            deeply grateful and impressed by the outstanding performance of this open source project.
           </p>
           <div className="flex flex-wrap gap-4 text-sm text-white/80">
-            <span>🏆 Leading performance: 75.57%</span>
+            <span>🏆 ii-agent performance: 75.57%</span>
             <span>🔬 Deep Research Excellence</span>
-            <span>🚀 Powered by ii-agent technology</span>
+            <span>🙏 Grateful for open source innovation</span>
           </div>
         </motion.div>
 
@@ -190,58 +191,24 @@ export default function GaiaPage() {
             </div>
           </div>
           <p className="text-center text-muted-foreground mt-4 text-sm">
-            fubea achieves 75.57% on the GAIA benchmark, outperforming other leading AI systems
+            ii-agent achieves 75.57% on the GAIA benchmark, outperforming other leading AI systems
           </p>
         </motion.div>
 
-        {/* Technology Behind fubea */}
-        <motion.div
-          className="bg-glass-dark rounded-2xl border border-white/10 p-6 mb-8"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.4 }}
-        >
-          <h2 className="text-xl font-semibold mb-4">Powered by ii-agent</h2>
-          <p className="text-muted-foreground mb-4">
-            fubea is built on top of <strong>ii-agent</strong>, our advanced AI agent framework that enables 
-            sophisticated reasoning, research, and problem-solving capabilities. This technology stack allows 
-            fubea to excel at complex, multi-step tasks that require deep understanding and autonomous execution.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-glass rounded-lg p-4 text-center">
-              <div className="text-2xl font-bold text-blue-400 mb-2">Advanced</div>
-              <div className="text-sm text-muted-foreground">Reasoning Engine</div>
-            </div>
-            <div className="bg-glass rounded-lg p-4 text-center">
-              <div className="text-2xl font-bold text-green-400 mb-2">Autonomous</div>
-              <div className="text-sm text-muted-foreground">Research Capabilities</div>
-            </div>
-            <div className="bg-glass rounded-lg p-4 text-center">
-              <div className="text-2xl font-bold text-purple-400 mb-2">Integrated</div>
-              <div className="text-sm text-muted-foreground">Tool Ecosystem</div>
-            </div>
-          </div>
-        </motion.div>
+
 
         {/* Call to Action */}
         <motion.div
           className="bg-glass-dark rounded-2xl border border-white/10 p-6 text-center"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.5 }}
+          transition={{ duration: 0.6, delay: 0.4 }}
         >
           <h2 className="text-xl font-semibold mb-4">Experience Record-Breaking AI</h2>
           <p className="text-muted-foreground mb-6">
             Try fubea today and experience the same AI technology that achieved the leading score on the GAIA benchmark.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button
-              onClick={() => router.push("/")}
-              className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white"
-              size="lg"
-            >
-              Try fubea Now
-            </Button>
+          <div className="flex justify-center">
             <Button
               onClick={() => window.open("https://x.com/ii_posts/status/1924818953756373145/photo/1", "_blank")}
               variant="outline"
@@ -249,7 +216,7 @@ export default function GaiaPage() {
               size="lg"
             >
               <ExternalLink className="w-4 h-4" />
-              View Announcement
+              View Original Benchmark Result by ii-agent
             </Button>
           </div>
         </motion.div>
