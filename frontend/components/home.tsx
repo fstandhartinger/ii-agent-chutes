@@ -87,6 +87,7 @@ export default function Home() {
   const [showNativeToolToggle, setShowNativeToolToggle] = useState(false);
   const [showConsentDialog, setShowConsentDialog] = useState(false);
   const [pendingQuestion, setPendingQuestion] = useState<string>("");
+  const [showViralBanner, setShowViralBanner] = useState(false);
 
   const isReplayMode = useMemo(() => !!searchParams.get("id"), [searchParams]);
   const { selectedModel, setSelectedModel } = useChutes();
@@ -1022,10 +1023,55 @@ export default function Home() {
     setPendingQuestion("");
   };
 
+  useEffect(() => {
+    // Check if we should show the viral banner
+    const bannerStartTime = localStorage.getItem('viralBannerStartTime');
+    const currentTime = Date.now();
+    const twelveHours = 12 * 60 * 60 * 1000; // 12 hours in milliseconds
+    
+    if (!bannerStartTime) {
+      // First time showing the banner
+      localStorage.setItem('viralBannerStartTime', currentTime.toString());
+      setShowViralBanner(true);
+    } else {
+      // Check if 12 hours have passed
+      const startTime = parseInt(bannerStartTime);
+      if (currentTime - startTime < twelveHours) {
+        setShowViralBanner(true);
+      }
+    }
+    
+    // Hide banner after 3 seconds
+    if (showViralBanner) {
+      const timer = setTimeout(() => {
+        setShowViralBanner(false);
+      }, 3000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [showViralBanner]);
+
   return (
     <div className="flex flex-col h-screen bg-background relative overflow-hidden">
       {/* PWA Handler */}
       <PWAHandler />
+      
+      {/* Viral Banner */}
+      <AnimatePresence>
+        {showViralBanner && (
+          <motion.div
+            initial={{ opacity: 0, y: -50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -50 }}
+            transition={{ duration: 0.3 }}
+            className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-orange-500 to-red-500 text-white py-3 px-4 text-center shadow-lg"
+          >
+            <p className="text-sm md:text-base font-medium">
+              We have gone viral - servers are under heavy load. Please bear with us, it will soon get better!
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
       
       {/* Background Elements */}
       <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-purple-500/5 to-emerald-500/5" />
@@ -1201,6 +1247,26 @@ export default function Home() {
                     Leading
                   </span> Deep Research Agent. For Free.
                 </motion.p>
+                
+                {/* Powered by Chutes - moved from footer */}
+                <motion.div
+                  className="mt-4 text-sm text-muted-foreground"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8, delay: 0.7 }}
+                >
+                  <span>powered by</span>
+                  <a 
+                    href="https://chutes.ai" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="hover:text-foreground transition-colors hover-lift inline-flex items-center gap-1 ml-1"
+                  >
+                    <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent font-semibold">
+                      Chutes
+                    </span>
+                  </a>
+                </motion.div>
               </div>
             </motion.div>
             
@@ -1492,20 +1558,6 @@ export default function Home() {
                   className="text-blue-400 hover:text-blue-300 transition-colors hover-lift underline"
                 >
                   ii-agent
-                </a>
-              </div>
-              <span className="hidden sm:inline text-muted-foreground/60 mx-1">•</span>
-              <div className="flex items-center gap-1">
-                <span>powered by</span>
-                <a 
-                  href="https://chutes.ai" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="hover:text-foreground transition-colors hover-lift inline-flex items-center gap-1"
-                >
-                  <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent font-semibold">
-                    Chutes
-                  </span>
                 </a>
               </div>
             </div>

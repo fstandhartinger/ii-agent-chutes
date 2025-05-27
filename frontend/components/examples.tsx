@@ -17,7 +17,7 @@ const EXAMPLES = [
   "research all about siamese cats (Deep Research)",
   //"tell me where to travel in southeast asia in september, I know not all places have good weather. answer with a report and a scrollable map app that shows red/orange/green indicators.",
   "write a letter to my boss saying thank you for the dinner invitation last time.",
-  "design a todo app, styled like attached style guide file. (file: https://help.apple.com/pdf/applestyleguide/en_US/apple-style-guide.pdf)",
+  //"design a todo app, styled like attached style guide file. (file: https://help.apple.com/pdf/applestyleguide/en_US/apple-style-guide.pdf)",
 ];
 
 const Examples = ({ onExampleClick, className }: ExamplesProps) => {
