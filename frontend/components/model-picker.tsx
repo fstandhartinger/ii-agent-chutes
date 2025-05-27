@@ -77,7 +77,6 @@ export default function ModelPicker() {
 
   return (
     <div className="flex items-center gap-2 text-sm">
-      <span className="text-muted-foreground/70 text-xs">Model:</span>
       <Select value={selectedModel.id} onValueChange={handleModelChange}>
         <SelectTrigger 
           size="sm" 

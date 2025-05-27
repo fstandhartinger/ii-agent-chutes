@@ -1082,9 +1082,9 @@ export default function Home() {
       {/* Main Content */}
       <main className="flex-1 relative z-10 flex flex-col min-h-0 overflow-hidden h-full">
         {!isInChatView && (
-          <div className="flex-1 flex flex-col">
+          <div className="flex-1 flex flex-col min-h-0">
             <motion.div
-              className="flex flex-col items-center justify-center flex-1 px-4"
+              className="flex flex-col items-center justify-center flex-1 px-4 min-h-0"
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.8, delay: 0.2 }}
@@ -1137,10 +1137,10 @@ export default function Home() {
             </motion.div>
             
             {/* Input and Examples Container - Bottom aligned */}
-            <div className="mt-auto">
+            <div className="mt-auto flex-shrink-0">
               <motion.div
                 key="input-view"
-                className="flex items-center justify-center px-4 pb-8"
+                className="flex items-center justify-center px-4 pb-4"
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
@@ -1166,7 +1166,7 @@ export default function Home() {
               {/* Examples Section */}
               <motion.div
                 key="examples-view"
-                className="flex items-center justify-center px-4 pb-8"
+                className="flex items-center justify-center px-4 pb-4"
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
@@ -1395,7 +1395,7 @@ export default function Home() {
       {/* Footer */}
       {!isInChatView && (
         <motion.footer
-          className="relative z-10 text-center py-4 px-4 mobile-safe-area"
+          className="relative z-10 text-center py-2 px-4 mobile-safe-area flex-shrink-0"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.8, delay: 1 }}
