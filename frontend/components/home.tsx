@@ -48,6 +48,8 @@ import ImageBrowser from "./image-browser";
 import WebsiteViewer from "./website-viewer";
 import InstallPrompt from "./install-prompt";
 import PWAHandler from "./pwa-handler";
+import ConsentDialog, { hasUserConsented, setUserConsent } from "./consent-dialog";
+import CookieBanner from "./cookie-banner";
 
 export default function Home() {
   const xtermRef = useRef<XTerm | null>(null);
@@ -83,6 +85,8 @@ export default function Home() {
   const [useNativeToolCalling, setUseNativeToolCalling] = useState(false);
   const [logoClickCount, setLogoClickCount] = useState(0);
   const [showNativeToolToggle, setShowNativeToolToggle] = useState(false);
+  const [showConsentDialog, setShowConsentDialog] = useState(false);
+  const [pendingQuestion, setPendingQuestion] = useState<string>("");
 
   const isReplayMode = useMemo(() => !!searchParams.get("id"), [searchParams]);
   const { selectedModel } = useChutes();
@@ -349,6 +353,13 @@ export default function Home() {
 
   const handleQuestionSubmit = async (newQuestion: string) => {
     if (!newQuestion.trim() || isLoading) return;
+
+    // Check for user consent before proceeding
+    if (!hasUserConsented()) {
+      setPendingQuestion(newQuestion);
+      setShowConsentDialog(true);
+      return;
+    }
 
     setIsLoading(true);
     setCurrentQuestion("");
@@ -954,6 +965,22 @@ export default function Home() {
     toast.success("Agent run stopped");
   };
 
+  const handleConsentAccept = () => {
+    setUserConsent();
+    setShowConsentDialog(false);
+    
+    // Proceed with the pending question
+    if (pendingQuestion) {
+      handleQuestionSubmit(pendingQuestion);
+      setPendingQuestion("");
+    }
+  };
+
+  const handleConsentCancel = () => {
+    setShowConsentDialog(false);
+    setPendingQuestion("");
+  };
+
   return (
     <div className="flex flex-col h-screen bg-background relative overflow-hidden">
       {/* PWA Handler */}
@@ -1441,12 +1468,46 @@ export default function Home() {
                 </a>
               </div>
             </div>
+            
+            {/* Legal Links */}
+            <div className="flex items-center justify-center gap-2 mt-2 text-xs text-muted-foreground/80">
+              <a 
+                href="/privacy-policy" 
+                className="hover:text-muted-foreground transition-colors underline"
+              >
+                Privacy Policy
+              </a>
+              <span>•</span>
+              <a 
+                href="/terms" 
+                className="hover:text-muted-foreground transition-colors underline"
+              >
+                Terms of Service
+              </a>
+              <span>•</span>
+              <a 
+                href="/imprint" 
+                className="hover:text-muted-foreground transition-colors underline"
+              >
+                Imprint
+              </a>
+            </div>
           </div>
         </motion.footer>
       )}
       
       {/* Install Prompt */}
       <InstallPrompt />
+      
+      {/* Consent Dialog */}
+      <ConsentDialog
+        isOpen={showConsentDialog}
+        onAccept={handleConsentAccept}
+        onCancel={handleConsentCancel}
+      />
+      
+      {/* Cookie Banner */}
+      <CookieBanner />
     </div>
   );
 }
