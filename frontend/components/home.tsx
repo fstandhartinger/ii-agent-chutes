@@ -827,7 +827,15 @@ export default function Home() {
         break;
 
       case "error":
-        toast.error(data.content.message as string);
+        const errorMessage = data.content.message as string;
+        
+        // Check if this might be a deployment-related error
+        if (errorMessage.includes("Error running agent") && isLoading && messages.length > 0) {
+          toast.error("Sorry, a new version was just released. This caused the current run to be interrupted. We're working extremely hard on this software. Sorry and thank you for your understanding!");
+        } else {
+          toast.error(errorMessage);
+        }
+        
         setIsUploading(false);
         setIsLoading(false);
         break;
@@ -908,12 +916,25 @@ export default function Home() {
 
     ws.onerror = (error) => {
       console.log("WebSocket error:", error);
-      toast.error("WebSocket connection error");
+      
+      // Check if this might be due to a deployment
+      if (isLoading && messages.length > 0) {
+        toast.error("Sorry, a new version was just released. This caused the current run to be interrupted. We're working extremely hard on this software. Sorry and thank you for your understanding!");
+      } else {
+        toast.error("WebSocket connection error");
+      }
       setIsSocketConnected(false);
     };
 
-    ws.onclose = () => {
-      console.log("WebSocket connection closed");
+    ws.onclose = (event) => {
+      console.log("WebSocket connection closed", event);
+      
+      // Check if this might be due to a deployment during an active session
+      if (isLoading && messages.length > 0 && (event.code === 1006 || event.code === 1001)) {
+        toast.error("Sorry, a new version was just released. This caused the current run to be interrupted. We're working extremely hard on this software. Sorry and thank you for your understanding!");
+        setIsLoading(false); // Stop the loading state
+      }
+      
       setSocket(null);
       setIsSocketConnected(false);
     };

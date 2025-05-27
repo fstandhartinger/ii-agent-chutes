@@ -196,9 +196,11 @@ class AgentToolManager:
             log_message += f"\nTool output: \n{result}\n\n"
         else:
             result_to_log = deepcopy(result)
-            for i in range(len(result_to_log)):
-                if result_to_log[i].get("type") == "image":
-                    result_to_log[i]["source"]["data"] = "[REDACTED]"
+            # Check if result_to_log is not None and is iterable
+            if result_to_log is not None and hasattr(result_to_log, '__len__') and hasattr(result_to_log, '__getitem__'):
+                for i in range(len(result_to_log)):
+                    if result_to_log[i].get("type") == "image":
+                        result_to_log[i]["source"]["data"] = "[REDACTED]"
             log_message += f"\nTool output: \n{result_to_log}\n\n"
 
         self.logger_for_agent_logs.info(log_message)

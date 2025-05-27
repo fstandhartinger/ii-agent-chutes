@@ -1,5 +1,6 @@
 """Tool for performing deep research on a complex topic."""
 
+import os
 from typing import Any, Optional
 from ii_agent.llm.message_history import MessageHistory
 from ii_agent.tools.base import LLMTool, ToolImplOutput
@@ -57,6 +58,12 @@ class DeepResearchTool(LLMTool):
         message_history: Optional[MessageHistory] = None,
     ) -> ToolImplOutput:
         print(f"Performing deep research on {tool_input['query']}")
+        
+        # Set a proper model for the research agent to avoid the R1 model error
+        # Use a model that exists in the OpenAI API or the configured base URL
+        if not os.getenv("R_MODEL"):
+            os.environ["R_MODEL"] = "gpt-4o-mini"  # Use a model that actually exists
+        
         agent = ReasoningAgent(
             question=tool_input["query"], report_type=ReportType.BASIC
         )
