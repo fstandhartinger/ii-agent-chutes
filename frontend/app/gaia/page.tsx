@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Loader2, Play, CheckCircle, ArrowLeft, AlertCircle } from "lucide-react";
+import { ArrowLeft, ExternalLink, Trophy, Star } from "lucide-react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
-import { useChutes } from "@/providers/chutes-provider";
+import Image from "next/image";
 
+// Commented out for potential future reactivation
+/*
 interface GaiaResult {
   agent_name: string;
   question: string;
@@ -35,15 +35,21 @@ interface GaiaResponse {
   summary: GaiaSummary;
   message?: string;
 }
+*/
 
 export default function GaiaPage() {
+  // Commented out for potential future reactivation
+  /*
   const [isRunning, setIsRunning] = useState(false);
   const [results, setResults] = useState<GaiaResponse | null>(null);
   const [maxTasks, setMaxTasks] = useState(5);
   const [setToRun, setSetToRun] = useState<"validation" | "test">("validation");
-  const router = useRouter();
   const { selectedModel } = useChutes();
+  */
+  const router = useRouter();
 
+  // Commented out for potential future reactivation
+  /*
   const runGaiaBenchmark = async () => {
     setIsRunning(true);
     setResults(null);
@@ -81,6 +87,7 @@ export default function GaiaPage() {
       setIsRunning(false);
     }
   };
+  */
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
@@ -105,31 +112,150 @@ export default function GaiaPage() {
           >
             <ArrowLeft className="w-4 h-4" />
           </Button>
-          <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-white via-blue-100 to-purple-100 bg-clip-text text-transparent">
-            GAIA Benchmark
-          </h1>
+          <div className="flex items-center gap-3">
+            <Trophy className="w-8 h-8 text-yellow-400" />
+            <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-yellow-400 via-orange-400 to-red-400 bg-clip-text text-transparent">
+              GAIA Benchmark Leader
+            </h1>
+          </div>
         </motion.div>
 
-        {/* Description */}
+        {/* Record Achievement Banner */}
         <motion.div
-          className="bg-glass-dark rounded-2xl border border-white/10 p-6 mb-8"
+          className="bg-gradient-to-r from-yellow-500/20 via-orange-500/20 to-red-500/20 rounded-2xl border border-yellow-400/30 p-6 mb-8"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.1 }}
         >
-          <p className="text-muted-foreground mb-4">
-            The GAIA benchmark tests AI agents on real-world tasks requiring reasoning, research, and tool usage. 
-            This evaluation measures how well fubea performs on complex, multi-step problems.
+          <div className="flex items-center gap-3 mb-4">
+            <Star className="w-6 h-6 text-yellow-400" />
+            <h2 className="text-2xl font-bold text-yellow-400">Record-Breaking Performance</h2>
+          </div>
+          <p className="text-lg text-white/90 mb-4">
+            <strong>fubea</strong>, our AI agent powered by <strong>ii-agent</strong>, holds the current record on the GAIA benchmark - 
+            the most important benchmark for Deep Research AI capabilities.
           </p>
-          <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-            <span>• Web research and fact verification</span>
-            <span>• Document analysis and comprehension</span>
-            <span>• Multi-step reasoning tasks</span>
-            <span>• Tool usage and automation</span>
+          <div className="flex flex-wrap gap-4 text-sm text-white/80">
+            <span>🏆 Leading performance: 75.57%</span>
+            <span>🔬 Deep Research Excellence</span>
+            <span>🚀 Powered by ii-agent technology</span>
           </div>
         </motion.div>
 
-        {/* Configuration */}
+        {/* About GAIA Benchmark */}
+        <motion.div
+          className="bg-glass-dark rounded-2xl border border-white/10 p-6 mb-8"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+        >
+          <h2 className="text-xl font-semibold mb-4">About the GAIA Benchmark</h2>
+          <p className="text-muted-foreground mb-4">
+            GAIA (General AI Assistant) is the most important benchmark for evaluating AI agents on real-world tasks 
+            requiring advanced reasoning, research capabilities, and tool usage. It represents the gold standard for 
+            measuring Deep Research AI performance.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-muted-foreground">
+            <div className="space-y-2">
+              <span className="block">• Complex multi-step reasoning tasks</span>
+              <span className="block">• Real-world research challenges</span>
+              <span className="block">• Advanced tool usage requirements</span>
+            </div>
+            <div className="space-y-2">
+              <span className="block">• Document analysis and comprehension</span>
+              <span className="block">• Web research and fact verification</span>
+              <span className="block">• Problem-solving automation</span>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Benchmark Results Image */}
+        <motion.div
+          className="bg-glass-dark rounded-2xl border border-white/10 p-6 mb-8"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.3 }}
+        >
+          <h2 className="text-xl font-semibold mb-6 text-center">GAIA Benchmark Results</h2>
+          <div className="flex justify-center">
+            <div className="relative max-w-4xl w-full">
+              <Image
+                src="/benchmark_scores.png"
+                alt="GAIA Benchmark Results showing fubea's leading performance of 75.57%"
+                width={1335}
+                height={1107}
+                className="rounded-lg border border-white/20 shadow-2xl"
+                priority
+              />
+            </div>
+          </div>
+          <p className="text-center text-muted-foreground mt-4 text-sm">
+            fubea achieves 75.57% on the GAIA benchmark, outperforming other leading AI systems
+          </p>
+        </motion.div>
+
+        {/* Technology Behind fubea */}
+        <motion.div
+          className="bg-glass-dark rounded-2xl border border-white/10 p-6 mb-8"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.4 }}
+        >
+          <h2 className="text-xl font-semibold mb-4">Powered by ii-agent</h2>
+          <p className="text-muted-foreground mb-4">
+            fubea is built on top of <strong>ii-agent</strong>, our advanced AI agent framework that enables 
+            sophisticated reasoning, research, and problem-solving capabilities. This technology stack allows 
+            fubea to excel at complex, multi-step tasks that require deep understanding and autonomous execution.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-glass rounded-lg p-4 text-center">
+              <div className="text-2xl font-bold text-blue-400 mb-2">Advanced</div>
+              <div className="text-sm text-muted-foreground">Reasoning Engine</div>
+            </div>
+            <div className="bg-glass rounded-lg p-4 text-center">
+              <div className="text-2xl font-bold text-green-400 mb-2">Autonomous</div>
+              <div className="text-sm text-muted-foreground">Research Capabilities</div>
+            </div>
+            <div className="bg-glass rounded-lg p-4 text-center">
+              <div className="text-2xl font-bold text-purple-400 mb-2">Integrated</div>
+              <div className="text-sm text-muted-foreground">Tool Ecosystem</div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Call to Action */}
+        <motion.div
+          className="bg-glass-dark rounded-2xl border border-white/10 p-6 text-center"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.5 }}
+        >
+          <h2 className="text-xl font-semibold mb-4">Experience Record-Breaking AI</h2>
+          <p className="text-muted-foreground mb-6">
+            Try fubea today and experience the same AI technology that achieved the leading score on the GAIA benchmark.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Button
+              onClick={() => router.push("/")}
+              className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white"
+              size="lg"
+            >
+              Try fubea Now
+            </Button>
+            <Button
+              onClick={() => window.open("https://x.com/ii_posts/status/1924818953756373145/photo/1", "_blank")}
+              variant="outline"
+              className="bg-glass border-white/20 hover:bg-white/10 flex items-center gap-2"
+              size="lg"
+            >
+              <ExternalLink className="w-4 h-4" />
+              View Announcement
+            </Button>
+          </div>
+        </motion.div>
+
+        {/* Commented out benchmark execution functionality for potential future reactivation */}
+        {/*
         {!isRunning && !results && (
           <motion.div
             className="bg-glass-dark rounded-2xl border border-white/10 p-6 mb-8"
@@ -179,7 +305,6 @@ export default function GaiaPage() {
           </motion.div>
         )}
 
-        {/* Running State */}
         {isRunning && (
           <motion.div
             className="bg-glass-dark rounded-2xl border border-white/10 p-8 text-center"
@@ -198,7 +323,6 @@ export default function GaiaPage() {
           </motion.div>
         )}
 
-        {/* Results */}
         {results && (
           <motion.div
             className="space-y-6"
@@ -206,7 +330,6 @@ export default function GaiaPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            {/* Summary */}
             <div className="bg-glass-dark rounded-2xl border border-white/10 p-6">
               <div className="flex items-center gap-3 mb-4">
                 {results.status === "success" ? (
@@ -257,7 +380,6 @@ export default function GaiaPage() {
               )}
             </div>
 
-            {/* Detailed Results */}
             {results.results && results.results.length > 0 && (
               <div className="bg-glass-dark rounded-2xl border border-white/10 p-6">
                 <h3 className="text-xl font-semibold mb-4">Detailed Results</h3>
@@ -286,7 +408,6 @@ export default function GaiaPage() {
               </div>
             )}
 
-            {/* Actions */}
             <div className="flex gap-4">
               <Button
                 onClick={() => {
@@ -308,6 +429,7 @@ export default function GaiaPage() {
             </div>
           </motion.div>
         )}
+        */}
       </div>
     </div>
   );
