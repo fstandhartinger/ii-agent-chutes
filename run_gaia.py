@@ -202,8 +202,24 @@ def get_examples_to_answer(answers_file: str, eval_ds: Dataset) -> list[dict]:
     """Get list of examples that haven't been answered yet."""
     print(f"Loading answers from {answers_file}...")
     try:
-        done_questions = pd.read_json(answers_file, lines=True)["question"].tolist()
-        print(f"Found {len(done_questions)} previous results!")
+        # Check if file exists first
+        if not Path(answers_file).exists():
+            print("No previous results file found. Starting new.")
+            done_questions = []
+        else:
+            # Read the file properly
+            with open(answers_file, 'r', encoding='utf-8') as f:
+                lines = f.readlines()
+                done_questions = []
+                for line in lines:
+                    if line.strip():  # Skip empty lines
+                        try:
+                            data = json.loads(line)
+                            if "question" in data:
+                                done_questions.append(data["question"])
+                        except json.JSONDecodeError:
+                            continue
+            print(f"Found {len(done_questions)} previous results!")
     except Exception as e:
         print("Error when loading records: ", e)
         print("No usable records! ▶️ Starting new.")
@@ -442,6 +458,8 @@ def main():
     print(f"Starting GAIA evaluation with arguments: {args}")
 
     # Setup logging
+    # Ensure logs directory exists
+    Path(args.logs_path).parent.mkdir(parents=True, exist_ok=True)
     if os.path.exists(args.logs_path):
         os.remove(args.logs_path)
     logger = logging.getLogger("gaia_eval")
@@ -500,6 +518,8 @@ def main():
         )
 
     answers_file = f"output/{args.set_to_run}/{args.run_name}.jsonl"
+    # Ensure output directory exists
+    Path(answers_file).parent.mkdir(parents=True, exist_ok=True)
     tasks_to_run = get_examples_to_answer(answers_file, eval_ds)
 
     async def process_tasks():
