@@ -1513,6 +1513,21 @@ export default function Home() {
                     </span>
                   </a>
                 </motion.div>
+                
+                {/* Connection Status Indicator */}
+                {!isSocketReady && (
+                  <motion.div
+                    className="mt-4 flex items-center justify-center gap-2 text-sm text-muted-foreground"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>
+                      {!isSocketConnected ? "Connecting to server..." : "Initializing server..."}
+                    </span>
+                  </motion.div>
+                )}
               </div>
             </motion.div>
             
@@ -1527,7 +1542,7 @@ export default function Home() {
                 transition={{ duration: 0.6 }}
               >
                 <QuestionInput
-                  placeholder="Give fubea a task to work on..."
+                  placeholder={!isSocketConnected ? "Connecting to server..." : "Give fubea a task to work on..."}
                   value={currentQuestion}
                   setValue={setCurrentQuestion}
                   handleKeyDown={handleKeyDown}
@@ -1537,7 +1552,7 @@ export default function Home() {
                   isUseDeepResearch={isUseDeepResearch}
                   setIsUseDeepResearch={setIsUseDeepResearch}
                   isDisabled={!isSocketConnected || !isSocketReady}
-                  isLoading={isLoading}
+                  isLoading={isLoading || (!isSocketConnected || !isSocketReady)}
                   handleStopAgent={handleStopAgent}
                   className="w-full max-w-4xl"
                 />

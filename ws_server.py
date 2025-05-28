@@ -285,7 +285,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     # Send acknowledgment
                     await websocket.send_json(
                         RealtimeEvent(
-                            type=EventType.QUERY_RECEIVED,
+                            type=EventType.PROCESSING,
                             content={"message": "Query received and processing started"},
                         ).model_dump()
                     )
