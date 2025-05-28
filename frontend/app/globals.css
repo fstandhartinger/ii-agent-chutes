@@ -407,7 +407,31 @@
 }
 
 /* Mobile-specific styles */
-@media (max-width: 640px) {
+@media (max-width: 767px) {
+  /* Main container for mobile home */
+  main {
+    height: 100vh;
+    overflow: hidden;
+  }
+  
+  /* Main content scroll container */
+  main > div:last-child {
+    height: 100%;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Hero section always visible */
+  main .text-center.mb-8 {
+    flex-shrink: 0;
+  }
+  
+  /* Footer positioning */
+  footer {
+    margin-top: auto;
+    flex-shrink: 0;
+  }
+  
   .mobile-chat-layout {
     grid-template-columns: 1fr !important;
     grid-template-rows: 1fr auto !important;
@@ -609,6 +633,34 @@
 
 /* Mobile specific layout fixes */
 @media (max-width: 767px) {
+  /* Home hero section: always visible and scrollable if needed */
+  .mobile-home-root {
+    display: flex;
+    flex-direction: column;
+    min-height: 100dvh;
+    height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
+  }
+  .mobile-home-hero {
+    flex-shrink: 0;
+    flex-grow: 0;
+    min-height: 220px;
+    max-height: 40vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 0.5rem;
+  }
+  .mobile-home-main-scroll {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    min-height: 0;
+    -webkit-overflow-scrolling: touch;
+  }
+  .mobile-home-footer {
+    flex-shrink: 0;
+    width: 100%;
+  }
   .chat-grid-layout {
     display: flex;
     flex-direction: column;

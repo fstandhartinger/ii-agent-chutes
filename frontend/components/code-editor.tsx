@@ -102,6 +102,7 @@ const CodeEditor = ({
 
   const loadDirectory = async (path: string) => {
     try {
+      console.log(`[FILE_BROWSER] Loading directory from path: ${path}`);
       const response = await fetch("/api/files", {
         method: "POST",
         headers: {
@@ -111,19 +112,22 @@ const CodeEditor = ({
       });
 
       if (!response.ok) {
-        throw new Error("Failed to load directory");
+        console.error(`[FILE_BROWSER] Failed to load directory, status: ${response.status} ${response.statusText}`);
+        throw new Error(`Failed to load directory: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
+      console.log(`[FILE_BROWSER] Directory loaded with ${data.files?.length || 0} items`);
       setFileStructure(data.files);
       setExpandedFolders(new Set([path]));
     } catch (error) {
-      console.error("Error loading directory:", error);
+      console.error("[FILE_BROWSER] Error loading directory:", error);
     }
   };
 
   const loadFileContent = async (filePath: string) => {
     try {
+      console.log(`[FILE_BROWSER] Loading file content from path: ${filePath}`);
       const response = await fetch("/api/files/content", {
         method: "POST",
         headers: {
@@ -133,20 +137,25 @@ const CodeEditor = ({
       });
 
       if (!response.ok) {
-        throw new Error("Failed to load file content");
+        console.error(`[FILE_BROWSER] Failed to load file content, status: ${response.status} ${response.statusText}`);
+        throw new Error(`Failed to load file content: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
+      console.log(`[FILE_BROWSER] File content loaded successfully, length: ${data.content?.length || 0} characters`);
       return data.content;
     } catch (error) {
-      console.error("Error loading file:", error);
+      console.error("[FILE_BROWSER] Error loading file:", error);
       return "";
     }
   };
 
   useEffect(() => {
     if (workspaceInfo && activeTab === TAB.CODE) {
+      console.log(`[FILE_BROWSER] Workspace info detected, loading directory: ${workspaceInfo}`);
       loadDirectory(workspaceInfo);
+    } else {
+      console.log(`[FILE_BROWSER] Not loading directory - workspaceInfo: ${Boolean(workspaceInfo)}, activeTab: ${activeTab}, TAB.CODE: ${TAB.CODE}`);
     }
   }, [currentActionData, workspaceInfo, activeTab]);
 

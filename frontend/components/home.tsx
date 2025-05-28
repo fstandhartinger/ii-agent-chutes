@@ -1,6 +1,7 @@
 "use client";
 
-import { Terminal as XTerm } from "@xterm/xterm";
+// Import ohne Namenskollision
+import TerminalComponent, { TerminalRef } from "./terminal";
 import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
 import {
   Code,
@@ -17,11 +18,9 @@ import Image from "next/image";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { toast } from "sonner";
 import { cloneDeep, debounce } from "lodash";
-import dynamic from "next/dynamic";
 import Cookies from "js-cookie";
 import { v4 as uuidv4 } from "uuid";
 import { useRouter, useSearchParams } from "next/navigation";
-import SidebarButton from "@/components/sidebar-button";
 import { useChutes } from "@/providers/chutes-provider";
 import Examples from "@/components/examples";
 import ModelPicker from "@/components/model-picker";
@@ -42,9 +41,6 @@ interface WebSocketMessage {
 }
 import QuestionInput from "@/components/question-input";
 import SearchBrowser from "@/components/search-browser";
-const Terminal = dynamic(() => import("@/components/terminal"), {
-  ssr: false,
-});
 import { Button } from "@/components/ui/button";
 import {
   ActionStep,
@@ -58,12 +54,11 @@ import ChatMessage from "./chat-message";
 import ImageBrowser from "./image-browser";
 import WebsiteViewer from "./website-viewer";
 import InstallPrompt from "./install-prompt";
-import PWAHandler from "./pwa-handler";
 import ConsentDialog, { hasUserConsented, setUserConsent } from "./consent-dialog";
 import CookieBanner from "./cookie-banner";
 
 export default function Home() {
-  const xtermRef = useRef<XTerm | null>(null);
+  // entferne die doppelte Deklaration, behalte nur die unten
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -110,6 +105,8 @@ export default function Home() {
   const [shouldShakeConnectionIndicator, setShouldShakeConnectionIndicator] = useState(false);
   const [showReloadButton, setShowReloadButton] = useState(false);
   const [returnedFromChat, setReturnedFromChat] = useState(false);
+  // Referenz für die Terminal-Komponente mit korrektem Typ
+  const terminalRef = useRef<TerminalRef>(null);
 
   const isReplayMode = useMemo(() => !!searchParams.get("id"), [searchParams]);
   const { selectedModel, setSelectedModel } = useChutes();
@@ -297,7 +294,7 @@ export default function Home() {
             setTimeout(() => {
               if (!data.data?.isResult) {
                 // query
-                xtermRef.current?.writeln(
+                terminalRef.current?.writeOutput(
                   `${data.data.tool_input?.command || ""}`
                 );
               }
@@ -305,9 +302,9 @@ export default function Home() {
               if (data.data.result) {
                 const lines = `${data.data.result || ""}`.split("\n");
                 lines.forEach((line) => {
-                  xtermRef.current?.writeln(line);
+                  terminalRef.current?.writeOutput(line);
                 });
-                xtermRef.current?.write("$ ");
+                terminalRef.current?.writeOutput("$ ");
               }
             }, 500);
           }
@@ -1368,107 +1365,101 @@ export default function Home() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-background relative overflow-hidden">
-      {/* PWA Handler */}
-      <PWAHandler />
-      
-      {/* Background Elements */}
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-purple-500/5 to-emerald-500/5" />
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse" />
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse delay-1000" />
-      
-      {!isInChatView && <SidebarButton />}
-      
-      {/* Header */}
-      <motion.header 
-        className="relative z-10 mobile-header-safe flex-shrink-0"
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-      >
-        <div className={`flex justify-between items-center w-full px-4 md:px-8 py-4 ${!isInChatView ? 'pb-0' : ''}`}>
-          {!isInChatView && (
-            <div className="flex-1" />
-          )}
-          
-          <motion.div
-            className={`flex items-center gap-3 ${
-              isInChatView ? "text-xl md:text-2xl font-semibold flex-1 min-w-0" : "hidden"
-            }`}
-            layout
-            layoutId="page-title"
-          >
-            {isInChatView && (
-              <>
-                <ArrowLeft 
-                  className="w-6 h-6 text-white/80 hover:text-white cursor-pointer transition-colors flex-shrink-0" 
-                  onClick={resetChat}
-                />
-                <div className="relative flex-shrink-0">
-                  <Image
-                    src="/logo-only.png"
-                    alt="fubea Logo"
-                    width={32}
-                    height={32}
-                    className="rounded-lg shadow-lg"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-lg blur-sm" />
-                </div>
-                <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent truncate text-base md:text-xl min-w-0 flex-1">
-                  {taskSummary || userPrompt || "fubea"}
-                </span>
-              </>
+    <main className={`relative flex flex-col flex-1 w-full min-h-screen bg-gradient-to-b from-[#181d2a] via-[#181d2a] to-[#1a1a1f] overflow-x-hidden`}>
+      <div className="absolute inset-0 z-0 pointer-events-none select-none" aria-hidden="true">
+        <div className="w-full h-full bg-gradient-to-b from-[#23263b] via-transparent to-[#181d2a] opacity-50" />
+      </div>
+      <div className={`relative z-10 flex flex-col flex-1 min-h-screen`}>
+        {/* Header bar, model picker, etc. */}
+        <motion.header 
+          className="relative z-10 mobile-header-safe flex-shrink-0"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+        >
+          <div className={`flex justify-between items-center w-full px-4 md:px-8 py-4${!isInChatView ? ' pb-0' : ''}`}>
+            {!isInChatView && (
+              <div className="flex-1" />
             )}
-          </motion.div>
-          
-          {isInChatView ? (
-            <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleShare}
-                className="bg-glass border-white/20 hover:bg-white/10 transition-all-smooth hover-lift"
-                title="Share Session"
-              >
-                <Share className="w-4 h-4" />
-                <span className="ml-2 hidden sm:inline">Share</span>
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="md:hidden bg-glass border-white/20"
-              >
-                <Menu className="w-4 h-4" />
-              </Button>
-            </div>
-          ) : (
-            <div className="flex-1 flex justify-end items-center gap-4">
-              {/* Pro Upgrade Button - Show only if user doesn't have Pro access */}
-              {!hasProAccess() && <ProUpgradeButton />}
-              
-              {/* Native Tool Calling Toggle - Hidden until logo is clicked 5 times */}
-              {showNativeToolToggle && (
-                <div className="flex items-center gap-2 bg-glass border border-white/20 rounded-lg px-3 py-2">
-                  <span className="text-sm text-white/80">Native Tool Calling</span>
-                  <button
-                    onClick={() => setUseNativeToolCalling(!useNativeToolCalling)}
-                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                      useNativeToolCalling ? 'bg-blue-500' : 'bg-gray-600'
-                    }`}
-                    title={useNativeToolCalling ? "Using native tool calling (Squad-style)" : "Using JSON workaround (default)"}
-                  >
-                    <span
-                      className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
-                        useNativeToolCalling ? 'translate-x-5' : 'translate-x-1'
-                      }`}
+            
+            <motion.div
+              className={`flex items-center gap-3 ${
+                isInChatView ? "text-xl md:text-2xl font-semibold flex-1 min-w-0" : "hidden"
+              }`}
+              layout
+              layoutId="page-title"
+            >
+              {isInChatView && (
+                <>
+                  <ArrowLeft 
+                    className="w-6 h-6 text-white/80 hover:text-white cursor-pointer transition-colors flex-shrink-0" 
+                    onClick={resetChat}
+                  />
+                  <div className="relative flex-shrink-0">
+                    <Image
+                      src="/logo-only.png"
+                      alt="fubea Logo"
+                      width={32}
+                      height={32}
+                      className="rounded-lg shadow-lg"
                     />
-                  </button>
-                </div>
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-lg blur-sm" />
+                  </div>
+                  <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent truncate text-base md:text-xl min-w-0 flex-1">
+                    {taskSummary || userPrompt || "fubea"}
+                  </span>
+                </>
               )}
-              <ModelPicker />
-            </div>
-          )}
+            </motion.div>
+            
+            {isInChatView ? (
+              <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleShare}
+                  className="bg-glass border-white/20 hover:bg-white/10 transition-all-smooth hover-lift"
+                  title="Share Session"
+                >
+                  <Share className="w-4 h-4" />
+                  <span className="ml-2 hidden sm:inline">Share</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                  className="md:hidden bg-glass border-white/20"
+                >
+                  <Menu className="w-4 h-4" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex-1 flex justify-end items-center gap-4">
+                {/* Pro Upgrade Button - Show only if user doesn't have Pro access */}
+                {!hasProAccess() && <ProUpgradeButton />}
+                
+                {/* Native Tool Calling Toggle - Hidden until logo is clicked 5 times */}
+                {showNativeToolToggle && (
+                  <div className="flex items-center gap-2 bg-glass border border-white/20 rounded-lg px-3 py-2">
+                    <span className="text-sm text-white/80">Native Tool Calling</span>
+                    <button
+                      onClick={() => setUseNativeToolCalling(!useNativeToolCalling)}
+                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                        useNativeToolCalling ? 'bg-blue-500' : 'bg-gray-600'
+                      }`}
+                      title={useNativeToolCalling ? "Using native tool calling (Squad-style)" : "Using JSON workaround (default)"}
+                    >
+                      <span
+                        className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
+                          useNativeToolCalling ? 'translate-x-5' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                )}
+                <ModelPicker />
+              </div>
+            )}
         </div>
         
         {/* Mobile Menu */}
@@ -1503,7 +1494,7 @@ export default function Home() {
               transition={{ duration: 0.8, delay: 0.2 }}
             >
               {/* Hero Section */}
-              <div className="text-center mb-8 md:mb-12">
+              <div className={`text-center mb-8 md:mb-12`}>
                 <motion.div 
                   className="flex items-center justify-center mb-6 md:mb-8 cursor-pointer group"
                   onClick={handleLogoClick}
@@ -1519,7 +1510,7 @@ export default function Home() {
                       className="w-[150px] h-[108px] md:w-[200px] md:h-[144px] rounded-2xl shadow-2xl transition-all-smooth group-hover:shadow-glow"
                     />
                     <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all-smooth" />
-                    <Sparkles className="absolute -top-2 -right-2 w-5 h-5 md:w-6 md:h-6 text-yellow-400 animate-pulse" />
+                    <Sparkles className="absolute -top-2 -right-2 w-5 h-5 text-yellow-400 animate-pulse" />
                   </div>
                 </motion.div>
                 
@@ -1698,7 +1689,7 @@ export default function Home() {
                       handleClickAction={(action, isReplay) => {
                         handleClickAction(action, isReplay);
                         // On mobile, open detail pane when action is clicked
-                        if (window.innerWidth < 768) {
+                        if (typeof window !== 'undefined' && window.innerWidth < 768) {
                           setIsMobileDetailPaneOpen(true);
                         }
                       }}
@@ -1848,9 +1839,32 @@ export default function Home() {
                         />
                       )}
                       {activeTab === TAB.TERMINAL && (
-                        <Terminal
-                          ref={xtermRef}
+                        <TerminalComponent
+                          ref={terminalRef}
                           className="tab-content-enter"
+                          onCommand={(command) => {
+                            console.log(`[TERMINAL_DEBUG] Handling terminal command: ${command}`);
+                            if (socket && isSocketConnected) {
+                              try {
+                                socket.send(JSON.stringify({
+                                  type: "terminal_command",
+                                  content: {
+                                    command: command
+                                  }
+                                }));
+                              } catch (error) {
+                                console.error(`[TERMINAL_DEBUG] Error sending terminal command:`, error);
+                                if (terminalRef.current) {
+                                  terminalRef.current.writeOutput(`\r\nError: Failed to send command to server\r\n`);
+                                }
+                              }
+                            } else {
+                              console.error(`[TERMINAL_DEBUG] WebSocket not connected`);
+                              if (terminalRef.current) {
+                                terminalRef.current.writeOutput(`\r\nError: WebSocket not connected, cannot execute command\r\n`);
+                              }
+                            }
+                          }}
                         />
                       )}
                       {activeTab === TAB.WEBSITE && deployedUrl && (
@@ -1944,5 +1958,6 @@ export default function Home() {
       {/* Cookie Banner */}
       <CookieBanner />
     </div>
+    </main>
   );
 }

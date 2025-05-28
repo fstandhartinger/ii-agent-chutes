@@ -1,4 +1,5 @@
 import { Globe, SquareArrowOutUpRight } from "lucide-react";
+import Image from 'next/image';
 import Markdown from "./markdown";
 
 interface BrowserProps {
@@ -42,9 +43,11 @@ const Browser = ({ className, url, screenshot, raw }: BrowserProps) => {
       </div>
       <div className="bg-black/80 browser-content">
         {screenshot && (
-          <img
+          <Image
             src={`data:image/jpeg;base64,${screenshot}`}
             alt="Browser"
+            layout="fill"
+            objectFit="contain"
             className="browser-screenshot"
           />
         )}

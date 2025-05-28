@@ -1248,19 +1248,26 @@ async def list_files_endpoint(request: Request):
         workspace_id = data.get("workspace_id")
         path = data.get("path", "")
 
+        logger.info(f"[FILE_BROWSER] Listing files - workspace_id: {workspace_id}, path: {path}")
+
         if not workspace_id:
+            logger.error(f"[FILE_BROWSER] Missing workspace_id in request")
             return JSONResponse(
                 status_code=400, content={"error": "workspace_id is required"}
             )
 
         if not path:
+            logger.error(f"[FILE_BROWSER] Missing path in request")
             return JSONResponse(
                 status_code=400, content={"error": "path is required"}
             )
 
         # Find the workspace path for this session
         workspace_path = Path(global_args.workspace).resolve() / workspace_id
+        logger.info(f"[FILE_BROWSER] Looking for workspace at: {workspace_path}")
+        
         if not workspace_path.exists():
+            logger.error(f"[FILE_BROWSER] Workspace not found: {workspace_path}")
             return JSONResponse(
                 status_code=404,
                 content={"error": f"Workspace not found for session: {workspace_id}"},
@@ -1271,10 +1278,13 @@ async def list_files_endpoint(request: Request):
             # Remove /var/data prefix if present and use relative path
             relative_path = path.replace("/var/data/", "").replace("/var/data", "")
             target_path = workspace_path / relative_path if relative_path else workspace_path
+            logger.info(f"[FILE_BROWSER] Using relative path: {relative_path}, target: {target_path}")
         else:
             target_path = workspace_path
+            logger.info(f"[FILE_BROWSER] Using workspace path as target: {target_path}")
 
         if not target_path.exists():
+            logger.error(f"[FILE_BROWSER] Target path not found: {target_path}")
             return JSONResponse(
                 status_code=404,
                 content={"error": f"Path not found: {path}"},
@@ -1283,8 +1293,12 @@ async def list_files_endpoint(request: Request):
         # List directory contents
         files = []
         try:
-            for item in target_path.iterdir():
+            items = list(target_path.iterdir())
+            logger.info(f"[FILE_BROWSER] Found {len(items)} items in directory {target_path}")
+            
+            for item in items:
                 if item.name.startswith('.'):
+                    logger.debug(f"[FILE_BROWSER] Skipping hidden item: {item.name}")
                     continue  # Skip hidden files
                 
                 file_info = {
@@ -1300,7 +1314,10 @@ async def list_files_endpoint(request: Request):
                     # Recursively get children for folders
                     children = []
                     try:
-                        for child in item.iterdir():
+                        child_items = list(item.iterdir())
+                        logger.debug(f"[FILE_BROWSER] Found {len(child_items)} children in {item.name}")
+                        
+                        for child in child_items:
                             if child.name.startswith('.'):
                                 continue
                             child_info = {
@@ -1312,11 +1329,16 @@ async def list_files_endpoint(request: Request):
                                 child_info["language"] = child.suffix[1:] if child.suffix else "plaintext"
                             children.append(child_info)
                     except PermissionError:
+                        logger.warning(f"[FILE_BROWSER] Permission denied accessing children of: {item.name}")
                         pass  # Skip directories we can't read
                     file_info["children"] = children
                 
                 files.append(file_info)
+                
+            logger.info(f"[FILE_BROWSER] Returning {len(files)} visible items")
+                
         except PermissionError:
+            logger.error(f"[FILE_BROWSER] Permission denied accessing: {target_path}")
             return JSONResponse(
                 status_code=403,
                 content={"error": f"Permission denied accessing: {path}"},
@@ -1325,7 +1347,7 @@ async def list_files_endpoint(request: Request):
         return {"files": files}
 
     except Exception as e:
-        logger.error(f"Error listing files: {str(e)}")
+        logger.error(f"[FILE_BROWSER] Error listing files: {str(e)}")
         return JSONResponse(
             status_code=500, content={"error": f"Error listing files: {str(e)}"}
         )
@@ -1344,57 +1366,89 @@ async def get_file_content_endpoint(request: Request):
         workspace_id = data.get("workspace_id")
         file_path = data.get("path")
 
+        logger.info(f"[FILE_BROWSER] Getting file content - workspace_id: {workspace_id}, path: {file_path}")
+
         if not workspace_id:
+            logger.error(f"[FILE_BROWSER] Missing workspace_id in request")
             return JSONResponse(
                 status_code=400, content={"error": "workspace_id is required"}
             )
 
         if not file_path:
+            logger.error(f"[FILE_BROWSER] Missing path in request")
             return JSONResponse(
                 status_code=400, content={"error": "path is required"}
             )
 
         # Find the workspace path for this session
         workspace_path = Path(global_args.workspace).resolve() / workspace_id
+        logger.info(f"[FILE_BROWSER] Looking for workspace at: {workspace_path}")
+        
         if not workspace_path.exists():
+            logger.error(f"[FILE_BROWSER] Workspace not found: {workspace_path}")
             return JSONResponse(
                 status_code=404,
-                content={"error": f"Workspace not found: {workspace_id}"},
+                content={"error": f"Workspace not found for session: {workspace_id}"},
             )
 
-        # Remove /var/data prefix if present and construct full path
-        relative_path = file_path.replace("/var/data/", "").replace("/var/data", "")
-        full_path = workspace_path / relative_path if relative_path else workspace_path
+        # Determine the target file
+        if file_path.startswith(str(workspace_path)):
+            # Absolute path
+            target_file = Path(file_path)
+            logger.info(f"[FILE_BROWSER] Using absolute path: {target_file}")
+        elif file_path.startswith("/var/data/"):
+            # Path with /var/data prefix
+            relative_path = file_path.replace("/var/data/", "")
+            target_file = workspace_path / relative_path
+            logger.info(f"[FILE_BROWSER] Using /var/data/ path: {file_path} -> {target_file}")
+        else:
+            # Relative path
+            target_file = workspace_path / file_path
+            logger.info(f"[FILE_BROWSER] Using relative path: {file_path} -> {target_file}")
 
-        if not full_path.exists():
+        if not target_file.exists() or not target_file.is_file():
+            logger.error(f"[FILE_BROWSER] File not found: {target_file}")
             return JSONResponse(
                 status_code=404,
                 content={"error": f"File not found: {file_path}"},
             )
 
-        if not full_path.is_file():
+        # Check that the target is within the workspace path
+        try:
+            target_file.relative_to(workspace_path)
+        except ValueError:
+            logger.error(f"[FILE_BROWSER] Access denied: file {target_file} is outside workspace {workspace_path}")
             return JSONResponse(
-                status_code=400,
-                content={"error": f"Path is not a file: {file_path}"},
+                status_code=403,
+                content={"error": f"Access denied: file is outside workspace"},
             )
 
-        # Read file content
+        # Read the file content
         try:
-            with open(full_path, 'r', encoding='utf-8') as f:
+            with open(target_file, "r") as f:
                 content = f.read()
+                content_length = len(content)
+                logger.info(f"[FILE_BROWSER] Successfully read file: {target_file}, length: {content_length} chars")
         except UnicodeDecodeError:
-            # Try reading as binary and return base64 encoded
-            with open(full_path, 'rb') as f:
+            # If we can't read it as text, return base64 encoded binary
+            with open(target_file, "rb") as f:
                 binary_content = f.read()
-                content = base64.b64encode(binary_content).decode('utf-8')
+                content = base64.b64encode(binary_content).decode("utf-8")
+                logger.info(f"[FILE_BROWSER] File encoded as base64: {target_file}, size: {len(binary_content)} bytes")
                 return {"content": content, "encoding": "base64"}
+        except PermissionError:
+            logger.error(f"[FILE_BROWSER] Permission denied accessing file: {target_file}")
+            return JSONResponse(
+                status_code=403,
+                content={"error": f"Permission denied accessing: {file_path}"},
+            )
 
         return {"content": content}
 
     except Exception as e:
-        logger.error(f"Error reading file: {str(e)}")
+        logger.error(f"[FILE_BROWSER] Error getting file content: {str(e)}")
         return JSONResponse(
-            status_code=500, content={"error": f"Error reading file: {str(e)}"}
+            status_code=500, content={"error": f"Error getting file content: {str(e)}"}
         )
 
 

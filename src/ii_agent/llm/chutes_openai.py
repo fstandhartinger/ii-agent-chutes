@@ -84,9 +84,13 @@ class ChutesOpenAIClient(LLMClient):
         # Default fallback models for different scenarios
         if fallback_models is None:
             self.fallback_models = [
+                "NVIDIA/Nemotron-4-340B-Chat",  # Ultra large
+                "deepseek-ai/DeepSeek-V3-Chat",  # Large
+                "Qwen/Qwen3-72B-Instruct",  # Large
                 "chutesai/Llama-4-Maverick-17B-128E-Instruct-FP8",  # Vision capable
                 "Qwen/Qwen2.5-VL-32B-Instruct",  # Vision capable
                 "deepseek-ai/DeepSeek-R1",  # Text only
+                "deepseek-ai/DeepSeek-R1-0528",  # Text only (new model)
             ]
         else:
             self.fallback_models = fallback_models
@@ -481,7 +485,33 @@ class ChutesOpenAIClient(LLMClient):
                         else:
                             logging.error(f"[CHUTES] Model {current_model} failed with internal server error")
                             break
-                            
+
+                except OpenAI_BadRequestError as e:
+                    # Explicitly handle token/context length errors to trigger fallback
+                    error_message = str(e)
+                    logging.error(f"[CHUTES] BadRequestError for model {current_model}: {error_message}")
+                    if (
+                        "maximum context length" in error_message.lower()
+                        or "maximum token" in error_message.lower()
+                        or "too many tokens" in error_message.lower()
+                        or "context length" in error_message.lower()
+                        or "token limit" in error_message.lower()
+                        or "reduce the length" in error_message.lower()
+                    ):
+                        logging.warning(f"[CHUTES] Token/context limit error for model {current_model}, falling back to next model.")
+                        # Break to outer loop to try next model
+                        break
+                    else:
+                        # For other BadRequestErrors, treat as generic failure
+                        if retry < self.max_retries - 1:
+                            backoff_time = 1.0 if self.test_mode else 5 * random.uniform(0.8, 1.2)
+                            logging.warning(f"[CHUTES] BadRequestError, retrying in {backoff_time:.1f}s...")
+                            time.sleep(backoff_time)
+                            continue
+                        else:
+                            logging.error(f"[CHUTES] Model {current_model} failed with BadRequestError")
+                            break
+
                 except (OpenAI_APIConnectionError, OpenAI_RateLimitError) as e:
                     if retry < self.max_retries - 1:
                         backoff_time = 1.0 if self.test_mode else 15 * random.uniform(0.8, 1.2)
@@ -495,7 +525,7 @@ class ChutesOpenAIClient(LLMClient):
                     else:
                         logging.error(f"[CHUTES] Model {current_model} failed with {type(e).__name__}")
                         break
-                        
+
                 except Exception as e:
                     logging.error(f"[CHUTES] Unexpected error for model {current_model}: {e}")
                     logging.error(f"[CHUTES] Error type: {type(e)}")

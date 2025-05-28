@@ -9,13 +9,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { hasProAccess } from "@/utils/pro-utils";
 import { useRouter } from "next/navigation";
 
 // Define the available models with premium indicators
 const CHUTES_MODELS = [
   { id: "deepseek-ai/DeepSeek-R1", name: "R1", isPremium: false },
+  { id: "deepseek-ai/DeepSeek-R1-0528", name: "R1 0528", isPremium: false },
   { id: "deepseek-ai/DeepSeek-V3-0324", name: "DeepSeek V3", isPremium: false },
   { id: "Qwen/Qwen3-235B-A22B", name: "Qwen3 235B", isPremium: false },
   { id: "chutesai/Llama-4-Maverick-17B-128E-Instruct-FP8", name: "Llama 4 Maverick", isPremium: false },
@@ -68,7 +69,7 @@ export default function ModelPicker() {
   const currentModelName = currentModel?.name || "R1";
   const isCurrentModelPremium = currentModel?.isPremium || false;
 
-  const handleModelChange = (modelId: string) => {
+  const handleModelChange = useCallback((modelId: string) => {
     const model = CHUTES_MODELS.find(m => m.id === modelId);
     if (model) {
       // Check if user is trying to select Sonnet 4 without Pro access
@@ -102,7 +103,7 @@ export default function ModelPicker() {
       };
       setSelectedModel(fullModel);
     }
-  };
+  }, [userHasProAccess, router, setSelectedModel]);
 
   return (
     <div className="flex items-center gap-2 text-sm">

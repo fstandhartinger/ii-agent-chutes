@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import Image from 'next/image';
 import { Check, Copy, Download } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -127,10 +128,11 @@ const ChatMessage = ({
                           transition={{ delay: 0.1 * fileIndex }}
                         >
                           <div className="w-32 h-32 md:w-40 md:h-40 rounded-xl overflow-hidden bg-glass border border-white/20 shadow-lg">
-                            <img
-                              src={message.fileContents[fileName]}
+                            <Image
+                              src={message.fileContents[fileName]!}
                               alt={fileName}
-                              className="w-full h-full object-cover"
+                              layout="fill"
+                              objectFit="cover"
                             />
                           </div>
                           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all-smooth rounded-xl" />

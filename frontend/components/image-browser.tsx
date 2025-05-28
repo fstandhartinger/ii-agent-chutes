@@ -1,4 +1,5 @@
 import { Globe, SquareArrowOutUpRight } from "lucide-react";
+import Image from 'next/image';
 
 interface BrowserProps {
   className?: string;
@@ -40,9 +41,11 @@ const ImageBrowser = ({ className, url, image }: BrowserProps) => {
       </div>
       <div className="bg-black/80 browser-content">
         {image && (
-          <img
+          <Image
             src={image}
             alt="Browser"
+            layout="fill"
+            objectFit="contain"
             className="browser-screenshot"
           />
         )}

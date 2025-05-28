@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import Image from 'next/image';
 import { ArrowUp, Loader2, Paperclip, Sparkles, Mic, Square } from "lucide-react";
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
@@ -463,10 +464,11 @@ const QuestionInput = ({
                     transition={{ delay: index * 0.1 }}
                   >
                     <div className="w-20 h-20 rounded-xl overflow-hidden bg-glass border border-white/20 shadow-lg">
-                      <img
-                        src={file.preview}
+                      <Image
+                        src={file.preview!}
                         alt={file.name}
-                        className="w-full h-full object-cover"
+                        layout="fill"
+                        objectFit="cover"
                       />
                     </div>
                     {file.loading && (
