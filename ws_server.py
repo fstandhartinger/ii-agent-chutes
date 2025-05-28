@@ -1607,15 +1607,29 @@ async def download_zip_endpoint(request: Request):
         )
 
 
-@app.post("/api/pro/generate-key")
-async def generate_pro_key_endpoint():
-    """Generate a new Pro key for testing purposes."""
+from fastapi import Query, Header, HTTPException
+
+@app.get("/admin/generate_pro_key")
+async def generate_pro_key_admin(
+    admin_key: str = Query(None),
+    authorization: str = Header(None)
+):
+    """Generate a new Pro key (admin only, accepts admin_key as query or Bearer token)."""
+    import os
+    ADMIN_KEY = os.environ.get("ADMIN_KEY")
+    # Accept admin_key via query or Bearer token
+    provided_key = admin_key
+    if not provided_key and authorization:
+        if authorization.lower().startswith("bearer "):
+            provided_key = authorization[7:]
+        else:
+            provided_key = authorization
+    if not ADMIN_KEY or not provided_key or provided_key != ADMIN_KEY:
+        raise HTTPException(status_code=403, detail="Invalid or missing admin key")
     try:
         from ii_agent.utils.pro_utils import generate_pro_key
-        
         new_key = generate_pro_key()
-        logger.info(f"Generated new Pro key: {new_key}")
-        
+        logger.info(f"Generated new Pro key (admin): {new_key}")
         return {
             "pro_key": new_key,
             "url_example": f"/?pro_user_key={new_key}",

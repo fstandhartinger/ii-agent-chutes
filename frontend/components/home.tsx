@@ -1119,14 +1119,57 @@ export default function Home() {
   );
 
   const handleShare = () => {
-    if (!sessionId) {
+    console.log("SHARE_DEBUG: handleShare invoked");
+    // Try all possible sources for sessionId
+    let idSource = "";
+    let idToUse: string | null = null;
+
+    // 1. Try state
+    if (sessionId) {
+      idToUse = sessionId;
+      idSource = "state";
+    }
+    // 2. Try URL param
+    if (!idToUse) {
+      const urlId = searchParams.get('id');
+      if (urlId) {
+        idToUse = urlId;
+        idSource = "url_param";
+      }
+    }
+    // 3. Try workspaceInfo (last segment after /)
+    if (!idToUse && workspaceInfo) {
+      const wsId = workspaceInfo.split("/").pop();
+      if (wsId) {
+        idToUse = wsId;
+        idSource = "workspaceInfo";
+      }
+    }
+    // Log all sources and which was used
+    console.log("SHARE_DEBUG: sessionId state:", sessionId);
+    console.log("SHARE_DEBUG: URL param id:", searchParams.get('id'));
+    console.log("SHARE_DEBUG: workspaceInfo:", workspaceInfo);
+    console.log("SHARE_DEBUG: Using id '", idToUse, "' from ", idSource);
+
+    if (!idToUse) {
       toast.error("Keine Session aktiv – bitte erst eine Session starten!");
+      console.error("SHARE_DEBUG: No sessionId found in any source");
       return;
     }
-    const url = `${window.location.origin}/?id=${sessionId}`;
-    navigator.clipboard.writeText(url);
-    toast.success("Link zur Session kopiert!");
+    const url = `${window.location.origin}/?id=${idToUse}`;
+    console.log("SHARE_DEBUG: Copying URL to clipboard:", url);
+    navigator.clipboard.writeText(url)
+      .then(() => {
+        console.log("SHARE_DEBUG: URL copied to clipboard successfully");
+        toast.success("Link zur Session kopiert!");
+      })
+      .catch((err) => {
+        console.error("SHARE_DEBUG: Failed to copy URL to clipboard", err);
+        toast.error("Fehler beim Kopieren des Links");
+      });
   };
+
+
 
 
   const connectWebSocket = () => {
@@ -1357,620 +1400,274 @@ export default function Home() {
     );
 
     // Update UI state immediately
-    setIsLoading(false);
-    toast.success("Agent run stopped");
+  
+  if (returnedFromChat && !isSocketReady && !isInChatView) {
+    // Start a timer to show the reload button after 5 seconds
+    timer = setTimeout(() => {
+      if (!isSocketReady && !isInChatView) {
+        setShowReloadButton(true);
+      }
+    }, 5000);
+  }
+  
+  // Hide reload button when connection is established
+  if (isSocketReady) {
+    setShowReloadButton(false);
+    if (returnedFromChat) {
+      setReturnedFromChat(false);
+    }
+  }
+  
+  // Cleanup timer
+  return () => {
+    if (timer) {
+      clearTimeout(timer);
+    }
   };
+}, [returnedFromChat, isSocketReady, isInChatView]);
 
-  const handleConsentAccept = () => {
+// Only connect if we have a device ID AND we're not viewing a session history
+useEffect(() => {
+  if (deviceId && !isReplayMode) {
+    connectWebSocket();
+  }
+
+  // Clean up the WebSocket connection when the component unmounts
+  return () => {
+    if (socket) {
+      socket.close();
+    }
+    
+    // Clear timeout check if active
+    if (timeoutCheckInterval) {
+      clearInterval(timeoutCheckInterval);
+    }
+  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [deviceId, isReplayMode, selectedModel, useNativeToolCalling]);
+
+useEffect(() => {
+  if (socket && isSocketConnected) {
+    socket.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === AgentEvent.CONNECTION_ESTABLISHED) {
+          setIsSocketReady(true);
+          processMessageQueue();
+        } else {
+          handleEvent({ ...data, id: Date.now().toString() });
+        }
+      } catch (error) {
+        console.error("Error parsing WebSocket data:", error);
+        handleWebSocketError(error, "message_parsing");
+      }
+    };
+  }
+}, [socket, isSocketConnected, handleWebSocketError, processMessageQueue]); // eslint-disable-line react-hooks/exhaustive-deps
+
+const isBrowserTool = useMemo(
+  () =>
+    [
+      TOOL.BROWSER_VIEW,
+      TOOL.BROWSER_CLICK,
+      TOOL.BROWSER_ENTER_TEXT,
+      TOOL.BROWSER_PRESS_KEY,
+      TOOL.BROWSER_GET_SELECT_OPTIONS,
+      TOOL.BROWSER_SELECT_DROPDOWN_OPTION,
+      TOOL.BROWSER_SWITCH_TAB,
+      TOOL.BROWSER_OPEN_NEW_TAB,
+      TOOL.BROWSER_WAIT,
+      TOOL.BROWSER_SCROLL_DOWN,
+      TOOL.BROWSER_SCROLL_UP,
+      TOOL.BROWSER_NAVIGATION,
+      TOOL.BROWSER_RESTART,
+    ].includes(currentActionData?.type as TOOL),
+  [currentActionData]
+);
+
+useEffect(() => {
+  messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+}, [messages?.length]);
+
+// Function to stop the current agent run
+const handleStopAgent = () => {
+  if (!socket || !isSocketConnected || socket.readyState !== WebSocket.OPEN) {
+    toast.error("WebSocket connection is not available.");
+    return;
+  }
+
+  if (!isLoading) {
+    toast.error("No active agent run to stop.");
+    return;
+  }
+
+  // Send cancel message to backend
+  socket.send(
+    JSON.stringify({
+      type: "cancel",
+      content: {},
+    })
+  );
+
+  // Update UI state immediately
+  setIsLoading(false);
+  toast.success("Agent run stopped");
+};
+
+const handleConsentAccept = () => {
+  try {
     setUserConsent();
     setShowConsentDialog(false);
-    
     // Proceed with the pending question
     if (pendingQuestion) {
       handleQuestionSubmit(pendingQuestion);
-      setPendingQuestion("");
     }
-  };
+  } catch (error) {
+    console.error("Error in handleConsentAccept:", error);
+  }
+};
 
-  const handleConsentCancel = () => {
-    setShowConsentDialog(false);
-    setPendingQuestion("");
-  };
+const handleConsentCancel = () => {
+  setShowConsentDialog(false);
+  setPendingQuestion("");
+};
 
-  return (
-    <main className={`relative flex flex-col flex-1 w-full min-h-screen bg-gradient-to-b from-[#181d2a] via-[#181d2a] to-[#1a1a1f] overflow-x-hidden`}>
-      <div className="absolute inset-0 z-0 pointer-events-none select-none" aria-hidden="true">
-        <div className="w-full h-full bg-gradient-to-b from-[#23263b] via-transparent to-[#181d2a] opacity-50" />
+return (
+  <>
+    {/* Loading and reload overlays */}
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
+    >
+      <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+        <Loader2 className="w-4 h-4 animate-spin" />
+        <span>
+          {!isSocketConnected ? "Connecting to server..." : "Initializing server..."}
+        </span>
       </div>
-      <div className={`relative z-10 flex flex-col flex-1 min-h-screen`}>
-        {/* Header bar, model picker, etc. */}
-        <motion.header 
-          className="relative z-10 mobile-header-safe flex-shrink-0"
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-        >
-          <div className={`flex justify-between items-center w-full px-4 md:px-8 py-4${!isInChatView ? ' pb-0' : ''}`}>
-            {!isInChatView && (
-              <div className="flex-1" />
-            )}
-            
-            <motion.div
-              className={`flex items-center gap-3 ${
-                isInChatView ? "text-xl md:text-2xl font-semibold flex-1 min-w-0" : "hidden"
-              }`}
-              layout
-              layoutId="page-title"
-            >
-              {isInChatView && (
-                <>
-                  <ArrowLeft 
-                    className="w-6 h-6 text-white/80 hover:text-white cursor-pointer transition-colors flex-shrink-0" 
-                    onClick={resetChat}
-                  />
-                  <div className="relative flex-shrink-0">
-                    <Image
-                      src="/logo-only.png"
-                      alt="fubea Logo"
-                      width={32}
-                      height={32}
-                      className="rounded-lg shadow-lg"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-lg blur-sm" />
-                  </div>
-                  <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent truncate text-base md:text-xl min-w-0 flex-1">
-                    {taskSummary || userPrompt || "fubea"}
-                  </span>
-                </>
-              )}
-            </motion.div>
-            
-            {isInChatView ? (
-              <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleShare}
-                  className="bg-glass border-white/20 hover:bg-white/10 transition-all-smooth hover-lift"
-                  title="Share Session"
-                >
-                  <Share className="w-4 h-4" />
-                  <span className="ml-2 hidden sm:inline">Share</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                  className="md:hidden bg-glass border-white/20"
-                >
-                  <Menu className="w-4 h-4" />
-                </Button>
-              </div>
-            ) : (
-              <div className="flex-1 flex justify-end items-center gap-4">
-                {/* Pro Upgrade Button - Show only if user doesn't have Pro access */}
-                {!hasProAccess() && <ProUpgradeButton />}
-                
-                {/* Native Tool Calling Toggle - Hidden until logo is clicked 5 times */}
-                {showNativeToolToggle && (
-                  <div className="flex items-center gap-2 bg-glass border border-white/20 rounded-lg px-3 py-2">
-                    <span className="text-sm text-white/80">Native Tool Calling</span>
-                    <button
-                      onClick={() => setUseNativeToolCalling(!useNativeToolCalling)}
-                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                        useNativeToolCalling ? 'bg-blue-500' : 'bg-gray-600'
-                      }`}
-                      title={useNativeToolCalling ? "Using native tool calling (Squad-style)" : "Using JSON workaround (default)"}
-                    >
-                      <span
-                        className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
-                          useNativeToolCalling ? 'translate-x-5' : 'translate-x-1'
-                        }`}
-                      />
-                    </button>
-                  </div>
-                )}
-                <ModelPicker />
-              </div>
-            )}
+      {showReloadButton && (
+        <div className="mt-3 flex flex-col items-center gap-2">
+          <Button
+            onClick={() => window.location.reload()}
+            variant="outline"
+            size="sm"
+            className="bg-glass border-white/20 hover:bg-white/10 transition-all-smooth hover-lift"
+          >
+            <RefreshCw className="w-3 h-3 mr-2" />
+            Reload
+          </Button>
+          <p className="text-xs text-muted-foreground text-center max-w-xs">
+            Connection is taking longer than expected. This might be due to high server load.
+          </p>
         </div>
-        
-        {/* Mobile Menu */}
-        {isMobileMenuOpen && isInChatView && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="md:hidden bg-glass-dark border-t border-white/10 px-4 py-3"
-          >
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleShare}
-              className="w-full bg-glass border-white/20 hover:bg-white/10 mb-2"
-            >
-              <Share className="w-4 h-4 mr-2" />
-              Share Session
-            </Button>
-          </motion.div>
-        )}
-      </motion.header>
-
-      {/* Main Content */}
-      <main className="flex-1 relative z-10 flex flex-col min-h-0 overflow-hidden h-full">
-        {!isInChatView && (
-          <div className="flex-1 flex flex-col min-h-0">
-            <motion.div
-              className="flex flex-col items-center justify-center flex-1 px-4 min-h-0"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.8, delay: 0.2 }}
-            >
-              {/* Hero Section */}
-              <div className={`text-center mb-8 md:mb-12`}>
-                <motion.div 
-                  className="flex items-center justify-center mb-6 md:mb-8 cursor-pointer group"
-                  onClick={handleLogoClick}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <div className="relative">
-                    <Image
-                      src="/logo-only.png"
-                      alt="fubea Logo"
-                      width={150}
-                      height={108}
-                      className="w-[150px] h-[108px] md:w-[200px] md:h-[144px] rounded-2xl shadow-2xl transition-all-smooth group-hover:shadow-glow"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all-smooth" />
-                    <Sparkles className="absolute -top-2 -right-2 w-5 h-5 text-yellow-400 animate-pulse" />
-                  </div>
-                </motion.div>
-                
-                <motion.h1
-                  className="text-2xl sm:text-3xl md:text-5xl lg:text-6xl font-bold mb-3 md:mb-4 bg-gradient-to-r from-white via-blue-100 to-purple-100 bg-clip-text text-transparent"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.8, delay: 0.4 }}
-                >
-                  How can I help you today?
-                </motion.h1>
-                
-                <motion.p
-                  className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.8, delay: 0.6 }}
-                >
-                  <span 
-                    className="cursor-pointer hover:text-blue-400 transition-colors underline decoration-dotted underline-offset-4"
-                    onClick={() => router.push('/gaia')}
-                    title="Run GAIA Benchmark"
-                  >
-                    Leading
-                  </span> Deep Research Agent. For Free.
-                </motion.p>
-                
-                {/* Powered by Chutes - moved from footer */}
-                <motion.div
-                  className="mt-4 text-sm text-muted-foreground"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.8, delay: 0.7 }}
-                >
-                  <span>powered by</span>
-                  <a 
-                    href="https://chutes.ai" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="hover:text-foreground transition-colors hover-lift inline-flex items-center gap-1 ml-1"
-                  >
-                    <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent font-semibold">
-                      Chutes
-                    </span>
-                  </a>
-                </motion.div>
-                
-                {/* Connection Status Indicator */}
-                {!isSocketReady && (
-                  <motion.div
-                    className={`mt-4 ${
-                      shouldShakeConnectionIndicator ? 'animate-shake' : ''
-                    }`}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.3 }}
-                  >
-                    <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>
-                        {!isSocketConnected ? "Connecting to server..." : "Initializing server..."}
-                      </span>
-                    </div>
-                    
-                    {/* Reload Button shown after 5 seconds when returning from chat */}
-                    {showReloadButton && (
-                      <motion.div
-                        className="mt-3 flex flex-col items-center gap-2"
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.3 }}
-                      >
-                        <Button
-                          onClick={() => window.location.reload()}
-                          variant="outline"
-                          size="sm"
-                          className="bg-glass border-white/20 hover:bg-white/10 transition-all-smooth hover-lift"
-                        >
-                          <RefreshCw className="w-3 h-3 mr-2" />
-                          Reload Page
-                        </Button>
-                        <p className="text-xs text-muted-foreground text-center max-w-xs">
-                          Connection is taking longer than expected. This might be due to high server load.
-                        </p>
-                      </motion.div>
-                    )}
-                  </motion.div>
-                )}
-              </div>
-            </motion.div>
-            
-            {/* Input and Examples Container - Bottom aligned */}
-            <div className="mt-auto flex-shrink-0">
-              <motion.div
-                key="input-view"
-                className="flex items-center justify-center px-4 pb-4"
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.6 }}
-              >
-                <QuestionInput
-                  placeholder={!isSocketConnected ? "Connecting to server..." : "Give fubea a task to work on..."}
-                  value={currentQuestion}
-                  setValue={setCurrentQuestion}
-                  handleKeyDown={handleKeyDown}
-                  handleSubmit={handleQuestionSubmit}
-                  handleFileUpload={handleFileUpload}
-                  isUploading={isUploading}
-                  isUseDeepResearch={isUseDeepResearch}
-                  setIsUseDeepResearch={setIsUseDeepResearch}
-                  isDisabled={!isSocketConnected || !isSocketReady}
-                  isLoading={isLoading || (!isSocketConnected || !isSocketReady)}
-                  handleStopAgent={handleStopAgent}
-                  className="w-full max-w-4xl"
-                />
-              </motion.div>
-              
-              {/* Examples Section */}
-              <motion.div
-                key="examples-view"
-                className="flex items-center justify-center px-4 pb-4"
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ 
-                  duration: 0.6, 
-                  delay: 0.2,
-                  exit: { duration: 0.1, delay: 0 } // Fast exit animation
-                }}
-              >
-                <Examples
-                  onExampleClick={handleExampleClick}
-                  className="w-full max-w-4xl"
-                />
-              </motion.div>
-            </div>
-          </div>
-        )}
-
-        {isLoadingSession ? (
-          <motion.div 
-            className="flex flex-col items-center justify-center min-h-[50vh] px-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-          >
-            <div className="bg-glass rounded-2xl p-8 text-center">
-              <Loader2 className="h-12 w-12 text-blue-400 animate-spin mb-4 mx-auto" />
-              <p className="text-lg font-medium mb-2">Loading session history...</p>
-              <p className="text-muted-foreground">Please wait while we restore your conversation</p>
-            </div>
-          </motion.div>
-        ) : (
-          <LayoutGroup>
-            <AnimatePresence mode="wait">
-              {isInChatView && (
-                <motion.div
-                  key="chat-view"
-                  initial={{ opacity: 0, y: 30 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.6 }}
-                  className="w-full h-full chat-grid-layout px-0 pb-0 md:px-4 md:pb-4"
-                >
-                  {/* Chat Messages Panel */}
-                  <div className={`
-                    ${isMobileDetailPaneOpen ? 'hidden md:flex' : 'flex'} 
-                    chat-panel-container px-4 pb-4 md:px-0 md:pb-0
-                    ${isMobileDetailPaneOpen ? 'mobile-slide-left' : 'mobile-slide-in-from-left'}
-                  `}>
-                    <ChatMessage
-                      messages={messages}
-                      isLoading={isLoading}
-                      isCompleted={isCompleted}
-                      workspaceInfo={workspaceInfo}
-                      handleClickAction={(action, isReplay) => {
-                        handleClickAction(action, isReplay);
-                        // On mobile, open detail pane when action is clicked
-                        if (typeof window !== 'undefined' && window.innerWidth < 768) {
-                          setIsMobileDetailPaneOpen(true);
-                        }
-                      }}
-                      isUploading={isUploading}
-                      isUseDeepResearch={isUseDeepResearch}
-                      isReplayMode={isReplayMode}
-                      currentQuestion={currentQuestion}
-                      messagesEndRef={messagesEndRef}
-                      setCurrentQuestion={setCurrentQuestion}
-                      handleKeyDown={handleKeyDown}
-                      handleQuestionSubmit={handleQuestionSubmit}
-                      handleFileUpload={handleFileUpload}
-                      handleStopAgent={handleStopAgent}
-                      showUpgradePrompt={showUpgradePrompt}
-                    />
-                  </div>
-
-                  {/* Tools Panel - Hidden on mobile by default */}
-                  <div className={`
-                    ${isMobileDetailPaneOpen ? 'flex' : 'hidden'} 
-                    md:flex detail-panel-container bg-glass-dark rounded-2xl border border-white/10 overflow-hidden
-                    ${isMobileDetailPaneOpen ? 'mobile-slide-in-from-right' : 'mobile-slide-right'}
-                  `}>
-                    {/* Tab Navigation */}
-                    <div className="flex items-center justify-between p-4 pt-6 border-b border-white/10 bg-black/20 flex-shrink-0">
-                      <div className="flex gap-2 overflow-x-auto pb-2">
-                        {/* Mobile back button */}
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setIsMobileDetailPaneOpen(false)}
-                          className="md:hidden bg-glass border-white/20 hover:bg-white/10 transition-all-smooth hover-lift mr-2"
-                        >
-                          <ArrowLeft className="w-4 h-4" />
-                        </Button>
-                        
-                        <Button
-                          size="sm"
-                          variant={activeTab === TAB.BROWSER ? "default" : "outline"}
-                          onClick={() => setActiveTab(TAB.BROWSER)}
-                          className={`transition-all-smooth hover-lift ${
-                            activeTab === TAB.BROWSER
-                              ? "bg-gradient-skyblue-lavender text-black shadow-glow"
-                              : "bg-glass border-white/20 hover:bg-white/10"
-                          }`}
-                        >
-                          <Globe className="w-4 h-4 mr-2" />
-                          Browser
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant={activeTab === TAB.CODE ? "default" : "outline"}
-                          onClick={() => setActiveTab(TAB.CODE)}
-                          className={`transition-all-smooth hover-lift ${
-                            activeTab === TAB.CODE
-                              ? "bg-gradient-skyblue-lavender text-black shadow-glow"
-                              : "bg-glass border-white/20 hover:bg-white/10"
-                          }`}
-                        >
-                          <Code className="w-4 h-4 mr-2" />
-                          Files
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant={activeTab === TAB.TERMINAL ? "default" : "outline"}
-                          onClick={() => setActiveTab(TAB.TERMINAL)}
-                          className={`transition-all-smooth hover-lift ${
-                            activeTab === TAB.TERMINAL
-                              ? "bg-gradient-skyblue-lavender text-black shadow-glow"
-                              : "bg-glass border-white/20 hover:bg-white/10"
-                          }`}
-                        >
-                          <TerminalIcon className="w-4 h-4 mr-2" />
-                          Terminal
-                        </Button>
-                        {deployedUrl && (
-                          <Button
-                            size="sm"
-                            variant={activeTab === TAB.WEBSITE ? "default" : "outline"}
-                            onClick={() => setActiveTab(TAB.WEBSITE)}
-                            className={`transition-all-smooth hover-lift ${
-                              activeTab === TAB.WEBSITE
-                                ? "bg-gradient-skyblue-lavender text-black shadow-glow"
-                                : "bg-glass border-white/20 hover:bg-white/10"
-                            }`}
-                          >
-                            <Globe className="w-4 h-4 mr-2" />
-                            Website
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Tab Content */}
-                    <div className="tab-content-container">
-                      {activeTab === TAB.BROWSER && (
-                        <>
-                          {(currentActionData?.type === TOOL.VISIT || isBrowserTool) && (
-                            <Browser
-                              className="tab-content-enter"
-                              url={currentActionData?.data?.tool_input?.url || browserUrl}
-                              screenshot={
-                                isBrowserTool
-                                  ? (currentActionData?.data.result as string)
-                                  : undefined
-                              }
-                              raw={
-                                currentActionData?.type === TOOL.VISIT
-                                  ? (currentActionData?.data?.result as string)
-                                  : undefined
-                              }
-                            />
-                          )}
-                          {currentActionData?.type === TOOL.WEB_SEARCH && (
-                            <SearchBrowser
-                              className="tab-content-enter"
-                              keyword={currentActionData?.data.tool_input?.query}
-                              search_results={
-                                currentActionData?.type === TOOL.WEB_SEARCH &&
-                                currentActionData?.data?.result
-                                  ? parseJson(currentActionData?.data?.result as string)
-                                  : undefined
-                              }
-                            />
-                          )}
-                          {currentActionData?.type === TOOL.IMAGE_GENERATE && (
-                            <ImageBrowser
-                              className="tab-content-enter"
-                              url={currentActionData?.data.tool_input?.output_filename}
-                              image={getRemoteURL(
-                                currentActionData?.data.tool_input?.output_filename
-                              )}
-                            />
-                          )}
-                        </>
-                      )}
-                      {activeTab === TAB.CODE && (
-                        <CodeEditor
-                          currentActionData={currentActionData}
-                          activeTab={activeTab}
-                          className="tab-content-enter"
-                          workspaceInfo={workspaceInfo}
-                          activeFile={activeFileCodeEditor}
-                          setActiveFile={setActiveFileCodeEditor}
-                          filesContent={filesContent}
-                          isReplayMode={isReplayMode}
-                        />
-                      )}
-                      {activeTab === TAB.TERMINAL && (
-                        <TerminalComponent
-                          ref={terminalRef}
-                          className="tab-content-enter"
-                          onCommand={(command) => {
-                            console.log(`[TERMINAL_DEBUG] Handling terminal command: ${command}`);
-                            if (socket && isSocketConnected) {
-                              try {
-                                socket.send(JSON.stringify({
-                                  type: "terminal_command",
-                                  content: {
-                                    command: command
-                                  }
-                                }));
-                              } catch (error) {
-                                console.error(`[TERMINAL_DEBUG] Error sending terminal command:`, error);
-                                if (terminalRef.current) {
-                                  terminalRef.current.writeOutput(`\r\nError: Failed to send command to server\r\n`);
-                                }
-                              }
-                            } else {
-                              console.error(`[TERMINAL_DEBUG] WebSocket not connected`);
-                              if (terminalRef.current) {
-                                terminalRef.current.writeOutput(`\r\nError: WebSocket not connected, cannot execute command\r\n`);
-                              }
-                            }
-                          }}
-                        />
-                      )}
-                      {activeTab === TAB.WEBSITE && deployedUrl && (
-                        <WebsiteViewer
-                          url={deployedUrl}
-                          className="tab-content-enter"
-                        />
-                      )}
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </LayoutGroup>
-        )}
-      </main>
-
-      {/* Footer */}
-      {!isInChatView && (
-        <motion.footer
-          className="relative z-10 text-center py-2 px-4 mobile-safe-area flex-shrink-0"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.8, delay: 1 }}
-        >
-          <div className="text-xs sm:text-sm text-muted-foreground">
-            <div className="flex flex-col sm:flex-row flex-wrap items-center justify-center gap-1 sm:gap-2">
-              <div className="flex items-center gap-1">
-                <span>fubea is</span>
-                <a 
-                  href="https://github.com/fstandhartinger/ii-agent-chutes/tree/main" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-blue-400 hover:text-blue-300 transition-colors hover-lift underline"
-                >
-                  open source
-                </a>
-                <span>and free</span>
-              </div>
-              <span className="hidden sm:inline text-muted-foreground/60 mx-1">•</span>
-              <div className="flex items-center gap-1">
-                <span>based on the amazing</span>
-                <a 
-                  href="https://github.com/Intelligent-Internet/ii-agent" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-blue-400 hover:text-blue-300 transition-colors hover-lift underline"
-                >
-                  ii-agent
-                </a>
-              </div>
-            </div>
-            
-            {/* Legal Links */}
-            <div className="flex items-center justify-center gap-2 mt-2 text-xs text-muted-foreground/80">
-              <a 
-                href="/privacy-policy" 
-                className="hover:text-muted-foreground transition-colors underline"
-              >
-                Privacy Policy
-              </a>
-              <span>•</span>
-              <a 
-                href="/terms" 
-                className="hover:text-muted-foreground transition-colors underline"
-              >
-                Terms of Service
-              </a>
-              <span>•</span>
-              <a 
-                href="/imprint" 
-                className="hover:text-muted-foreground transition-colors underline"
-              >
-                Imprint
-              </a>
-            </div>
-          </div>
-        </motion.footer>
       )}
-      
-      {/* Install Prompt */}
-      <InstallPrompt />
-      
-      {/* Consent Dialog */}
-      <ConsentDialog
-        isOpen={showConsentDialog}
-        onAccept={handleConsentAccept}
-        onCancel={handleConsentCancel}
-      />
-      
-      {/* Cookie Banner */}
-      <CookieBanner />
-    </div>
+    </motion.div>
+    <main className={"relative flex flex-col flex-1 w-full min-h-screen bg-gradient-to-b from-[#181d2a] via-[#181d2a] to-[#1a1a1f] overflow-x-hidden"}>
+      {/* Header bar, model picker, etc. */}
+      <motion.header 
+        className="relative z-10 mobile-header-safe flex-shrink-0"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+      >
+        <div className={`flex justify-between items-center w-full px-4 md:px-8 py-4${!isInChatView ? ' pb-0' : ''}`}>
+          {!isInChatView && (
+            <div className="flex-1" />
+          )}
+          <motion.div
+            className={`flex items-center gap-3 ${
+              isInChatView ? "text-xl md:text-2xl font-semibold flex-1 min-w-0" : "hidden"
+            }`}
+            layout
+            layoutId="page-title"
+          >
+            {isInChatView && (
+              <>
+                <div className="flex flex-col sm:flex-row flex-wrap items-center justify-center gap-1 sm:gap-2">
+                  <span>
+                    fubea is{' '}
+                    <a
+                      href="https://github.com/fstandhartinger/ii-agent-chutes/tree/main"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-400 hover:text-blue-300 transition-colors hover-lift underline"
+                    >
+                      open source
+                    </a>{' '}
+                    and free
+                  </span>
+                  <span className="hidden sm:inline text-muted-foreground/60 mx-1">•</span>
+                  <div className="flex items-center gap-1">
+                    <span>based on the amazing</span>
+                    <a 
+                      href="https://github.com/Intelligent-Internet/ii-agent" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-400 hover:text-blue-300 transition-colors hover-lift underline"
+                    >
+                      ii-agent
+                    </a>
+                  </div>
+                </div>
+              </>
+            )}
+          </motion.div>
+        </div>
+      </motion.header>
+      <footer className="w-full py-6 px-2 md:px-0 flex flex-col items-center">
+        <div className="text-xs sm:text-sm text-muted-foreground">
+          <div className="flex flex-col sm:flex-row flex-wrap items-center justify-center gap-1 sm:gap-2">
+            <span>
+              fubea is{' '}
+              <a
+                href="https://github.com/fstandhartinger/ii-agent-chutes/tree/main"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-400 hover:text-blue-300 transition-colors hover-lift underline"
+              >
+                open source
+              </a>{' '}
+              and free
+            </span>
+            <span className="hidden sm:inline text-muted-foreground/60 mx-1">•</span>
+            <div className="flex items-center gap-1">
+              <span>based on the amazing</span>
+              <a 
+                href="https://github.com/Intelligent-Internet/ii-agent" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-blue-400 hover:text-blue-300 transition-colors hover-lift underline"
+              >
+                ii-agent
+              </a>
+            </div>
+          </div>
+          {/* Legal Links */}
+          <div className="flex items-center justify-center gap-2 mt-2 text-xs text-muted-foreground/80">
+            <a 
+              href="/privacy-policy" 
+              className="hover:text-muted-foreground transition-colors underline"
+            >
+              Privacy Policy
+            </a>
+            <span>•</span>
+            <a 
+              href="/terms" 
+              className="hover:text-muted-foreground transition-colors underline"
+            >
+              Terms of Service
+            </a>
+            <span>•</span>
+            <a 
+              href="/imprint" 
+              className="hover:text-muted-foreground transition-colors underline"
+            >
+              Imprint
+            </a>
+          </div>
+        </div>
+      </footer>
     </main>
-  );
-}
+  </>
+);
