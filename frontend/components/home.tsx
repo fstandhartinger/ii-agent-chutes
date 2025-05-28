@@ -107,7 +107,6 @@ export default function Home() {
     NodeJS.Timeout | null
   >(null);
   const [shouldShakeConnectionIndicator, setShouldShakeConnectionIndicator] = useState(false);
-  const [connectionTimeoutTimer, setConnectionTimeoutTimer] = useState<NodeJS.Timeout | null>(null);
 
   const isReplayMode = useMemo(() => !!searchParams.get("id"), [searchParams]);
   const { selectedModel, setSelectedModel } = useChutes();
@@ -1113,23 +1112,6 @@ export default function Home() {
   const connectWebSocket = () => {
     console.log("WEBSOCKET_DEBUG: Starting WebSocket connection process");
     
-    // Clear any existing connection timeout timer
-    if (connectionTimeoutTimer) {
-      clearTimeout(connectionTimeoutTimer);
-    }
-    
-    // Set up auto-refresh timer (20 seconds)
-    const timer = setTimeout(() => {
-      if (!isSocketReady) {
-        console.log("WEBSOCKET_DEBUG: Connection timeout after 20 seconds, refreshing page...");
-        toast.error("Connection timeout. Refreshing page...");
-        setTimeout(() => {
-          window.location.reload();
-        }, 1000);
-      }
-    }, 20000);
-    setConnectionTimeoutTimer(timer);
-    
     // Connect to WebSocket when the component mounts
     let wsUrl = `${process.env.NEXT_PUBLIC_API_URL}/ws`.replace("http://", "ws://").replace("https://", "wss://");
 
@@ -1198,12 +1180,6 @@ export default function Home() {
           console.log("WEBSOCKET_DEBUG: Server ready signal received, setting isSocketReady=true");
           setIsSocketReady(true);
           
-          // Clear the connection timeout timer since connection is successful
-          if (connectionTimeoutTimer) {
-            clearTimeout(connectionTimeoutTimer);
-            setConnectionTimeoutTimer(null);
-          }
-          
           // Process any queued messages
           setTimeout(() => {
             processMessageQueue();
@@ -1263,11 +1239,6 @@ export default function Home() {
       // Clear timeout check if active
       if (timeoutCheckInterval) {
         clearInterval(timeoutCheckInterval);
-      }
-      
-      // Clear connection timeout timer
-      if (connectionTimeoutTimer) {
-        clearTimeout(connectionTimeoutTimer);
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

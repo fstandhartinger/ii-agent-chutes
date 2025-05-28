@@ -1891,7 +1891,7 @@ async def cleanup_data():
 
 @app.get("/admin/download_data", dependencies=[Depends(verify_admin_key)])
 async def download_data():
-    """Download complete server data as ZIP file"""
+    """Download server data as ZIP file (excluding workspaces due to size)"""
     with tempfile.TemporaryDirectory() as temp_dir:
         zip_filename = f"server_data_backup_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.zip"
         zip_filepath = Path(temp_dir) / zip_filename
@@ -1905,21 +1905,34 @@ async def download_data():
                     zf.write(actual_db_path, arcname=actual_db_path.name)
                     logger.info(f"Admin Download: Added database {actual_db_path.name} to zip.")
 
-                # Add workspace folder
-                workspace_root = Path(PERSISTENT_WORKSPACE_ROOT)
-                if workspace_root.exists() and workspace_root.is_dir():
-                    for root, _, files in os.walk(workspace_root):
-                        for file in files:
-                            file_path = Path(root) / file
-                            arcname = file_path.relative_to(workspace_root.parent)
-                            zf.write(file_path, arcname=arcname)
-                    logger.info(f"Admin Download: Added workspace folder to zip.")
+                # Skip workspace folder to reduce size and server load
+                # Workspaces need to be backed up separately due to their large size
+                logger.info("Admin Download: Skipping workspace folder (too large for direct download)")
 
                 # Add log files
                 log_file_path = Path(PERSISTENT_DATA_ROOT) / "agent_logs.txt"
                 if log_file_path.exists():
                     zf.write(log_file_path, arcname=log_file_path.name)
                     logger.info(f"Admin Download: Added log file to zip.")
+                
+                # Add a README about the missing workspaces
+                readme_content = f"""Server Data Backup - {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC
+
+This backup contains:
+- Database file (agent.db)
+- Log files (agent_logs.txt)
+
+NOT included (due to size constraints):
+- Workspace folders
+
+To backup workspaces, use a different method such as:
+- Direct server access
+- Incremental sync tools
+- Cloud storage solutions
+"""
+                readme_path = Path(temp_dir) / "README.txt"
+                readme_path.write_text(readme_content)
+                zf.write(readme_path, arcname="README.txt")
             
             return FileResponse(
                 path=str(zip_filepath),
