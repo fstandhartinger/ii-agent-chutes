@@ -458,22 +458,24 @@ export default function Home() {
   const sendMessageWithRetry = useCallback(async (message: WebSocketMessage, maxRetries: number = 3): Promise<boolean> => {
     console.log(`WEBSOCKET_DEBUG: Attempting to send message (attempt ${retryAttempt + 1}/${maxRetries + 1}):`, message);
     
-    // Check if socket is ready
+    // Check if socket is ready for connection
     if (!socket || !isSocketConnected || socket.readyState !== WebSocket.OPEN) {
       console.warn(`WEBSOCKET_DEBUG: Socket not ready, queuing message`);
       setMessageQueue(prev => [...prev, message]);
       return false;
     }
 
-    // If not server-ready, wait and retry
+    // If not server-ready, wait and retry with exponential backoff
     if (!isSocketReady) {
-      console.log(`WEBSOCKET_DEBUG: Server not ready, waiting 500ms before retry`);
+      console.log(`WEBSOCKET_DEBUG: Server not ready, waiting before retry (attempt ${retryAttempt + 1}/${maxRetries + 1})`);
       if (retryAttempt < maxRetries) {
         setRetryAttempt(prev => prev + 1);
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Exponential backoff: 500ms, 1s, 2s
+        const delay = Math.min(500 * Math.pow(2, retryAttempt), 2000);
+        await new Promise(resolve => setTimeout(resolve, delay));
         return sendMessageWithRetry(message, maxRetries);
       } else {
-        console.warn(`WEBSOCKET_DEBUG: Max retries reached, queuing message`);
+        console.warn(`WEBSOCKET_DEBUG: Max retries reached for server readiness, queuing message`);
         setMessageQueue(prev => [...prev, message]);
         setRetryAttempt(0);
         return false;
@@ -489,9 +491,12 @@ export default function Home() {
       console.error(`WEBSOCKET_DEBUG: Error sending message:`, error);
       if (retryAttempt < maxRetries) {
         setRetryAttempt(prev => prev + 1);
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Exponential backoff for send errors: 1s, 2s, 4s
+        const delay = Math.min(1000 * Math.pow(2, retryAttempt), 4000);
+        await new Promise(resolve => setTimeout(resolve, delay));
         return sendMessageWithRetry(message, maxRetries);
       } else {
+        console.error(`WEBSOCKET_DEBUG: Max retries reached for sending, message failed`);
         setRetryAttempt(0);
         return false;
       }
@@ -536,11 +541,12 @@ export default function Home() {
     }
 
     // Enhanced WebSocket connection check with detailed error handling
-    if (!socket || !isSocketConnected || socket.readyState !== WebSocket.OPEN) {
+    if (!socket || !isSocketConnected || !isSocketReady || socket.readyState !== WebSocket.OPEN) {
       console.error("🚫 WebSocket not ready for sending message");
       console.group("🔍 WebSocket State Details");
       console.log("Socket exists:", !!socket);
       console.log("Is connected flag:", isSocketConnected);
+      console.log("Is server ready flag:", isSocketReady);
       console.log("Socket ready state:", socket?.readyState);
       console.log("WebSocket.OPEN constant:", WebSocket.OPEN);
       console.log("Ready state meanings:", {
@@ -551,15 +557,35 @@ export default function Home() {
       });
       console.groupEnd();
       
-      // User-friendly error message
-      toast.error("Connection not ready. This might be due to high server load with many users. Please refresh the page and try again.");
+      // More specific error messages based on the state
+      let errorMessage = "Connection not ready. ";
+      if (!socket) {
+        errorMessage += "WebSocket not initialized. ";
+      } else if (!isSocketConnected) {
+        errorMessage += "WebSocket not connected. ";
+      } else if (!isSocketReady) {
+        errorMessage += "Server not ready yet. ";
+      } else if (socket.readyState !== WebSocket.OPEN) {
+        errorMessage += `WebSocket in ${socket.readyState === 0 ? 'CONNECTING' : socket.readyState === 2 ? 'CLOSING' : 'CLOSED'} state. `;
+      }
+      errorMessage += "Please wait a moment and try again.";
       
-      // Additional helpful tip
-      setTimeout(() => {
-        toast.info("💡 If the problem persists, the server might be experiencing high traffic. Please try again in a moment.", {
-          duration: 6000,
-        });
-      }, 2000);
+      toast.error(errorMessage);
+      
+      // Additional helpful tip for specific states
+      if (!isSocketReady && isSocketConnected) {
+        setTimeout(() => {
+          toast.info("💡 The connection is established but the server is still initializing. This usually takes just a few seconds.", {
+            duration: 4000,
+          });
+        }, 1000);
+      } else {
+        setTimeout(() => {
+          toast.info("💡 If the problem persists, try refreshing the page.", {
+            duration: 6000,
+          });
+        }, 2000);
+      }
       
       setIsLoading(false);
       return;
@@ -1510,7 +1536,7 @@ export default function Home() {
                   isUploading={isUploading}
                   isUseDeepResearch={isUseDeepResearch}
                   setIsUseDeepResearch={setIsUseDeepResearch}
-                  isDisabled={!isSocketConnected}
+                  isDisabled={!isSocketConnected || !isSocketReady}
                   isLoading={isLoading}
                   handleStopAgent={handleStopAgent}
                   className="w-full max-w-4xl"
