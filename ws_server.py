@@ -175,6 +175,24 @@ async def websocket_endpoint(websocket: WebSocket):
         logger.info(f"BACKEND_WS_DEBUG: Sending connection established message to {connection_id}")
         await websocket.send_json(connection_response.model_dump())
 
+        # Start heartbeat task to keep connection alive
+        async def heartbeat():
+            try:
+                while True:
+                    await asyncio.sleep(30)  # Send ping every 30 seconds
+                    if websocket.client_state.name == "DISCONNECTED":
+                        break
+                    try:
+                        await websocket.ping()
+                        logger.debug(f"BACKEND_WS_DEBUG: Sent ping to connection {connection_id}")
+                    except Exception as e:
+                        logger.debug(f"BACKEND_WS_DEBUG: Failed to ping connection {connection_id}: {e}")
+                        break
+            except asyncio.CancelledError:
+                logger.debug(f"BACKEND_WS_DEBUG: Heartbeat cancelled for connection {connection_id}")
+        
+        heartbeat_task = asyncio.create_task(heartbeat())
+
         # Process messages from the client
         while True:
             try:
@@ -186,7 +204,18 @@ async def websocket_endpoint(websocket: WebSocket):
                 logger.warning(f"BACKEND_WS_DEBUG: WebSocket timeout for connection {connection_id} from {client_ip}. Active connections: {len(active_connections)}")
                 break
             except Exception as e:
-                logger.error(f"BACKEND_WS_DEBUG: Error receiving WebSocket message from connection {connection_id} ({client_ip}): {e}. Connection state: {websocket.client_state.name if hasattr(websocket, 'client_state') else 'unknown'}")
+                # Improved error handling for different disconnect types
+                error_str = str(e)
+                
+                # Check for normal disconnect codes
+                if "(1001," in error_str:  # Going away (normal browser close/refresh)
+                    logger.info(f"BACKEND_WS_DEBUG: Client {connection_id} ({client_ip}) closed connection normally (going away). Active connections: {len(active_connections)}")
+                elif "(1000," in error_str:  # Normal closure
+                    logger.info(f"BACKEND_WS_DEBUG: Client {connection_id} ({client_ip}) closed connection normally. Active connections: {len(active_connections)}")
+                elif "1006" in error_str:  # Abnormal closure - this needs attention
+                    logger.warning(f"BACKEND_WS_DEBUG: Abnormal connection closure for {connection_id} ({client_ip}): {e}. This may indicate network issues or proxy timeouts. Active connections: {len(active_connections)}")
+                else:
+                    logger.error(f"BACKEND_WS_DEBUG: Error receiving WebSocket message from connection {connection_id} ({client_ip}): {e}. Connection state: {websocket.client_state.name if hasattr(websocket, 'client_state') else 'unknown'}")
                 break
                 
             try:
@@ -383,12 +412,16 @@ async def websocket_endpoint(websocket: WebSocket):
     except WebSocketDisconnect:
         # Handle disconnection
         logger.info(f"BACKEND_WS_DEBUG: Client {connection_id} ({client_ip}) disconnected normally. Active connections: {len(active_connections) - 1}")
+        if 'heartbeat_task' in locals():
+            heartbeat_task.cancel()
         cleanup_connection(websocket)
     except Exception as e:
         # Handle other exceptions
         logger.error(f"BACKEND_WS_DEBUG: WebSocket error for connection {connection_id} ({client_ip}): {str(e)}. Active connections: {len(active_connections)}")
         import traceback
         traceback.print_exc()
+        if 'heartbeat_task' in locals():
+            heartbeat_task.cancel()
         cleanup_connection(websocket)
 
 
