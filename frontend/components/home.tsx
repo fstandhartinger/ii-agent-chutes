@@ -1118,16 +1118,16 @@ export default function Home() {
       clearTimeout(connectionTimeoutTimer);
     }
     
-    // Set up auto-refresh timer (7 seconds)
+    // Set up auto-refresh timer (20 seconds)
     const timer = setTimeout(() => {
       if (!isSocketReady) {
-        console.log("WEBSOCKET_DEBUG: Connection timeout after 7 seconds, refreshing page...");
+        console.log("WEBSOCKET_DEBUG: Connection timeout after 20 seconds, refreshing page...");
         toast.error("Connection timeout. Refreshing page...");
         setTimeout(() => {
           window.location.reload();
         }, 1000);
       }
-    }, 7000);
+    }, 20000);
     setConnectionTimeoutTimer(timer);
     
     // Connect to WebSocket when the component mounts

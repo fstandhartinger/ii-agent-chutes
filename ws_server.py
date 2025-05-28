@@ -987,55 +987,72 @@ async def get_sessions_by_device_id(device_id: str):
         A list of sessions with their details and first user message, sorted by creation time descending
     """
     try:
+        # Log start time for performance monitoring
+        start_time = time.time()
+        
         # Initialize database manager
         db_manager = DatabaseManager()
 
         # Get all sessions for this device, sorted by created_at descending
         with db_manager.get_session() as session:
-            # Use raw SQL query to get sessions with their first user message
-            query = text("""
-            SELECT 
-                session.id AS session_id,
-                session.*, 
-                event.id AS first_event_id,
-                event.event_payload AS first_message,
-                event.timestamp AS first_event_time
-            FROM session
-            LEFT JOIN event ON session.id = event.session_id
-            WHERE event.id IN (
-                SELECT e.id
-                FROM event e
-                WHERE e.event_type = "user_message" 
-                AND e.timestamp = (
-                    SELECT MIN(e2.timestamp)
-                    FROM event e2
-                    WHERE e2.session_id = e.session_id
-                    AND e2.event_type = "user_message"
-                )
-            )
-            AND session.device_id = :device_id
-            ORDER BY session.created_at DESC
-            """)
-
-            # Execute the raw query with parameters
-            result = session.execute(query, {"device_id": device_id})
-
-            # Convert result to a list of dictionaries
+            # First, get all sessions for this device
+            from ii_agent.db.models import Session
+            sessions_query = session.query(Session).filter(
+                Session.device_id == device_id
+            ).order_by(Session.created_at.desc()).limit(50)  # Limit to 50 most recent sessions
+            
+            sessions_list = sessions_query.all()
+            
+            # Convert to list of dictionaries with basic info first
             sessions = []
-            for row in result:
+            for sess in sessions_list:
                 session_data = {
-                    "id": row.id,
-                    "workspace_dir": row.workspace_dir,
-                    "created_at": row.created_at,
-                    "device_id": row.device_id,
-                    "first_message": json.loads(row.first_message)
-                    .get("content", {})
-                    .get("text", "")
-                    if row.first_message
-                    else "",
+                    "id": sess.id,
+                    "workspace_dir": sess.workspace_dir,
+                    "created_at": sess.created_at.isoformat() if sess.created_at else None,
+                    "device_id": sess.device_id,
+                    "first_message": "",  # Will be populated if found
                 }
                 sessions.append(session_data)
-
+            
+            # Now get first messages for these sessions in a more efficient way
+            if sessions:
+                session_ids = [s["id"] for s in sessions]
+                
+                # Get first user message for each session using a more efficient query
+                first_messages_query = text("""
+                SELECT 
+                    session_id,
+                    event_payload,
+                    MIN(timestamp) as first_timestamp
+                FROM event
+                WHERE session_id IN :session_ids
+                AND event_type = 'user_message'
+                GROUP BY session_id
+                """)
+                
+                result = session.execute(
+                    first_messages_query, 
+                    {"session_ids": tuple(session_ids)}
+                )
+                
+                # Create a map of session_id to first message
+                first_messages_map = {}
+                for row in result:
+                    try:
+                        payload = json.loads(row.event_payload) if row.event_payload else {}
+                        first_message = payload.get("content", {}).get("text", "")
+                        first_messages_map[row.session_id] = first_message
+                    except:
+                        first_messages_map[row.session_id] = ""
+                
+                # Update sessions with first messages
+                for sess in sessions:
+                    sess["first_message"] = first_messages_map.get(sess["id"], "")
+            
+            query_time = time.time() - start_time
+            logger.info(f"get_sessions_by_device_id completed in {query_time:.3f} seconds for device {device_id}")
+            
             return {"sessions": sessions}
 
     except Exception as e:
@@ -1056,15 +1073,24 @@ async def get_session_events(session_id: str):
         A list of events with their details, sorted by timestamp ascending
     """
     try:
+        # Log start time for performance monitoring
+        start_time = time.time()
+        
         # Initialize database manager
         db_manager = DatabaseManager()
 
         # Get all events for this session, sorted by timestamp ascending
         with db_manager.get_session() as session:
+            # Count total events first
+            total_count = session.query(Event).filter(Event.session_id == session_id).count()
+            logger.info(f"Session {session_id} has {total_count} total events")
+            
+            # Limit to last 1000 events to prevent timeout
             events = (
                 session.query(Event)
                 .filter(Event.session_id == session_id)
                 .order_by(asc(Event.timestamp))
+                .limit(1000)
                 .all()
             )
 
@@ -1078,11 +1104,14 @@ async def get_session_events(session_id: str):
                         "timestamp": e.timestamp.isoformat(),
                         "event_type": e.event_type,
                         "event_payload": e.event_payload,
-                        "workspace_dir": e.session.workspace_dir,
+                        "workspace_dir": e.session.workspace_dir if e.session else None,
                     }
                 )
 
-            return {"events": event_list}
+            query_time = time.time() - start_time
+            logger.info(f"get_session_events completed in {query_time:.3f} seconds for session {session_id} (returned {len(event_list)} of {total_count} events)")
+            
+            return {"events": event_list, "total_count": total_count, "returned_count": len(event_list)}
 
     except Exception as e:
         logger.error(f"Error retrieving events: {str(e)}")
