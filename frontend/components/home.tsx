@@ -87,6 +87,8 @@ export default function Home() {
   const [showNativeToolToggle, setShowNativeToolToggle] = useState(false);
   const [showConsentDialog, setShowConsentDialog] = useState(false);
   const [pendingQuestion, setPendingQuestion] = useState<string>("");
+  const [showUpgradePrompt, setShowUpgradePrompt] = useState<"success" | "error" | "timeout" | null>(null);
+  const [timeoutCheckInterval, setTimeoutCheckInterval] = useState<NodeJS.Timeout | null>(null);
 
   const isReplayMode = useMemo(() => !!searchParams.get("id"), [searchParams]);
   const { selectedModel, setSelectedModel } = useChutes();
@@ -384,6 +386,7 @@ export default function Home() {
     setIsLoading(true);
     setCurrentQuestion("");
     setIsCompleted(false);
+    setShowUpgradePrompt(null); // Reset upgrade prompt
 
     if (!sessionId) {
       const id = `${workspaceInfo}`.split("/").pop();
@@ -455,6 +458,13 @@ export default function Home() {
     if (socket) {
       socket.close();
     }
+    
+    // Clear timeout check if active
+    if (timeoutCheckInterval) {
+      clearInterval(timeoutCheckInterval);
+      setTimeoutCheckInterval(null);
+    }
+    
     setSessionId(null);
     router.push("/");
     setMessages([]);
@@ -467,6 +477,7 @@ export default function Home() {
     setCurrentActionData(undefined); // Reset current action data
     setTaskSummary(""); // Reset task summary
     setUserPrompt(""); // Reset user prompt
+    setShowUpgradePrompt(null); // Reset upgrade prompt
   };
 
   const parseJson = (jsonString: string) => {
@@ -610,6 +621,10 @@ export default function Home() {
     content: Record<string, unknown>;
   }) => {
     switch (data.type) {
+      case AgentEvent.CONNECTION_ESTABLISHED:
+        console.log("Connection established:", data.content.message);
+        break;
+
       case AgentEvent.USER_MESSAGE:
         setMessages((prev) => [
           ...prev,
@@ -624,6 +639,23 @@ export default function Home() {
         break;
       case AgentEvent.PROCESSING:
         setIsLoading(true);
+        setIsCompleted(false);
+        
+        // Start tracking agent run time for timeout detection
+        const startTime = Date.now();
+        
+        // Start checking for timeout (> 1 minute)
+        const interval = setInterval(() => {
+          if (Date.now() - startTime > 60000) {
+            // Check if using free model (not Sonnet 4)
+            if (selectedModel.id !== "claude-sonnet-4-20250514" && !hasProAccess()) {
+              setShowUpgradePrompt("timeout");
+            }
+            clearInterval(interval);
+          }
+        }, 5000); // Check every 5 seconds
+        
+        setTimeoutCheckInterval(interval);
         break;
       case AgentEvent.WORKSPACE_INFO:
         setWorkspaceInfo(data.content.path as string);
@@ -807,6 +839,17 @@ export default function Home() {
         setIsCompleted(true);
         setIsLoading(false);
         
+        // Clear timeout check
+        if (timeoutCheckInterval) {
+          clearInterval(timeoutCheckInterval);
+          setTimeoutCheckInterval(null);
+        }
+        
+        // Check if we should show upgrade prompt for successful completion
+        if (selectedModel.id !== "claude-sonnet-4-20250514" && !hasProAccess()) {
+          setShowUpgradePrompt("success");
+        }
+        
         // Generate task summary when LLM responds for the first time
         if (userPrompt && !taskSummary) {
           generateTaskSummary(userPrompt);
@@ -829,11 +872,22 @@ export default function Home() {
       case "error":
         const errorMessage = data.content.message as string;
         
+        // Clear timeout check
+        if (timeoutCheckInterval) {
+          clearInterval(timeoutCheckInterval);
+          setTimeoutCheckInterval(null);
+        }
+        
         // Check if this might be a deployment-related error
         if (errorMessage.includes("Error running agent") && isLoading && messages.length > 0) {
           toast.error("Sorry, a new version was just released. This caused the current run to be interrupted. We're working extremely hard on this software. Sorry and thank you for your understanding!");
         } else {
           toast.error(errorMessage);
+          
+          // Show upgrade prompt for errors if using free model
+          if (selectedModel.id !== "claude-sonnet-4-20250514" && !hasProAccess() && isLoading) {
+            setShowUpgradePrompt("error");
+          }
         }
         
         setIsUploading(false);
@@ -952,6 +1006,11 @@ export default function Home() {
     return () => {
       if (socket) {
         socket.close();
+      }
+      
+      // Clear timeout check if active
+      if (timeoutCheckInterval) {
+        clearInterval(timeoutCheckInterval);
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1325,6 +1384,7 @@ export default function Home() {
                       handleQuestionSubmit={handleQuestionSubmit}
                       handleFileUpload={handleFileUpload}
                       handleStopAgent={handleStopAgent}
+                      showUpgradePrompt={showUpgradePrompt}
                     />
                   </div>
 

@@ -9,6 +9,7 @@ import jsPDF from 'jspdf';
 import Action from "@/components/action";
 import Markdown from "@/components/markdown";
 import QuestionInput from "@/components/question-input";
+import UpgradePrompt from "@/components/upgrade-prompt";
 import { ActionStep, Message } from "@/typings/agent";
 import { getFileIconAndColor } from "@/utils/file-utils";
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,7 @@ interface ChatMessageProps {
   handleQuestionSubmit: (question: string) => void;
   handleFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleStopAgent?: () => void;
+  showUpgradePrompt?: "success" | "error" | "timeout" | null;
 }
 
 const ChatMessage = ({
@@ -49,6 +51,7 @@ const ChatMessage = ({
   handleQuestionSubmit,
   handleFileUpload,
   handleStopAgent,
+  showUpgradePrompt,
 }: ChatMessageProps) => {
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
 
@@ -340,6 +343,11 @@ const ChatMessage = ({
               fubea has completed the current task.
             </span>
           </motion.div>
+        )}
+
+        {/* Upgrade Prompt */}
+        {showUpgradePrompt && (
+          <UpgradePrompt type={showUpgradePrompt} className="mt-4" />
         )}
 
         <div ref={messagesEndRef} />
