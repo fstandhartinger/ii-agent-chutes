@@ -84,6 +84,12 @@ export default function Home() {
   const [isUseDeepResearch, setIsUseDeepResearch] = useState(false);
   const [deviceId, setDeviceId] = useState<string>("");
   const [sessionId, setSessionId] = useState<string | null>(null);
+
+  // Session-ID beim Mount aus URL initialisieren
+  useEffect(() => {
+    const id = searchParams.get('id');
+    if (id) setSessionId(id);
+  }, [searchParams]);
   const [isLoadingSession, setIsLoadingSession] = useState(false);
   const [filesContent, setFilesContent] = useState<{ [key: string]: string }>(
     {}
@@ -1113,11 +1119,15 @@ export default function Home() {
   );
 
   const handleShare = () => {
-    if (!sessionId) return;
+    if (!sessionId) {
+      toast.error("Keine Session aktiv – bitte erst eine Session starten!");
+      return;
+    }
     const url = `${window.location.origin}/?id=${sessionId}`;
     navigator.clipboard.writeText(url);
-    toast.success("Copied to clipboard");
+    toast.success("Link zur Session kopiert!");
   };
+
 
   const connectWebSocket = () => {
     console.log("WEBSOCKET_DEBUG: Starting WebSocket connection process");
