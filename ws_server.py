@@ -1064,33 +1064,102 @@ async def get_sessions_by_device_id(device_id: str):
             if sessions:
                 session_ids = [s["id"] for s in sessions]
                 
-                # Build placeholders for the IN clause dynamically
-                placeholders = ','.join(['?' for _ in session_ids])
-                
-                # Get first user message for each session using a more efficient query
-                first_messages_query = text(f"""
-                SELECT 
-                    session_id,
-                    event_payload,
-                    MIN(timestamp) as first_timestamp
-                FROM event
-                WHERE session_id IN ({placeholders})
-                AND event_type = 'user_message'
-                GROUP BY session_id
-                """)
-                
-                # Execute with positional parameters for SQLite compatibility
-                result = session.execute(first_messages_query, session_ids)
-                
-                # Create a map of session_id to first message
-                first_messages_map = {}
-                for row in result:
+                try:
+                    # Approach 1: Try using ORM query with subquery
+                    from sqlalchemy import and_, func
+                    from ii_agent.db.models import Event
+                    
+                    # Create a subquery to get the minimum timestamp for each session
+                    subquery = session.query(
+                        Event.session_id,
+                        func.min(Event.timestamp).label('min_timestamp')
+                    ).filter(
+                        Event.session_id.in_(session_ids),
+                        Event.event_type == 'user_message'
+                    ).group_by(Event.session_id).subquery()
+                    
+                    # Join with the main query to get the actual events
+                    first_messages = session.query(Event).join(
+                        subquery,
+                        and_(
+                            Event.session_id == subquery.c.session_id,
+                            Event.timestamp == subquery.c.min_timestamp,
+                            Event.event_type == 'user_message'
+                        )
+                    ).all()
+                    
+                    # Create a map of session_id to first message
+                    first_messages_map = {}
+                    for event in first_messages:
+                        try:
+                            payload = json.loads(event.event_payload) if event.event_payload else {}
+                            first_message = payload.get("content", {}).get("text", "")
+                            first_messages_map[event.session_id] = first_message
+                        except:
+                            first_messages_map[event.session_id] = ""
+                    
+                    logger.info(f"Successfully retrieved first messages using ORM approach for {len(first_messages_map)} sessions")
+                    
+                except Exception as e:
+                    logger.warning(f"ORM approach failed: {e}, trying raw SQL approach")
+                    
                     try:
-                        payload = json.loads(row.event_payload) if row.event_payload else {}
-                        first_message = payload.get("content", {}).get("text", "")
-                        first_messages_map[row.session_id] = first_message
-                    except:
-                        first_messages_map[row.session_id] = ""
+                        # Approach 2: Use raw SQL with proper parameter binding
+                        # Create a dictionary for parameter binding
+                        params = {f'param_{i}': session_id for i, session_id in enumerate(session_ids)}
+                        placeholders = ','.join([f':param_{i}' for i in range(len(session_ids))])
+                        
+                        first_messages_query = text(f"""
+                        SELECT 
+                            session_id,
+                            event_payload,
+                            MIN(timestamp) as first_timestamp
+                        FROM event
+                        WHERE session_id IN ({placeholders})
+                        AND event_type = 'user_message'
+                        GROUP BY session_id
+                        """)
+                        
+                        result = session.execute(first_messages_query, params)
+                        
+                        # Create a map of session_id to first message
+                        first_messages_map = {}
+                        for row in result:
+                            try:
+                                payload = json.loads(row.event_payload) if row.event_payload else {}
+                                first_message = payload.get("content", {}).get("text", "")
+                                first_messages_map[row.session_id] = first_message
+                            except:
+                                first_messages_map[row.session_id] = ""
+                        
+                        logger.info(f"Successfully retrieved first messages using parameterized SQL for {len(first_messages_map)} sessions")
+                        
+                    except Exception as e2:
+                        logger.warning(f"Parameterized SQL approach failed: {e2}, trying individual queries")
+                        
+                        # Approach 3: Fallback to individual queries (slower but more reliable)
+                        first_messages_map = {}
+                        for session_id in session_ids[:10]:  # Limit to first 10 to avoid timeout
+                            try:
+                                first_event = session.query(Event).filter(
+                                    Event.session_id == session_id,
+                                    Event.event_type == 'user_message'
+                                ).order_by(Event.timestamp.asc()).first()
+                                
+                                if first_event:
+                                    try:
+                                        payload = json.loads(first_event.event_payload) if first_event.event_payload else {}
+                                        first_message = payload.get("content", {}).get("text", "")
+                                        first_messages_map[session_id] = first_message
+                                    except:
+                                        first_messages_map[session_id] = ""
+                                else:
+                                    first_messages_map[session_id] = ""
+                            except Exception as e3:
+                                logger.error(f"Failed to get first message for session {session_id}: {e3}")
+                                first_messages_map[session_id] = ""
+                        
+                        logger.info(f"Retrieved first messages using individual queries for {len(first_messages_map)} sessions")
                 
                 # Update sessions with first messages
                 for sess in sessions:

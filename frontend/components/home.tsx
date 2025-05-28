@@ -1236,18 +1236,31 @@ export default function Home() {
 
   // Show reload button if connection is not ready after returning from chat
   useEffect(() => {
+    let timer: NodeJS.Timeout | null = null;
+    
     if (returnedFromChat && !isSocketReady && !isInChatView) {
-      const timer = setTimeout(() => {
-        if (!isSocketReady) {
+      // Start a timer to show the reload button after 5 seconds
+      timer = setTimeout(() => {
+        if (!isSocketReady && !isInChatView) {
           setShowReloadButton(true);
         }
-      }, 5000); // Show reload button after 5 seconds
-
-      return () => clearTimeout(timer);
-    } else if (isSocketReady) {
-      setShowReloadButton(false);
-      setReturnedFromChat(false);
+      }, 5000);
     }
+    
+    // Hide reload button when connection is established
+    if (isSocketReady) {
+      setShowReloadButton(false);
+      if (returnedFromChat) {
+        setReturnedFromChat(false);
+      }
+    }
+    
+    // Cleanup timer
+    return () => {
+      if (timer) {
+        clearTimeout(timer);
+      }
+    };
   }, [returnedFromChat, isSocketReady, isInChatView]);
 
   // Only connect if we have a device ID AND we're not viewing a session history
@@ -1557,41 +1570,42 @@ export default function Home() {
                 {/* Connection Status Indicator */}
                 {!isSocketReady && (
                   <motion.div
-                    className={`mt-4 flex items-center justify-center gap-2 text-sm text-muted-foreground ${
+                    className={`mt-4 ${
                       shouldShakeConnectionIndicator ? 'animate-shake' : ''
                     }`}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.3 }}
                   >
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>
-                      {!isSocketConnected ? "Connecting to server..." : "Initializing server..."}
-                    </span>
-                  </motion.div>
-                )}
-                
-                {/* Reload Button for connection issues */}
-                {showReloadButton && !isSocketReady && (
-                  <motion.div
-                    className="mt-6 flex flex-col items-center gap-3"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5 }}
-                  >
-                    <Button
-                      onClick={() => window.location.reload()}
-                      variant="outline"
-                      size="lg"
-                      className="bg-glass border-white/20 hover:bg-white/10 transition-all-smooth hover-lift"
-                    >
-                      <RefreshCw className="w-4 h-4 mr-2" />
-                      Reload Page
-                    </Button>
-                    <p className="text-xs text-muted-foreground text-center max-w-sm">
-                      The connection is taking longer than expected. This might be due to high server load. 
-                      Reloading the page often helps restore the connection.
-                    </p>
+                    <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>
+                        {!isSocketConnected ? "Connecting to server..." : "Initializing server..."}
+                      </span>
+                    </div>
+                    
+                    {/* Reload Button shown after 5 seconds when returning from chat */}
+                    {showReloadButton && (
+                      <motion.div
+                        className="mt-3 flex flex-col items-center gap-2"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        <Button
+                          onClick={() => window.location.reload()}
+                          variant="outline"
+                          size="sm"
+                          className="bg-glass border-white/20 hover:bg-white/10 transition-all-smooth hover-lift"
+                        >
+                          <RefreshCw className="w-3 h-3 mr-2" />
+                          Reload Page
+                        </Button>
+                        <p className="text-xs text-muted-foreground text-center max-w-xs">
+                          Connection is taking longer than expected. This might be due to high server load.
+                        </p>
+                      </motion.div>
+                    )}
                   </motion.div>
                 )}
               </div>
