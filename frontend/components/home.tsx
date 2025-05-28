@@ -13,7 +13,7 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import Image from "next/image";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { toast } from "sonner";
 import { cloneDeep, debounce } from "lodash";
 import dynamic from "next/dynamic";
@@ -62,7 +62,7 @@ export default function Home() {
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const [isSocketConnected, setIsSocketConnected] = useState(false);
   const [isSocketReady, setIsSocketReady] = useState(false); // NEW: Server confirmed ready
-  const [messageQueue, setMessageQueue] = useState<any[]>([]); // NEW: Queue for messages
+  const [messageQueue, setMessageQueue] = useState<Record<string, any>[]>([]); // NEW: Queue for messages
   const [retryAttempt, setRetryAttempt] = useState(0); // NEW: Track retry attempts
   const [activeTab, setActiveTab] = useState(TAB.BROWSER);
   const [currentActionData, setCurrentActionData] = useState<ActionStep>();
@@ -196,7 +196,7 @@ export default function Home() {
     };
 
     fetchSessionEvents();
-  }, [searchParams]);
+  }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Initialize device ID on page load
   useEffect(() => {
@@ -382,7 +382,7 @@ export default function Home() {
   };
 
   // Enhanced error handling function
-  const handleWebSocketError = (error: Event | Error | unknown, context: string) => {
+  const handleWebSocketError = useCallback((error: Event | Error | unknown, context: string) => {
     console.error(`WEBSOCKET_DEBUG: WebSocket ${context}:`, error);
     
     // Log detailed information for debugging
@@ -430,10 +430,10 @@ export default function Home() {
         });
       }, 2000);
     }
-  };
+  }, [socket, isSocketConnected, isSocketReady, retryAttempt, messageQueue, selectedModel, deviceId, isLoading, messages]);
 
   // NEW: Function to process message queue
-  const processMessageQueue = () => {
+  const processMessageQueue = useCallback(() => {
     console.log(`WEBSOCKET_DEBUG: Processing ${messageQueue.length} queued messages`);
     if (socket && isSocketConnected && isSocketReady && messageQueue.length > 0) {
       messageQueue.forEach((message, index) => {
@@ -442,10 +442,10 @@ export default function Home() {
       });
       setMessageQueue([]);
     }
-  };
+  }, [socket, isSocketConnected, isSocketReady, messageQueue]);
 
   // NEW: Function to send message with retry logic
-  const sendMessageWithRetry = async (message: any, maxRetries: number = 3): Promise<boolean> => {
+  const sendMessageWithRetry = useCallback(async (message: Record<string, any>, maxRetries: number = 3): Promise<boolean> => {
     console.log(`WEBSOCKET_DEBUG: Attempting to send message (attempt ${retryAttempt + 1}/${maxRetries + 1}):`, message);
     
     // Check if socket is ready
@@ -486,7 +486,7 @@ export default function Home() {
         return false;
       }
     }
-  };
+  }, [socket, isSocketConnected, isSocketReady, retryAttempt, messageQueue]);
 
   const handleQuestionSubmit = async (newQuestion: string) => {
     if (!newQuestion.trim() || isLoading) return;
@@ -647,8 +647,8 @@ export default function Home() {
     const fileContentMap: { [filename: string]: string } = {};
 
     // Get the connection ID from the workspace path
-    const workspacePath = workspaceInfo || "";
-    const connectionId = workspacePath.split("/").pop();
+    const workspaceId = workspaceInfo.split("/").pop();
+    const connectionId = workspaceId;
 
     // Add files to message history (initially without content)
     const newUserMessage: Message = {
@@ -1211,7 +1211,7 @@ export default function Home() {
         }
       };
     }
-  }, [socket, isSocketConnected]);
+  }, [socket, isSocketConnected, handleWebSocketError, processMessageQueue]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const isBrowserTool = useMemo(
     () =>
