@@ -114,8 +114,11 @@ def create_cors_response(content: dict, status_code: int = 200):
 # Active WebSocket connections
 active_connections: Set[WebSocket] = set()
 
+# Connection timestamps for cleanup
+connection_timestamps: Dict[WebSocket, datetime] = {}
+
 # Connection limit to prevent resource exhaustion
-MAX_CONCURRENT_CONNECTIONS = 50
+MAX_CONCURRENT_CONNECTIONS = 500
 
 # Active agents for each connection
 active_agents: Dict[WebSocket, BaseAgent] = {}
@@ -144,9 +147,34 @@ async def websocket_endpoint(websocket: WebSocket):
         await websocket.close(code=1013, reason="Server overloaded - too many concurrent connections")
         return
     
+    # Clean up old connections if we have more than 200 active connections
+    if len(active_connections) > 200:
+        logger.info(f"BACKEND_WS_DEBUG: Active connections ({len(active_connections)}) > 200, checking for old connections to clean up")
+        current_time = datetime.utcnow()
+        old_connections = []
+        
+        for ws, timestamp in connection_timestamps.items():
+            age_minutes = (current_time - timestamp).total_seconds() / 60
+            if age_minutes > 30:  # Connections older than 30 minutes
+                old_connections.append(ws)
+                logger.info(f"BACKEND_WS_DEBUG: Found old connection {id(ws)} aged {age_minutes:.1f} minutes")
+        
+        # Clean up old connections
+        for ws in old_connections:
+            logger.info(f"BACKEND_WS_DEBUG: Cleaning up old connection {id(ws)}")
+            cleanup_connection(ws)
+            try:
+                await ws.close(code=1001, reason="Connection timeout - idle for too long")
+            except:
+                pass  # Connection might already be closed
+        
+        if old_connections:
+            logger.info(f"BACKEND_WS_DEBUG: Cleaned up {len(old_connections)} old connections. Active connections now: {len(active_connections)}")
+    
     try:
         await websocket.accept()
         active_connections.add(websocket)
+        connection_timestamps[websocket] = datetime.utcnow()  # Track connection time
         logger.info(f"BACKEND_WS_DEBUG: WebSocket connection {connection_id} accepted from {client_ip}. Active connections: {len(active_connections)}")
 
         # Measure workspace creation time
@@ -481,6 +509,11 @@ def cleanup_connection(websocket: WebSocket):
             active_connections.remove(websocket)
             logger.info(f"BACKEND_WS_DEBUG: Removed websocket {id(websocket)} from active connections")
 
+        # Remove from connection timestamps
+        if websocket in connection_timestamps:
+            del connection_timestamps[websocket]
+            logger.info(f"BACKEND_WS_DEBUG: Removed websocket {id(websocket)} from connection timestamps")
+
         # Cancel any running tasks first
         if websocket in active_tasks:
             task = active_tasks[websocket]
@@ -739,10 +772,18 @@ async def periodic_cleanup():
             
             # Check for stale connections
             stale_connections = []
+            current_time = datetime.utcnow()
+            
             for websocket in list(active_connections):
                 try:
                     if websocket.client_state.name == "DISCONNECTED":
                         stale_connections.append(websocket)
+                    elif websocket in connection_timestamps:
+                        # Also check for connections that are too old
+                        age_minutes = (current_time - connection_timestamps[websocket]).total_seconds() / 60
+                        if age_minutes > 60:  # Remove connections older than 60 minutes
+                            logger.info(f"Found very old connection {id(websocket)} aged {age_minutes:.1f} minutes")
+                            stale_connections.append(websocket)
                 except Exception:
                     # If we can't check the state, consider it stale
                     stale_connections.append(websocket)
@@ -751,6 +792,10 @@ async def periodic_cleanup():
             for websocket in stale_connections:
                 logger.info(f"Cleaning up stale connection {id(websocket)}")
                 cleanup_connection(websocket)
+                try:
+                    await websocket.close(code=1001, reason="Connection timeout")
+                except:
+                    pass  # Connection might already be closed
             
             if stale_connections:
                 logger.info(f"Cleaned up {len(stale_connections)} stale connections. Active: {len(active_connections)}")
@@ -1019,20 +1064,23 @@ async def get_sessions_by_device_id(device_id: str):
             if sessions:
                 session_ids = [s["id"] for s in sessions]
                 
+                # Build placeholders for the IN clause dynamically
+                placeholders = ','.join(['?' for _ in session_ids])
+                
                 # Get first user message for each session using a more efficient query
-                first_messages_query = text("""
+                first_messages_query = text(f"""
                 SELECT 
                     session_id,
                     event_payload,
                     MIN(timestamp) as first_timestamp
                 FROM event
-                WHERE session_id IN :session_ids
+                WHERE session_id IN ({placeholders})
                 AND event_type = 'user_message'
                 GROUP BY session_id
                 """)
                 
-                # Execute with named parameters
-                result = session.execute(first_messages_query, {"session_ids": tuple(session_ids)})
+                # Execute with positional parameters for SQLite compatibility
+                result = session.execute(first_messages_query, session_ids)
                 
                 # Create a map of session_id to first message
                 first_messages_map = {}

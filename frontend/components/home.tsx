@@ -11,6 +11,7 @@ import {
   Menu,
   Sparkles,
   ArrowLeft,
+  RefreshCw,
 } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
@@ -107,6 +108,8 @@ export default function Home() {
     NodeJS.Timeout | null
   >(null);
   const [shouldShakeConnectionIndicator, setShouldShakeConnectionIndicator] = useState(false);
+  const [showReloadButton, setShowReloadButton] = useState(false);
+  const [returnedFromChat, setReturnedFromChat] = useState(false);
 
   const isReplayMode = useMemo(() => !!searchParams.get("id"), [searchParams]);
   const { selectedModel, setSelectedModel } = useChutes();
@@ -435,7 +438,7 @@ export default function Home() {
       } else {
         userMessage = "Connection lost. This might be due to high server load. Please refresh the page and try again.";
         shouldReload = true;
-        // Auto-reload after 2 seconds when returning from chat view
+        // Auto-reload after 2 seconds when returning from chat
         if (sessionId && !isLoadingSession) {
           setTimeout(() => {
             window.location.reload();
@@ -672,6 +675,7 @@ export default function Home() {
     setTaskSummary(""); // Reset task summary
     setUserPrompt(""); // Reset user prompt
     setShowUpgradePrompt(null); // Reset upgrade prompt
+    setReturnedFromChat(true); // Mark that we returned from chat
   };
 
   const parseJson = (jsonString: string) => {
@@ -1230,6 +1234,22 @@ export default function Home() {
     setSocket(ws);
   };
 
+  // Show reload button if connection is not ready after returning from chat
+  useEffect(() => {
+    if (returnedFromChat && !isSocketReady && !isInChatView) {
+      const timer = setTimeout(() => {
+        if (!isSocketReady) {
+          setShowReloadButton(true);
+        }
+      }, 5000); // Show reload button after 5 seconds
+
+      return () => clearTimeout(timer);
+    } else if (isSocketReady) {
+      setShowReloadButton(false);
+      setReturnedFromChat(false);
+    }
+  }, [returnedFromChat, isSocketReady, isInChatView]);
+
   // Only connect if we have a device ID AND we're not viewing a session history
   useEffect(() => {
     if (deviceId && !isReplayMode) {
@@ -1548,6 +1568,30 @@ export default function Home() {
                     <span>
                       {!isSocketConnected ? "Connecting to server..." : "Initializing server..."}
                     </span>
+                  </motion.div>
+                )}
+                
+                {/* Reload Button for connection issues */}
+                {showReloadButton && !isSocketReady && (
+                  <motion.div
+                    className="mt-6 flex flex-col items-center gap-3"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5 }}
+                  >
+                    <Button
+                      onClick={() => window.location.reload()}
+                      variant="outline"
+                      size="lg"
+                      className="bg-glass border-white/20 hover:bg-white/10 transition-all-smooth hover-lift"
+                    >
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                      Reload Page
+                    </Button>
+                    <p className="text-xs text-muted-foreground text-center max-w-sm">
+                      The connection is taking longer than expected. This might be due to high server load. 
+                      Reloading the page often helps restore the connection.
+                    </p>
                   </motion.div>
                 )}
               </div>
