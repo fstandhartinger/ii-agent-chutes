@@ -1019,23 +1019,20 @@ async def get_sessions_by_device_id(device_id: str):
             if sessions:
                 session_ids = [s["id"] for s in sessions]
                 
-                # Build placeholders for the IN clause
-                placeholders = ','.join(['?' for _ in session_ids])
-                
                 # Get first user message for each session using a more efficient query
-                first_messages_query = text(f"""
+                first_messages_query = text("""
                 SELECT 
                     session_id,
                     event_payload,
                     MIN(timestamp) as first_timestamp
                 FROM event
-                WHERE session_id IN ({placeholders})
+                WHERE session_id IN :session_ids
                 AND event_type = 'user_message'
                 GROUP BY session_id
                 """)
                 
-                # Execute with positional parameters
-                result = session.execute(first_messages_query, session_ids)
+                # Execute with named parameters
+                result = session.execute(first_messages_query, {"session_ids": tuple(session_ids)})
                 
                 # Create a map of session_id to first message
                 first_messages_map = {}
@@ -1627,18 +1624,22 @@ async def generate_summary_endpoint(request: Request):
         # Get Chutes API key
         api_key = os.getenv("CHUTES_API_KEY")
         
-        logger.info('Transcription API: Checking for CHUTES_API_KEY...')
+        logger.info('Generate Summary API: Checking for CHUTES_API_KEY...')
         if not api_key:
-            logger.error('Transcription API: CHUTES_API_KEY environment variable not found')
+            logger.error('Generate Summary API: CHUTES_API_KEY environment variable not found')
             available_chutes_vars = [key for key in os.environ.keys() if 'CHUTES' in key]
             logger.error(f'Available CHUTES env vars: {available_chutes_vars}')
             return create_cors_response({"error": "API key not configured"}, 500)
 
-        logger.info('Transcription API: Found API key, making request to Chutes...')
+        logger.info(f'Generate Summary API: Found API key, making request to Chutes with model {model_id}...')
         
         import requests
+        
+        # Use the correct Chutes LLM API URL
+        api_url = "https://llm.chutes.ai/v1/chat/completions"
+        
         response = requests.post(
-            "https://api.chutes.ai/v1/chat/completions",
+            api_url,
             headers={
                 "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json",
@@ -1662,24 +1663,38 @@ async def generate_summary_endpoint(request: Request):
             timeout=30
         )
 
+        logger.info(f'Generate Summary API: Response status code: {response.status_code}')
+        
         if response.status_code == 200:
             data = response.json()
             content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+            
+            logger.info(f'Generate Summary API: Raw response content: {content}')
             
             summary = "Task in progress"
             try:
                 parsed = json.loads(content)
                 summary = parsed.get("summary", "Task in progress")
-            except json.JSONDecodeError:
-                logger.warning(f"Failed to parse summary JSON: {content}")
+                logger.info(f'Generate Summary API: Parsed summary: {summary}')
+            except json.JSONDecodeError as e:
+                logger.warning(f"Failed to parse summary JSON: {content}, error: {e}")
             
             return create_cors_response({"summary": summary})
         else:
             logger.error(f"Chutes API error: {response.status_code} {response.text}")
-            return create_cors_response({"error": "Failed to generate summary"}, response.status_code)
+            # Try to parse error details
+            error_detail = "Failed to generate summary"
+            try:
+                error_data = response.json()
+                error_detail = error_data.get("detail", error_data.get("error", error_detail))
+            except:
+                pass
+            return create_cors_response({"error": error_detail}, response.status_code)
 
     except Exception as e:
         logger.error(f"Error generating summary: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return create_cors_response({"error": "Internal server error"}, 500)
 
 

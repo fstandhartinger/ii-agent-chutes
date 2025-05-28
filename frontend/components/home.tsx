@@ -435,6 +435,12 @@ export default function Home() {
       } else {
         userMessage = "Connection lost. This might be due to high server load. Please refresh the page and try again.";
         shouldReload = true;
+        // Auto-reload after 2 seconds when returning from chat view
+        if (sessionId && !isLoadingSession) {
+          setTimeout(() => {
+            window.location.reload();
+          }, 2000);
+        }
       }
     } else {
       userMessage = "Connection issue detected. Please refresh the page and try again.";
@@ -452,7 +458,7 @@ export default function Home() {
         });
       }, 2000);
     }
-  }, [socket, isSocketConnected, isSocketReady, retryAttempt, messageQueue, selectedModel, deviceId, isLoading, messages]);
+  }, [socket, isSocketConnected, isSocketReady, retryAttempt, messageQueue, selectedModel, deviceId, isLoading, messages, sessionId, isLoadingSession]);
 
   // NEW: Function to process message queue
   const processMessageQueue = useCallback(() => {
