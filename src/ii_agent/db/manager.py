@@ -32,7 +32,8 @@ class DatabaseManager:
         if db_path is None:
             db_path = get_default_db_path()
             
-        self.engine = create_engine(f"sqlite:///{db_path}")
+        self.db_path = db_path
+        self.engine = create_engine(f"sqlite:///{self.db_path}")
         self.SessionFactory = sessionmaker(bind=self.engine)
 
         # Create tables if they don't exist
@@ -206,8 +207,8 @@ class DatabaseManager:
                 
                 # Check if user has exceeded limit
                 if current_usage >= monthly_limit:
-                    print(f"🔴 CRITICAL: Pro user {pro_key} has exceeded monthly limit ({monthly_limit}) in {current_month}")
-                    print(f"🔴 FALLBACK: Switching to DeepSeek V3 for this user")
+                    print(f" CRITICAL: Pro user {pro_key} has exceeded monthly limit ({monthly_limit}) in {current_month}")
+                    print(f" FALLBACK: Switching to DeepSeek V3 for this user")
                     return {
                         'allowed': False,
                         'current_usage': current_usage,
@@ -218,8 +219,8 @@ class DatabaseManager:
                 
                 # Log warning at 300 requests
                 if current_usage == warning_threshold:
-                    print(f"🚨 WARNING: Pro user {pro_key} has reached {warning_threshold} Sonnet 4 requests in {current_month}!")
-                    print(f"🚨 ALERT: Monitor this user closely - approaching monthly limit of {monthly_limit}")
+                    print(f" WARNING: Pro user {pro_key} has reached {warning_threshold} Sonnet 4 requests in {current_month}!")
+                    print(f" ALERT: Monitor this user closely - approaching monthly limit of {monthly_limit}")
                 
                 # Increment usage
                 usage_record.sonnet_requests += 1

@@ -10,6 +10,10 @@ echo "Starting Render.com build process..."
 echo "Upgrading pip..."
 pip install --upgrade pip
 
+# Install psutil
+echo "Installing psutil..."
+pip install psutil
+
 # Install the application
 echo "Installing application dependencies..."
 pip install .

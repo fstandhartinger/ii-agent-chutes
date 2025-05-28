@@ -106,6 +106,8 @@ export default function Home() {
   const [timeoutCheckInterval, setTimeoutCheckInterval] = useState<
     NodeJS.Timeout | null
   >(null);
+  const [shouldShakeConnectionIndicator, setShouldShakeConnectionIndicator] = useState(false);
+  const [connectionTimeoutTimer, setConnectionTimeoutTimer] = useState<NodeJS.Timeout | null>(null);
 
   const isReplayMode = useMemo(() => !!searchParams.get("id"), [searchParams]);
   const { selectedModel, setSelectedModel } = useChutes();
@@ -338,6 +340,17 @@ export default function Home() {
   };
 
   const handleExampleClick = async (text: string, isDeepResearch: boolean, fileUrl?: string) => {
+    // Check if connection is ready
+    if (!isSocketConnected || !isSocketReady) {
+      // Trigger shake animation
+      setShouldShakeConnectionIndicator(true);
+      setTimeout(() => setShouldShakeConnectionIndicator(false), 1000); // Stop shaking after 1 second
+      
+      // Show a toast message
+      toast.info("Please wait while we establish a connection to the server...");
+      return;
+    }
+    
     // Set the question text
     setCurrentQuestion(text);
     
@@ -1099,6 +1112,24 @@ export default function Home() {
 
   const connectWebSocket = () => {
     console.log("WEBSOCKET_DEBUG: Starting WebSocket connection process");
+    
+    // Clear any existing connection timeout timer
+    if (connectionTimeoutTimer) {
+      clearTimeout(connectionTimeoutTimer);
+    }
+    
+    // Set up auto-refresh timer (7 seconds)
+    const timer = setTimeout(() => {
+      if (!isSocketReady) {
+        console.log("WEBSOCKET_DEBUG: Connection timeout after 7 seconds, refreshing page...");
+        toast.error("Connection timeout. Refreshing page...");
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      }
+    }, 7000);
+    setConnectionTimeoutTimer(timer);
+    
     // Connect to WebSocket when the component mounts
     let wsUrl = `${process.env.NEXT_PUBLIC_API_URL}/ws`.replace("http://", "ws://").replace("https://", "wss://");
 
@@ -1166,6 +1197,13 @@ export default function Home() {
         if (data.type === "connection_established" || data.type === "workspace_info") {
           console.log("WEBSOCKET_DEBUG: Server ready signal received, setting isSocketReady=true");
           setIsSocketReady(true);
+          
+          // Clear the connection timeout timer since connection is successful
+          if (connectionTimeoutTimer) {
+            clearTimeout(connectionTimeoutTimer);
+            setConnectionTimeoutTimer(null);
+          }
+          
           // Process any queued messages
           setTimeout(() => {
             processMessageQueue();
@@ -1225,6 +1263,11 @@ export default function Home() {
       // Clear timeout check if active
       if (timeoutCheckInterval) {
         clearInterval(timeoutCheckInterval);
+      }
+      
+      // Clear connection timeout timer
+      if (connectionTimeoutTimer) {
+        clearTimeout(connectionTimeoutTimer);
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1517,7 +1560,9 @@ export default function Home() {
                 {/* Connection Status Indicator */}
                 {!isSocketReady && (
                   <motion.div
-                    className="mt-4 flex items-center justify-center gap-2 text-sm text-muted-foreground"
+                    className={`mt-4 flex items-center justify-center gap-2 text-sm text-muted-foreground ${
+                      shouldShakeConnectionIndicator ? 'animate-shake' : ''
+                    }`}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.3 }}

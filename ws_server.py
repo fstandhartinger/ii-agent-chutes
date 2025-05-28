@@ -60,6 +60,7 @@ import tempfile
 from urllib.parse import quote
 import subprocess
 import requests
+import time
 
 MAX_OUTPUT_TOKENS_PER_TURN = 32768
 MAX_TURNS = 200
@@ -148,10 +149,15 @@ async def websocket_endpoint(websocket: WebSocket):
         active_connections.add(websocket)
         logger.info(f"BACKEND_WS_DEBUG: WebSocket connection {connection_id} accepted from {client_ip}. Active connections: {len(active_connections)}")
 
+        # Measure workspace creation time
+        start_time = time.time()
+        
         workspace_manager, session_uuid = create_workspace_manager_for_connection(
             global_args.workspace, global_args.use_container_workspace
         )
-        logger.info(f"BACKEND_WS_DEBUG: Workspace manager created for connection {connection_id}: {workspace_manager}")
+        
+        workspace_creation_time = time.time() - start_time
+        logger.info(f"BACKEND_WS_DEBUG: Workspace manager created for connection {connection_id} in {workspace_creation_time:.3f} seconds: {workspace_manager}")
 
         # Check if we should use Chutes LLM instead of Anthropic
         use_chutes = websocket.query_params.get("use_chutes", "false").lower() == "true"
@@ -575,13 +581,17 @@ def create_agent_for_connection(
     db_manager = DatabaseManager()
 
     # Create a new session and get its workspace directory
+    db_start_time = time.time()
+    
     actual_session_id, actual_workspace_path = db_manager.create_session(
         device_id=device_id,
         session_uuid=session_id,
         workspace_path=workspace_manager.root,
     )
+    
+    db_creation_time = time.time() - db_start_time
     logger_for_agent_logs.info(
-        f"Using session {actual_session_id} with workspace at {actual_workspace_path}"
+        f"Using session {actual_session_id} with workspace at {actual_workspace_path} (DB operation took {db_creation_time:.3f} seconds)"
     )
 
     # Initialize LLM client
