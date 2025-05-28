@@ -109,6 +109,9 @@ def create_cors_response(content: dict, status_code: int = 200):
 # Active WebSocket connections
 active_connections: Set[WebSocket] = set()
 
+# Connection limit to prevent resource exhaustion
+MAX_CONCURRENT_CONNECTIONS = 50
+
 # Active agents for each connection
 active_agents: Dict[WebSocket, BaseAgent] = {}
 
@@ -125,15 +128,25 @@ global_args = None
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     """WebSocket endpoint for real-time communication with the client."""
-    await websocket.accept()
-    active_connections.add(websocket)
-
-    workspace_manager, session_uuid = create_workspace_manager_for_connection(
-        global_args.workspace, global_args.use_container_workspace
-    )
-    print(f"Workspace manager created: {workspace_manager}")
-
+    client_ip = websocket.client.host if websocket.client else "unknown"
+    connection_id = id(websocket)
+    
+    # Check connection limit before accepting
+    if len(active_connections) >= MAX_CONCURRENT_CONNECTIONS:
+        logger.warning(f"Connection limit reached ({MAX_CONCURRENT_CONNECTIONS}). Rejecting new connection from {client_ip}")
+        await websocket.close(code=1013, reason="Server overloaded - too many concurrent connections")
+        return
+    
     try:
+        await websocket.accept()
+        active_connections.add(websocket)
+        logger.info(f"WebSocket connection {connection_id} accepted from {client_ip}. Active connections: {len(active_connections)}")
+
+        workspace_manager, session_uuid = create_workspace_manager_for_connection(
+            global_args.workspace, global_args.use_container_workspace
+        )
+        logger.info(f"Workspace manager created for connection {connection_id}: {workspace_manager}")
+
         # Check if we should use Chutes LLM instead of Anthropic
         use_chutes = websocket.query_params.get("use_chutes", "false").lower() == "true"
         
@@ -144,14 +157,24 @@ async def websocket_endpoint(websocket: WebSocket):
                 content={
                     "message": "Connected to Agent WebSocket Server",
                     "workspace_path": str(workspace_manager.root),
+                    "connection_id": str(connection_id),
+                    "active_connections": len(active_connections),
                 },
             ).model_dump()
         )
 
         # Process messages from the client
         while True:
-            # Receive and parse message
-            data = await websocket.receive_text()
+            try:
+                # Add timeout to prevent hanging connections
+                data = await asyncio.wait_for(websocket.receive_text(), timeout=300.0)  # 5 minute timeout
+            except asyncio.TimeoutError:
+                logger.warning(f"WebSocket timeout for connection {connection_id} from {client_ip}. Active connections: {len(active_connections)}")
+                break
+            except Exception as e:
+                logger.error(f"Error receiving WebSocket message from connection {connection_id} ({client_ip}): {e}. Connection state: {websocket.client_state.name if hasattr(websocket, 'client_state') else 'unknown'}")
+                break
+                
             try:
                 message = json.loads(data)
                 msg_type = message.get("type")
@@ -178,20 +201,40 @@ async def websocket_endpoint(websocket: WebSocket):
                 elif msg_type == "query":
                     # Check if there's an active task for this connection
                     if websocket in active_tasks and not active_tasks[websocket].done():
+                        logger.warning(f"Query rejected for connection {connection_id}: already processing a query")
                         await websocket.send_json(
                             RealtimeEvent(
                                 type=EventType.ERROR,
                                 content={
-                                    "message": "A query is already being processed"
+                                    "message": "A query is already being processed",
+                                    "error_code": "QUERY_IN_PROGRESS",
+                                    "user_friendly": "Please wait for the current request to complete before sending a new one.",
                                 },
                             ).model_dump()
                         )
                         continue
 
+                    # Check if agent is initialized for this connection
+                    if websocket not in active_agents:
+                        logger.warning(f"Query received for connection {connection_id} but agent not initialized. Auto-initializing...")
+                        # Auto-initialize agent if not present
+                        agent = create_agent_for_connection(
+                            session_uuid, workspace_manager, websocket, {}
+                        )
+                        active_agents[websocket] = agent
+
+                        # Start message processor for this connection
+                        message_processor = agent.start_message_processing()
+                        message_processors[websocket] = message_processor
+                        
+                        logger.info(f"Agent auto-initialized for connection {connection_id}")
+
                     # Process a query to the agent
                     user_input = content.get("text", "")
                     resume = content.get("resume", False)
                     files = content.get("files", [])
+
+                    logger.info(f"Processing query for connection {connection_id}: '{user_input[:100]}{'...' if len(user_input) > 100 else ''}'")
 
                     # Send acknowledgment
                     await websocket.send_json(
@@ -219,10 +262,15 @@ async def websocket_endpoint(websocket: WebSocket):
                             ).model_dump()
                         )
                     else:
+                        logger.error(f"Workspace not initialized for connection {connection_id}")
                         await websocket.send_json(
                             RealtimeEvent(
                                 type=EventType.ERROR,
-                                content={"message": "Workspace not initialized"},
+                                content={
+                                    "message": "Workspace not initialized",
+                                    "error_code": "WORKSPACE_NOT_INITIALIZED",
+                                    "user_friendly": "There was an issue setting up your workspace. Please refresh the page and try again.",
+                                },
                             ).model_dump()
                         )
 
@@ -235,6 +283,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 elif msg_type == "cancel":
                     # Cancel the current agent task if one exists
                     if websocket in active_tasks and not active_tasks[websocket].done():
+                        logger.info(f"Cancelling query for connection {connection_id}")
                         active_tasks[websocket].cancel()
                         await websocket.send_json(
                             RealtimeEvent(
@@ -246,41 +295,64 @@ async def websocket_endpoint(websocket: WebSocket):
                         await websocket.send_json(
                             RealtimeEvent(
                                 type=EventType.ERROR,
-                                content={"message": "No active query to cancel"},
+                                content={
+                                    "message": "No active query to cancel",
+                                    "error_code": "NO_ACTIVE_QUERY",
+                                    "user_friendly": "There is no active request to cancel.",
+                                },
                             ).model_dump()
                         )
 
                 else:
                     # Unknown message type
+                    logger.warning(f"Unknown message type '{msg_type}' from connection {connection_id}")
                     await websocket.send_json(
                         RealtimeEvent(
                             type=EventType.ERROR,
-                            content={"message": f"Unknown message type: {msg_type}"},
+                            content={
+                                "message": f"Unknown message type: {msg_type}",
+                                "error_code": "UNKNOWN_MESSAGE_TYPE",
+                                "user_friendly": "The request format was not recognized. Please refresh the page and try again.",
+                            },
                         ).model_dump()
                     )
 
-            except json.JSONDecodeError:
+            except json.JSONDecodeError as e:
+                logger.error(f"JSON decode error from connection {connection_id}: {e}")
                 await websocket.send_json(
                     RealtimeEvent(
-                        type=EventType.ERROR, content={"message": "Invalid JSON format"}
+                        type=EventType.ERROR, 
+                        content={
+                            "message": "Invalid JSON format",
+                            "error_code": "INVALID_JSON",
+                            "user_friendly": "The request format was invalid. Please refresh the page and try again.",
+                        }
                     ).model_dump()
                 )
             except Exception as e:
-                logger.error(f"Error processing message: {str(e)}")
+                logger.error(f"Error processing message from connection {connection_id}: {str(e)}")
+                import traceback
+                traceback.print_exc()
                 await websocket.send_json(
                     RealtimeEvent(
                         type=EventType.ERROR,
-                        content={"message": f"Error processing request: {str(e)}"},
+                        content={
+                            "message": f"Error processing request: {str(e)}",
+                            "error_code": "PROCESSING_ERROR",
+                            "user_friendly": "There was an error processing your request. This might be due to high server load. Please try again in a moment.",
+                        },
                     ).model_dump()
                 )
 
     except WebSocketDisconnect:
         # Handle disconnection
-        logger.info("Client disconnected")
+        logger.info(f"Client {connection_id} ({client_ip}) disconnected normally. Active connections: {len(active_connections) - 1}")
         cleanup_connection(websocket)
     except Exception as e:
         # Handle other exceptions
-        logger.error(f"WebSocket error: {str(e)}")
+        logger.error(f"WebSocket error for connection {connection_id} ({client_ip}): {str(e)}. Active connections: {len(active_connections)}")
+        import traceback
+        traceback.print_exc()
         cleanup_connection(websocket)
 
 
@@ -326,28 +398,64 @@ async def run_agent_async(
 
 def cleanup_connection(websocket: WebSocket):
     """Clean up resources associated with a websocket connection."""
-    # Remove from active connections
-    if websocket in active_connections:
-        active_connections.remove(websocket)
+    try:
+        logger.info(f"Cleaning up connection for websocket {id(websocket)}")
+        
+        # Remove from active connections
+        if websocket in active_connections:
+            active_connections.remove(websocket)
+            logger.info(f"Removed websocket {id(websocket)} from active connections")
 
-    # Set websocket to None in the agent but keep the message processor running
-    if websocket in active_agents:
-        agent = active_agents[websocket]
-        agent.websocket = (
-            None  # This will prevent sending to websocket but keep processing
-        )
-        # Don't cancel the message processor - it will continue saving to database
+        # Cancel any running tasks first
+        if websocket in active_tasks:
+            task = active_tasks[websocket]
+            if not task.done():
+                logger.info(f"Cancelling active task for websocket {id(websocket)}")
+                task.cancel()
+            del active_tasks[websocket]
+
+        # Handle message processors
         if websocket in message_processors:
-            del message_processors[websocket]  # Just remove the reference
+            processor = message_processors[websocket]
+            if not processor.done():
+                logger.info(f"Cancelling message processor for websocket {id(websocket)}")
+                processor.cancel()
+            del message_processors[websocket]
 
-    # Cancel any running tasks
-    if websocket in active_tasks and not active_tasks[websocket].done():
-        active_tasks[websocket].cancel()
-        del active_tasks[websocket]
+        # Clean up agent resources
+        if websocket in active_agents:
+            agent = active_agents[websocket]
+            try:
+                # Set websocket to None to prevent further sending
+                agent.websocket = None
+                logger.info(f"Set agent websocket to None for websocket {id(websocket)}")
+                
+                # Close any open file handles or resources in the agent
+                if hasattr(agent, 'cleanup'):
+                    agent.cleanup()
+                    
+            except Exception as e:
+                logger.error(f"Error cleaning up agent for websocket {id(websocket)}: {e}")
+            
+            # Remove agent from active agents
+            del active_agents[websocket]
+            logger.info(f"Removed agent for websocket {id(websocket)}")
 
-    # Remove agent for this connection
-    if websocket in active_agents:
-        del active_agents[websocket]
+        # Force close the websocket connection if it's still open
+        try:
+            if websocket.client_state.name != "DISCONNECTED":
+                logger.info(f"Force closing websocket {id(websocket)}")
+                # Don't await this as it might hang
+                asyncio.create_task(websocket.close())
+        except Exception as e:
+            logger.error(f"Error force closing websocket {id(websocket)}: {e}")
+
+        logger.info(f"Cleanup completed for websocket {id(websocket)}")
+        
+    except Exception as e:
+        logger.error(f"Error during connection cleanup for websocket {id(websocket)}: {e}")
+        import traceback
+        traceback.print_exc()
 
 
 def create_agent_for_connection(
@@ -544,6 +652,34 @@ def setup_workspace(app, workspace_path):
         )
 
 
+async def periodic_cleanup():
+    """Periodic cleanup task to remove stale connections and resources."""
+    while True:
+        try:
+            await asyncio.sleep(60)  # Run every minute
+            
+            # Check for stale connections
+            stale_connections = []
+            for websocket in list(active_connections):
+                try:
+                    if websocket.client_state.name == "DISCONNECTED":
+                        stale_connections.append(websocket)
+                except Exception:
+                    # If we can't check the state, consider it stale
+                    stale_connections.append(websocket)
+            
+            # Clean up stale connections
+            for websocket in stale_connections:
+                logger.info(f"Cleaning up stale connection {id(websocket)}")
+                cleanup_connection(websocket)
+            
+            if stale_connections:
+                logger.info(f"Cleaned up {len(stale_connections)} stale connections. Active: {len(active_connections)}")
+                
+        except Exception as e:
+            logger.error(f"Error in periodic cleanup: {e}")
+
+
 def main():
     """Main entry point for the WebSocket server."""
     global global_args
@@ -576,9 +712,21 @@ def main():
 
     setup_workspace(app, args.workspace)
 
+    # Start periodic cleanup task
+    @app.on_event("startup")
+    async def startup_event():
+        asyncio.create_task(periodic_cleanup())
+        logger.info("Started periodic cleanup task")
+
     # Start the FastAPI server
     logger.info(f"Starting WebSocket server on {args.host}:{args.port}")
-    uvicorn.run(app, host=args.host, port=args.port)
+    try:
+        uvicorn.run(app, host=args.host, port=args.port)
+    except KeyboardInterrupt:
+        logger.info("Server shutdown requested")
+    except Exception as e:
+        logger.error(f"Server error: {e}")
+        raise
 
 
 @app.post("/api/upload")
@@ -1349,6 +1497,75 @@ async def run_gaia_benchmark(request: Request):
         import traceback
         traceback.print_exc()
         return create_cors_response({"status": "error", "message": f"Error running GAIA benchmark: {str(e)}"}, 500)
+
+
+@app.post("/api/generate-summary")
+async def generate_summary_endpoint(request: Request):
+    """Generate a short task summary using Chutes API."""
+    try:
+        data = await request.json()
+        message = data.get("message")
+        model_id = data.get("modelId", "deepseek-ai/DeepSeek-V3-0324")
+
+        if not message:
+            return create_cors_response({"error": "Message is required"}, 400)
+
+        # Get Chutes API key
+        api_key = os.getenv("CHUTES_API_KEY")
+        if not api_key:
+            logger.error("CHUTES_API_KEY not configured for summary generation")
+            return create_cors_response({"error": "API key not configured"}, 500)
+
+        # Call Chutes API
+        try:
+            response = requests.post(
+                "https://api.chutes.ai/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": model_id,
+                    "messages": [
+                        {
+                            "role": "system",
+                            "content": "You are a helpful assistant that creates very short, concise summaries of user tasks. Your summaries should be 3-7 words maximum, capturing the essence of what the user wants to do. Be specific but brief. You must respond with a JSON object in the format: {\"summary\": \"your short summary here\"}"
+                        },
+                        {
+                            "role": "user",
+                            "content": f"Create a very short summary (3-7 words) of this task: \"{message}\""
+                        }
+                    ],
+                    "response_format": {"type": "json_object"},
+                    "temperature": 0.3,
+                    "max_tokens": 50,
+                },
+                timeout=30
+            )
+
+            if response.status_code == 200:
+                data = response.json()
+                content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+                
+                summary = "Task in progress"
+                try:
+                    parsed = json.loads(content)
+                    summary = parsed.get("summary", "Task in progress")
+                except json.JSONDecodeError:
+                    logger.warning(f"Failed to parse summary JSON: {content}")
+                
+                return create_cors_response({"summary": summary})
+            else:
+                logger.error(f"Chutes API error: {response.status_code} {response.text}")
+                return create_cors_response({"error": "Failed to generate summary"}, response.status_code)
+
+        except requests.RequestException as e:
+            logger.error(f"Request error calling Chutes API: {e}")
+            return create_cors_response({"error": "Failed to connect to summary service"}, 500)
+
+    except Exception as e:
+        logger.error(f"Error generating summary: {str(e)}")
+        return create_cors_response({"error": "Internal server error"}, 500)
 
 
 if __name__ == "__main__":

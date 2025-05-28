@@ -189,3 +189,7 @@ data/
 output/
 
 .vscode/
+render_key
+render_key.pub
+events.db.backup
+generate_ssh_key.py

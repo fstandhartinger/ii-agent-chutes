@@ -96,7 +96,7 @@ export default function Home() {
   // Generate task summary using LLM
   const generateTaskSummary = async (firstUserMessage: string) => {
     try {
-      const response = await fetch('/api/generate-summary', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/generate-summary`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -111,6 +111,7 @@ export default function Home() {
         const data = await response.json();
         setTaskSummary(data.summary || "Task in progress");
       } else {
+        console.error("Error generating task summary:", response.statusText);
         setTaskSummary("Task in progress");
       }
     } catch (error) {
@@ -373,6 +374,54 @@ export default function Home() {
     }, fileUrl ? 1000 : 0); // Wait a bit if we're uploading a file
   };
 
+  // Enhanced error handling function
+  const handleWebSocketError = (error: Event | Error | unknown, context: string) => {
+    console.error(`WebSocket ${context}:`, error);
+    
+    // Log detailed information for debugging
+    console.group(`🔍 WebSocket Error Details - ${context}`);
+    console.log('Error object:', error);
+    console.log('Socket state:', socket?.readyState);
+    console.log('Is connected:', isSocketConnected);
+    console.log('Active connections on server:', 'unknown'); // Will be provided by server
+    console.log('Current model:', selectedModel);
+    console.log('Device ID:', deviceId);
+    console.log('Is loading:', isLoading);
+    console.log('Messages count:', messages.length);
+    console.groupEnd();
+    
+    // Determine user-friendly message based on context
+    let userMessage = "";
+    let shouldReload = false;
+    
+    if (context === "connection_error") {
+      userMessage = "Connection failed. This might be due to high server load with many users. Please refresh the page and try again.";
+      shouldReload = true;
+    } else if (context === "connection_closed") {
+      if (isLoading && messages.length > 0) {
+        userMessage = "Sorry, a new version was just released. This caused the current run to be interrupted. We're working extremely hard on this software. Sorry and thank you for your understanding!";
+      } else {
+        userMessage = "Connection lost. This might be due to high server load. Please refresh the page and try again.";
+        shouldReload = true;
+      }
+    } else {
+      userMessage = "Connection issue detected. Please refresh the page and try again.";
+      shouldReload = true;
+    }
+    
+    // Show user-friendly toast
+    toast.error(userMessage);
+    
+    // Optionally suggest reload
+    if (shouldReload && !isLoading) {
+      setTimeout(() => {
+        toast.info("💡 Tip: Refreshing the page often helps with connection issues", {
+          duration: 5000,
+        });
+      }, 2000);
+    }
+  };
+
   const handleQuestionSubmit = async (newQuestion: string) => {
     if (!newQuestion.trim() || isLoading) return;
 
@@ -410,14 +459,39 @@ export default function Home() {
       // Don't generate task summary immediately - wait for first LLM response
     }
 
+    // Enhanced WebSocket connection check with detailed error handling
     if (!socket || !isSocketConnected || socket.readyState !== WebSocket.OPEN) {
-      toast.error("WebSocket connection is not open. Please try again.");
+      console.error("🚫 WebSocket not ready for sending message");
+      console.group("🔍 WebSocket State Details");
+      console.log("Socket exists:", !!socket);
+      console.log("Is connected flag:", isSocketConnected);
+      console.log("Socket ready state:", socket?.readyState);
+      console.log("WebSocket.OPEN constant:", WebSocket.OPEN);
+      console.log("Ready state meanings:", {
+        0: "CONNECTING",
+        1: "OPEN", 
+        2: "CLOSING",
+        3: "CLOSED"
+      });
+      console.groupEnd();
+      
+      // User-friendly error message
+      toast.error("Connection not ready. This might be due to high server load with many users. Please refresh the page and try again.");
+      
+      // Additional helpful tip
+      setTimeout(() => {
+        toast.info("💡 If the problem persists, the server might be experiencing high traffic. Please try again in a moment.", {
+          duration: 6000,
+        });
+      }, 2000);
+      
       setIsLoading(false);
       return;
     }
 
-    // send init agent event when first query
-    if (!sessionId) {
+    try {
+      // Always send init agent event for new queries (even in loaded sessions)
+      // This ensures the agent is properly initialized for the current connection
       socket.send(
         JSON.stringify({
           type: "init_agent",
@@ -432,19 +506,23 @@ export default function Home() {
           },
         })
       );
-    }
 
-    // Send the query using the existing socket connection
-    socket.send(
-      JSON.stringify({
-        type: "query",
-        content: {
-          text: newQuestion,
-          resume: messages.length > 0,
-          files: uploadedFiles?.map((file) => file.startsWith('/') ? file.substring(1) : file),
-        },
-      })
-    );
+      // Send the query using the existing socket connection
+      socket.send(
+        JSON.stringify({
+          type: "query",
+          content: {
+            text: newQuestion,
+            resume: messages.length > 0,
+            files: uploadedFiles?.map((file) => file.startsWith('/') ? file.substring(1) : file),
+          },
+        })
+      );
+    } catch (error) {
+      console.error("Error sending message:", error);
+      toast.error("Failed to send message. Please refresh the page and try again.");
+      setIsLoading(false);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -871,6 +949,8 @@ export default function Home() {
 
       case "error":
         const errorMessage = data.content.message as string;
+        const errorCode = data.content.error_code as string;
+        const userFriendlyMessage = data.content.user_friendly as string;
         
         // Clear timeout check
         if (timeoutCheckInterval) {
@@ -878,11 +958,22 @@ export default function Home() {
           setTimeoutCheckInterval(null);
         }
         
+        // Log detailed error information for debugging
+        console.group("🚨 Server Error Details");
+        console.log("Error message:", errorMessage);
+        console.log("Error code:", errorCode);
+        console.log("User friendly message:", userFriendlyMessage);
+        console.log("Current state:", { isLoading, messagesLength: messages.length });
+        console.groupEnd();
+        
+        // Use user-friendly message if available, otherwise fall back to technical message
+        const displayMessage = userFriendlyMessage || errorMessage;
+        
         // Check if this might be a deployment-related error
         if (errorMessage.includes("Error running agent") && isLoading && messages.length > 0) {
           toast.error("Sorry, a new version was just released. This caused the current run to be interrupted. We're working extremely hard on this software. Sorry and thank you for your understanding!");
         } else {
-          toast.error(errorMessage);
+          toast.error(displayMessage);
           
           // Show upgrade prompt for errors if using free model
           if (selectedModel.id !== "claude-sonnet-4-20250514" && !hasProAccess() && isLoading) {
@@ -948,7 +1039,7 @@ export default function Home() {
     const ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {
-      console.log("WebSocket connection established");
+      console.log("✅ WebSocket connection established");
       setIsSocketConnected(true);
       // Request workspace info immediately after connection
       ws.send(
@@ -965,30 +1056,31 @@ export default function Home() {
         handleEvent({ ...data, id: Date.now().toString() });
       } catch (error) {
         console.error("Error parsing WebSocket data:", error);
+        handleWebSocketError(error, "message_parsing");
       }
     };
 
     ws.onerror = (error) => {
-      console.log("WebSocket error:", error);
-      
-      // Check if this might be due to a deployment
-      if (isLoading && messages.length > 0) {
-        toast.error("Sorry, a new version was just released. This caused the current run to be interrupted. We're working extremely hard on this software. Sorry and thank you for your understanding!");
-      } else {
-        toast.error("WebSocket connection error");
-      }
+      console.error("❌ WebSocket error event:", error);
+      handleWebSocketError(error, "connection_error");
       setIsSocketConnected(false);
     };
 
     ws.onclose = (event) => {
-      console.log("WebSocket connection closed", event);
+      console.log("🔌 WebSocket connection closed", event);
+      console.group("🔍 Close Event Details");
+      console.log("Close code:", event.code);
+      console.log("Close reason:", event.reason);
+      console.log("Was clean:", event.wasClean);
+      console.log("Close code meanings:", {
+        1000: "Normal closure",
+        1001: "Going away",
+        1006: "Abnormal closure",
+        1013: "Service overloaded"
+      });
+      console.groupEnd();
       
-      // Check if this might be due to a deployment during an active session
-      if (isLoading && messages.length > 0 && (event.code === 1006 || event.code === 1001)) {
-        toast.error("Sorry, a new version was just released. This caused the current run to be interrupted. We're working extremely hard on this software. Sorry and thank you for your understanding!");
-        setIsLoading(false); // Stop the loading state
-      }
-      
+      handleWebSocketError(event, "connection_closed");
       setSocket(null);
       setIsSocketConnected(false);
     };
