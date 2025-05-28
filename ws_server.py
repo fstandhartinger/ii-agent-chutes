@@ -1019,22 +1019,23 @@ async def get_sessions_by_device_id(device_id: str):
             if sessions:
                 session_ids = [s["id"] for s in sessions]
                 
+                # Build placeholders for the IN clause
+                placeholders = ','.join(['?' for _ in session_ids])
+                
                 # Get first user message for each session using a more efficient query
-                first_messages_query = text("""
+                first_messages_query = text(f"""
                 SELECT 
                     session_id,
                     event_payload,
                     MIN(timestamp) as first_timestamp
                 FROM event
-                WHERE session_id IN :session_ids
+                WHERE session_id IN ({placeholders})
                 AND event_type = 'user_message'
                 GROUP BY session_id
                 """)
                 
-                result = session.execute(
-                    first_messages_query, 
-                    {"session_ids": tuple(session_ids)}
-                )
+                # Execute with positional parameters
+                result = session.execute(first_messages_query, session_ids)
                 
                 # Create a map of session_id to first message
                 first_messages_map = {}
@@ -1892,31 +1893,31 @@ async def cleanup_data():
 @app.get("/admin/download_data", dependencies=[Depends(verify_admin_key)])
 async def download_data():
     """Download server data as ZIP file (excluding workspaces due to size)"""
-    with tempfile.TemporaryDirectory() as temp_dir:
-        zip_filename = f"server_data_backup_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.zip"
-        zip_filepath = Path(temp_dir) / zip_filename
+    # Create a temporary file instead of directory to avoid premature deletion
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.zip')
+    zip_filename = f"server_data_backup_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.zip"
+    
+    try:
+        with zipfile.ZipFile(temp_file.name, 'w', zipfile.ZIP_DEFLATED) as zf:
+            # Add database file
+            db_manager = DatabaseManager()
+            actual_db_path = Path(db_manager.db_path)
+            if actual_db_path.exists():
+                zf.write(actual_db_path, arcname=actual_db_path.name)
+                logger.info(f"Admin Download: Added database {actual_db_path.name} to zip.")
 
-        try:
-            with zipfile.ZipFile(zip_filepath, 'w', zipfile.ZIP_DEFLATED) as zf:
-                # Add database file
-                db_manager = DatabaseManager()
-                actual_db_path = Path(db_manager.db_path)
-                if actual_db_path.exists():
-                    zf.write(actual_db_path, arcname=actual_db_path.name)
-                    logger.info(f"Admin Download: Added database {actual_db_path.name} to zip.")
+            # Skip workspace folder to reduce size and server load
+            # Workspaces need to be backed up separately due to their large size
+            logger.info("Admin Download: Skipping workspace folder (too large for direct download)")
 
-                # Skip workspace folder to reduce size and server load
-                # Workspaces need to be backed up separately due to their large size
-                logger.info("Admin Download: Skipping workspace folder (too large for direct download)")
-
-                # Add log files
-                log_file_path = Path(PERSISTENT_DATA_ROOT) / "agent_logs.txt"
-                if log_file_path.exists():
-                    zf.write(log_file_path, arcname=log_file_path.name)
-                    logger.info(f"Admin Download: Added log file to zip.")
-                
-                # Add a README about the missing workspaces
-                readme_content = f"""Server Data Backup - {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC
+            # Add log files
+            log_file_path = Path(PERSISTENT_DATA_ROOT) / "agent_logs.txt"
+            if log_file_path.exists():
+                zf.write(log_file_path, arcname=log_file_path.name)
+                logger.info(f"Admin Download: Added log file to zip.")
+            
+            # Add a README about the missing workspaces
+            readme_content = f"""Server Data Backup - {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC
 
 This backup contains:
 - Database file (agent.db)
@@ -1930,18 +1931,24 @@ To backup workspaces, use a different method such as:
 - Incremental sync tools
 - Cloud storage solutions
 """
-                readme_path = Path(temp_dir) / "README.txt"
-                readme_path.write_text(readme_content)
-                zf.write(readme_path, arcname="README.txt")
-            
-            return FileResponse(
-                path=str(zip_filepath),
-                filename=zip_filename,
-                media_type='application/zip'
-            )
-        except Exception as e:
-            logger.error(f"Error creating data zip for download: {e}")
-            raise HTTPException(status_code=500, detail=f"Failed to create data zip: {str(e)}")
+            # Write README directly to zip without creating a temp file
+            zf.writestr("README.txt", readme_content)
+        
+        # Close the temp file to ensure all data is written
+        temp_file.close()
+        
+        return FileResponse(
+            path=temp_file.name,
+            filename=zip_filename,
+            media_type='application/zip',
+            background=lambda: os.unlink(temp_file.name)  # Clean up after response
+        )
+    except Exception as e:
+        # Clean up on error
+        if os.path.exists(temp_file.name):
+            os.unlink(temp_file.name)
+        logger.error(f"Error creating data zip for download: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to create data zip: {str(e)}")
 
 
 if __name__ == "__main__":
