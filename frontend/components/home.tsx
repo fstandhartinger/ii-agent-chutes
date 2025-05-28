@@ -1,7 +1,10 @@
 "use client";
 
 // Import ohne Namenskollision
-import TerminalComponent, { TerminalRef } from "./terminal";
+const Browser = dynamic(() => import("@/components/browser"), { ssr: false });
+const WebsiteViewer = dynamic(() => import("./website-viewer"), { ssr: false });
+const TerminalComponent = dynamic(() => import("./terminal"), { ssr: false });
+import type { TerminalRef } from "./terminal";
 import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
 import {
   Code,
@@ -27,8 +30,8 @@ import ModelPicker from "@/components/model-picker";
 import ProUpgradeButton from "@/components/pro-upgrade-button";
 import { hasProAccess, getProKey } from "@/utils/pro-utils";
 
-import Browser from "@/components/browser";
-import CodeEditor from "@/components/code-editor";
+import dynamic from "next/dynamic";
+const CodeEditor = dynamic(() => import("@/components/code-editor"), { ssr: false });
 
 // Message type for WebSocket communication
 interface WebSocketMessage {
@@ -50,9 +53,9 @@ import {
   TAB,
   TOOL,
 } from "@/typings/agent";
-import ChatMessage from "./chat-message";
-import ImageBrowser from "./image-browser";
-import WebsiteViewer from "./website-viewer";
+const ChatMessage = dynamic(() => import("./chat-message"), { ssr: false });
+const ImageBrowser = dynamic(() => import("./image-browser"), { ssr: false });
+
 import InstallPrompt from "./install-prompt";
 import ConsentDialog, { hasUserConsented, setUserConsent } from "./consent-dialog";
 import CookieBanner from "./cookie-banner";
