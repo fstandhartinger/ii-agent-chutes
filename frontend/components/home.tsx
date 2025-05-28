@@ -61,6 +61,9 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const [isSocketConnected, setIsSocketConnected] = useState(false);
+  const [isSocketReady, setIsSocketReady] = useState(false); // NEW: Server confirmed ready
+  const [messageQueue, setMessageQueue] = useState<any[]>([]); // NEW: Queue for messages
+  const [retryAttempt, setRetryAttempt] = useState(0); // NEW: Track retry attempts
   const [activeTab, setActiveTab] = useState(TAB.BROWSER);
   const [currentActionData, setCurrentActionData] = useState<ActionStep>();
   const [activeFileCodeEditor, setActiveFileCodeEditor] = useState("");
@@ -87,8 +90,12 @@ export default function Home() {
   const [showNativeToolToggle, setShowNativeToolToggle] = useState(false);
   const [showConsentDialog, setShowConsentDialog] = useState(false);
   const [pendingQuestion, setPendingQuestion] = useState<string>("");
-  const [showUpgradePrompt, setShowUpgradePrompt] = useState<"success" | "error" | "timeout" | null>(null);
-  const [timeoutCheckInterval, setTimeoutCheckInterval] = useState<NodeJS.Timeout | null>(null);
+  const [showUpgradePrompt, setShowUpgradePrompt] = useState<
+    "success" | "error" | "timeout" | null
+  >(null);
+  const [timeoutCheckInterval, setTimeoutCheckInterval] = useState<
+    NodeJS.Timeout | null
+  >(null);
 
   const isReplayMode = useMemo(() => !!searchParams.get("id"), [searchParams]);
   const { selectedModel, setSelectedModel } = useChutes();
@@ -376,18 +383,21 @@ export default function Home() {
 
   // Enhanced error handling function
   const handleWebSocketError = (error: Event | Error | unknown, context: string) => {
-    console.error(`WebSocket ${context}:`, error);
+    console.error(`WEBSOCKET_DEBUG: WebSocket ${context}:`, error);
     
     // Log detailed information for debugging
-    console.group(`🔍 WebSocket Error Details - ${context}`);
-    console.log('Error object:', error);
-    console.log('Socket state:', socket?.readyState);
-    console.log('Is connected:', isSocketConnected);
-    console.log('Active connections on server:', 'unknown'); // Will be provided by server
-    console.log('Current model:', selectedModel);
-    console.log('Device ID:', deviceId);
-    console.log('Is loading:', isLoading);
-    console.log('Messages count:', messages.length);
+    console.group(`🔍 WEBSOCKET_DEBUG Error Details - ${context}`);
+    console.log('WEBSOCKET_DEBUG Error object:', error);
+    console.log('WEBSOCKET_DEBUG Socket state:', socket?.readyState);
+    console.log('WEBSOCKET_DEBUG Is connected:', isSocketConnected);
+    console.log('WEBSOCKET_DEBUG Is ready:', isSocketReady);
+    console.log('WEBSOCKET_DEBUG Retry attempt:', retryAttempt);
+    console.log('WEBSOCKET_DEBUG Message queue length:', messageQueue.length);
+    console.log('WEBSOCKET_DEBUG Active connections on server:', 'unknown'); // Will be provided by server
+    console.log('WEBSOCKET_DEBUG Current model:', selectedModel);
+    console.log('WEBSOCKET_DEBUG Device ID:', deviceId);
+    console.log('WEBSOCKET_DEBUG Is loading:', isLoading);
+    console.log('WEBSOCKET_DEBUG Messages count:', messages.length);
     console.groupEnd();
     
     // Determine user-friendly message based on context
@@ -419,6 +429,62 @@ export default function Home() {
           duration: 5000,
         });
       }, 2000);
+    }
+  };
+
+  // NEW: Function to process message queue
+  const processMessageQueue = () => {
+    console.log(`WEBSOCKET_DEBUG: Processing ${messageQueue.length} queued messages`);
+    if (socket && isSocketConnected && isSocketReady && messageQueue.length > 0) {
+      messageQueue.forEach((message, index) => {
+        console.log(`WEBSOCKET_DEBUG: Sending queued message ${index + 1}:`, message);
+        socket.send(JSON.stringify(message));
+      });
+      setMessageQueue([]);
+    }
+  };
+
+  // NEW: Function to send message with retry logic
+  const sendMessageWithRetry = async (message: any, maxRetries: number = 3): Promise<boolean> => {
+    console.log(`WEBSOCKET_DEBUG: Attempting to send message (attempt ${retryAttempt + 1}/${maxRetries + 1}):`, message);
+    
+    // Check if socket is ready
+    if (!socket || !isSocketConnected || socket.readyState !== WebSocket.OPEN) {
+      console.warn(`WEBSOCKET_DEBUG: Socket not ready, queuing message`);
+      setMessageQueue(prev => [...prev, message]);
+      return false;
+    }
+
+    // If not server-ready, wait and retry
+    if (!isSocketReady) {
+      console.log(`WEBSOCKET_DEBUG: Server not ready, waiting 500ms before retry`);
+      if (retryAttempt < maxRetries) {
+        setRetryAttempt(prev => prev + 1);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        return sendMessageWithRetry(message, maxRetries);
+      } else {
+        console.warn(`WEBSOCKET_DEBUG: Max retries reached, queuing message`);
+        setMessageQueue(prev => [...prev, message]);
+        setRetryAttempt(0);
+        return false;
+      }
+    }
+
+    try {
+      socket.send(JSON.stringify(message));
+      console.log(`WEBSOCKET_DEBUG: Message sent successfully`);
+      setRetryAttempt(0);
+      return true;
+    } catch (error) {
+      console.error(`WEBSOCKET_DEBUG: Error sending message:`, error);
+      if (retryAttempt < maxRetries) {
+        setRetryAttempt(prev => prev + 1);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        return sendMessageWithRetry(message, maxRetries);
+      } else {
+        setRetryAttempt(0);
+        return false;
+      }
     }
   };
 
@@ -492,32 +558,28 @@ export default function Home() {
     try {
       // Always send init agent event for new queries (even in loaded sessions)
       // This ensures the agent is properly initialized for the current connection
-      socket.send(
-        JSON.stringify({
-          type: "init_agent",
-          content: {
-            tool_args: {
-              deep_research: isUseDeepResearch,
-              pdf: true,
-              media_generation: true,
-              audio_generation: true,
-              browser: true,
-            },
+      await sendMessageWithRetry({
+        type: "init_agent",
+        content: {
+          tool_args: {
+            deep_research: isUseDeepResearch,
+            pdf: true,
+            media_generation: true,
+            audio_generation: true,
+            browser: true,
           },
-        })
-      );
+        },
+      });
 
       // Send the query using the existing socket connection
-      socket.send(
-        JSON.stringify({
-          type: "query",
-          content: {
-            text: newQuestion,
-            resume: messages.length > 0,
-            files: uploadedFiles?.map((file) => file.startsWith('/') ? file.substring(1) : file),
-          },
-        })
-      );
+      await sendMessageWithRetry({
+        type: "query",
+        content: {
+          text: newQuestion,
+          resume: messages.length > 0,
+          files: uploadedFiles?.map((file) => file.startsWith('/') ? file.substring(1) : file),
+        },
+      });
     } catch (error) {
       console.error("Error sending message:", error);
       toast.error("Failed to send message. Please refresh the page and try again.");
@@ -1000,6 +1062,7 @@ export default function Home() {
   };
 
   const connectWebSocket = () => {
+    console.log("WEBSOCKET_DEBUG: Starting WebSocket connection process");
     // Connect to WebSocket when the component mounts
     let wsUrl = `${process.env.NEXT_PUBLIC_API_URL}/ws`.replace("http://", "ws://").replace("https://", "wss://");
 
@@ -1033,46 +1096,67 @@ export default function Home() {
       }
       
       // Log model selection for debugging
-      console.log(`Using model: ${modelToUse.name} (${modelToUse.id}) - Provider: ${modelToUse.provider} - Native tool calling: ${useNativeToolCalling} - Pro key: ${proKey ? 'Yes' : 'No'}`);
+      console.log(`WEBSOCKET_DEBUG: Using model: ${modelToUse.name} (${modelToUse.id}) - Provider: ${modelToUse.provider} - Native tool calling: ${useNativeToolCalling} - Pro key: ${proKey ? 'Yes' : 'No'}`);
     }
 
+    console.log(`WEBSOCKET_DEBUG: Connecting to: ${wsUrl}`);
     const ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {
-      console.log("✅ WebSocket connection established");
+      console.log("WEBSOCKET_DEBUG: ✅ WebSocket connection established - waiting for server ready signal");
       setIsSocketConnected(true);
+      setIsSocketReady(false); // Wait for server confirmation
+      
       // Request workspace info immediately after connection
-      ws.send(
-        JSON.stringify({
-          type: "workspace_info",
-          content: {},
-        })
-      );
+      console.log("WEBSOCKET_DEBUG: Sending workspace_info request");
+      try {
+        ws.send(
+          JSON.stringify({
+            type: "workspace_info",
+            content: {},
+          })
+        );
+      } catch (error) {
+        console.error("WEBSOCKET_DEBUG: Error sending workspace_info:", error);
+      }
     };
 
     ws.onmessage = (event) => {
+      console.log("WEBSOCKET_DEBUG: Received message:", event.data);
       try {
         const data = JSON.parse(event.data);
+        
+        // Check for server ready signals
+        if (data.type === "connection_established" || data.type === "workspace_info") {
+          console.log("WEBSOCKET_DEBUG: Server ready signal received, setting isSocketReady=true");
+          setIsSocketReady(true);
+          // Process any queued messages
+          setTimeout(() => {
+            processMessageQueue();
+          }, 100); // Small delay to ensure state is updated
+        }
+        
         handleEvent({ ...data, id: Date.now().toString() });
       } catch (error) {
-        console.error("Error parsing WebSocket data:", error);
+        console.error("WEBSOCKET_DEBUG: Error parsing WebSocket data:", error);
         handleWebSocketError(error, "message_parsing");
       }
     };
 
     ws.onerror = (error) => {
-      console.error("❌ WebSocket error event:", error);
+      console.error("WEBSOCKET_DEBUG: ❌ WebSocket error event:", error);
       handleWebSocketError(error, "connection_error");
       setIsSocketConnected(false);
+      setIsSocketReady(false);
     };
 
     ws.onclose = (event) => {
-      console.log("🔌 WebSocket connection closed", event);
-      console.group("🔍 Close Event Details");
-      console.log("Close code:", event.code);
-      console.log("Close reason:", event.reason);
-      console.log("Was clean:", event.wasClean);
-      console.log("Close code meanings:", {
+      console.log("WEBSOCKET_DEBUG: 🔌 WebSocket connection closed", event);
+      console.group("🔍 WEBSOCKET_DEBUG Close Event Details");
+      console.log("WEBSOCKET_DEBUG Close code:", event.code);
+      console.log("WEBSOCKET_DEBUG Close reason:", event.reason);
+      console.log("WEBSOCKET_DEBUG Was clean:", event.wasClean);
+      console.log("WEBSOCKET_DEBUG Close code meanings:", {
         1000: "Normal closure",
         1001: "Going away",
         1006: "Abnormal closure",
@@ -1083,6 +1167,8 @@ export default function Home() {
       handleWebSocketError(event, "connection_closed");
       setSocket(null);
       setIsSocketConnected(false);
+      setIsSocketReady(false);
+      setMessageQueue([]); // Clear message queue on disconnect
     };
 
     setSocket(ws);
@@ -1107,6 +1193,25 @@ export default function Home() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deviceId, isReplayMode, selectedModel, useNativeToolCalling]);
+
+  useEffect(() => {
+    if (socket && isSocketConnected) {
+      socket.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === AgentEvent.CONNECTION_ESTABLISHED) {
+            setIsSocketReady(true);
+            processMessageQueue();
+          } else {
+            handleEvent({ ...data, id: Date.now().toString() });
+          }
+        } catch (error) {
+          console.error("Error parsing WebSocket data:", error);
+          handleWebSocketError(error, "message_parsing");
+        }
+      };
+    }
+  }, [socket, isSocketConnected]);
 
   const isBrowserTool = useMemo(
     () =>
