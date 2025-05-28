@@ -29,6 +29,16 @@ import { hasProAccess, getProKey } from "@/utils/pro-utils";
 
 import Browser from "@/components/browser";
 import CodeEditor from "@/components/code-editor";
+
+// Message type for WebSocket communication
+interface WebSocketMessage {
+  type: string;
+  content?: unknown;
+  text?: string;
+  resume?: boolean;
+  files?: { name: string; content: string }[]; // More specific type for files if known
+  // Add other potential properties of your WebSocket messages here
+}
 import QuestionInput from "@/components/question-input";
 import SearchBrowser from "@/components/search-browser";
 const Terminal = dynamic(() => import("@/components/terminal"), {
@@ -62,7 +72,7 @@ export default function Home() {
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const [isSocketConnected, setIsSocketConnected] = useState(false);
   const [isSocketReady, setIsSocketReady] = useState(false); // NEW: Server confirmed ready
-  const [messageQueue, setMessageQueue] = useState<Record<string, any>[]>([]); // NEW: Queue for messages
+  const [messageQueue, setMessageQueue] = useState<WebSocketMessage[]>([]); // NEW: Queue for messages
   const [retryAttempt, setRetryAttempt] = useState(0); // NEW: Track retry attempts
   const [activeTab, setActiveTab] = useState(TAB.BROWSER);
   const [currentActionData, setCurrentActionData] = useState<ActionStep>();
@@ -445,7 +455,7 @@ export default function Home() {
   }, [socket, isSocketConnected, isSocketReady, messageQueue]);
 
   // NEW: Function to send message with retry logic
-  const sendMessageWithRetry = useCallback(async (message: Record<string, any>, maxRetries: number = 3): Promise<boolean> => {
+  const sendMessageWithRetry = useCallback(async (message: WebSocketMessage, maxRetries: number = 3): Promise<boolean> => {
     console.log(`WEBSOCKET_DEBUG: Attempting to send message (attempt ${retryAttempt + 1}/${maxRetries + 1}):`, message);
     
     // Check if socket is ready
@@ -486,7 +496,7 @@ export default function Home() {
         return false;
       }
     }
-  }, [socket, isSocketConnected, isSocketReady, retryAttempt, messageQueue]);
+  }, [socket, isSocketConnected, isSocketReady, retryAttempt]); // Removed messageQueue from dependencies
 
   const handleQuestionSubmit = async (newQuestion: string) => {
     if (!newQuestion.trim() || isLoading) return;

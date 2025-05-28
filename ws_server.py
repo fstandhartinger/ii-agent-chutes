@@ -12,6 +12,7 @@ import asyncio
 import json
 import logging
 import uuid
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Set, Any, Optional, Tuple
 from dotenv import load_dotenv
@@ -25,12 +26,15 @@ from fastapi import (
     WebSocketDisconnect,
     Request,
     HTTPException,
+    Header,
+    Depends,
 )
 
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 import anyio
 import base64
+import shutil
 from sqlalchemy import asc, text
 
 from ii_agent.core.event import RealtimeEvent, EventType
@@ -1604,6 +1608,255 @@ async def generate_summary_endpoint(request: Request):
     except Exception as e:
         logger.error(f"Error generating summary: {str(e)}")
         return create_cors_response({"error": "Internal server error"}, 500)
+
+
+# Admin endpoints for server management
+try:
+    import psutil
+except ImportError:
+    psutil = None
+    logger.warning("psutil module not found. System statistics will be limited.")
+
+# Get admin key from environment
+ADMIN_KEY_ENV = os.getenv("ADMIN_KEY")
+
+async def verify_admin_key(authorization: str = Header(None)):
+    """Verify admin authentication via Bearer token"""
+    if not ADMIN_KEY_ENV:
+        logger.error("ADMIN_KEY environment variable is not set. Admin endpoints are disabled.")
+        raise HTTPException(status_code=503, detail="Admin functionality not configured.")
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    scheme, _, token = authorization.partition(" ")
+    if scheme.lower() != "bearer" or token != ADMIN_KEY_ENV:
+        raise HTTPException(status_code=401, detail="Invalid authentication credentials")
+    return True
+
+def get_folder_size(folder_path: str) -> int:
+    """Calculate total size of a folder in bytes"""
+    total_size = 0
+    try:
+        for dirpath, _, filenames in os.walk(folder_path):
+            for f in filenames:
+                fp = os.path.join(dirpath, f)
+                if not os.path.islink(fp):
+                    total_size += os.path.getsize(fp)
+    except Exception as e:
+        logger.error(f"Error calculating folder size for {folder_path}: {e}")
+    return total_size
+
+def format_bytes(size_bytes: int) -> str:
+    """Convert bytes to human-readable format"""
+    if size_bytes < 1024:
+        return f"{size_bytes} B"
+    elif size_bytes < 1024**2:
+        return f"{size_bytes/1024:.2f} KB"
+    elif size_bytes < 1024**3:
+        return f"{size_bytes/1024**2:.2f} MB"
+    else:
+        return f"{size_bytes/1024**3:.2f} GB"
+
+@app.get("/admin/stats", dependencies=[Depends(verify_admin_key)])
+async def get_admin_stats():
+    """Get comprehensive server statistics"""
+    stats = {"server_time": datetime.utcnow().isoformat() + "Z"}
+
+    # System Stats (if psutil is available)
+    if psutil:
+        try:
+            cpu_usage = psutil.cpu_percent(interval=0.1)
+            memory_info = psutil.virtual_memory()
+            disk_info = psutil.disk_usage('/')
+            stats["system"] = {
+                "cpu_usage_percent": cpu_usage,
+                "memory_total": format_bytes(memory_info.total),
+                "memory_used": format_bytes(memory_info.used),
+                "memory_percent": memory_info.percent,
+                "disk_total": format_bytes(disk_info.total),
+                "disk_used": format_bytes(disk_info.used),
+                "disk_percent": disk_info.percent,
+            }
+        except Exception as e:
+            logger.error(f"Error getting system stats with psutil: {e}")
+            stats["system"] = {"error": str(e)}
+    else:
+        stats["system"] = {"status": "psutil not available, system stats limited"}
+
+    # Database Stats
+    try:
+        db_manager = DatabaseManager()
+        db_path_actual = db_manager.db_path
+        
+        db_size_bytes = 0
+        if Path(db_path_actual).exists():
+            db_size_bytes = Path(db_path_actual).stat().st_size
+        
+        with db_manager.get_session() as db_sess:
+            event_count = db_sess.query(Event).count()
+            unique_sessions = db_sess.query(Event.session_id).distinct().count()
+
+        stats["database"] = {
+            "db_path": db_path_actual,
+            "db_size": format_bytes(db_size_bytes),
+            "event_count": event_count,
+            "unique_sessions": unique_sessions,
+        }
+    except Exception as e:
+        logger.error(f"Error getting database stats: {e}")
+        stats["database"] = {"error": str(e)}
+
+    # Workspace Stats
+    try:
+        workspace_root = PERSISTENT_WORKSPACE_ROOT
+        num_workspaces = 0
+        total_workspace_size_bytes = 0
+        if Path(workspace_root).exists() and Path(workspace_root).is_dir():
+            workspaces = [d for d in Path(workspace_root).iterdir() if d.is_dir()]
+            num_workspaces = len(workspaces)
+            total_workspace_size_bytes = get_folder_size(workspace_root)
+        
+        stats["workspace"] = {
+            "path": workspace_root,
+            "num_workspaces": num_workspaces,
+            "total_size": format_bytes(total_workspace_size_bytes),
+        }
+    except Exception as e:
+        logger.error(f"Error getting workspace stats: {e}")
+        stats["workspace"] = {"error": str(e)}
+
+    # Log Stats
+    try:
+        log_file_path = Path(PERSISTENT_DATA_ROOT) / "agent_logs.txt"
+        log_size_bytes = 0
+        if log_file_path.exists():
+            log_size_bytes = log_file_path.stat().st_size
+        stats["logs"] = {
+            "path": str(log_file_path),
+            "size": format_bytes(log_size_bytes),
+        }
+    except Exception as e:
+        logger.error(f"Error getting log stats: {e}")
+        stats["logs"] = {"error": str(e)}
+        
+    return create_cors_response(stats)
+
+@app.post("/admin/cleanup", dependencies=[Depends(verify_admin_key)])
+async def cleanup_data():
+    """Clean up old workspaces and database entries"""
+    MAX_WORKSPACES_TO_DELETE = 1000
+    MAX_DB_ROWS_TO_DELETE = 1000
+    TARGET_WORKSPACE_BYTES_TO_DELETE = 200 * 1024 * 1024  # 200 MB
+
+    report = {
+        "workspaces_deleted": 0,
+        "bytes_freed_from_workspaces": 0,
+        "db_rows_deleted": 0,
+        "errors": []
+    }
+
+    # Workspace Cleanup
+    try:
+        workspace_root = Path(PERSISTENT_WORKSPACE_ROOT)
+        if workspace_root.exists() and workspace_root.is_dir():
+            workspaces_info = []
+            for item in workspace_root.iterdir():
+                if item.is_dir():
+                    try:
+                        mtime = item.stat().st_mtime
+                        size = get_folder_size(str(item))
+                        workspaces_info.append({"path": item, "mtime": mtime, "size": size})
+                    except Exception as e:
+                        logger.warning(f"Could not stat workspace {item}: {e}")
+            
+            # Sort by modification time (oldest first)
+            workspaces_info.sort(key=lambda x: x["mtime"])
+
+            deleted_count = 0
+            deleted_size = 0
+            for ws_info in workspaces_info:
+                if deleted_count >= MAX_WORKSPACES_TO_DELETE or deleted_size >= TARGET_WORKSPACE_BYTES_TO_DELETE:
+                    break
+                try:
+                    shutil.rmtree(ws_info["path"])
+                    logger.info(f"Admin Cleanup: Deleted workspace {ws_info['path']} (size: {format_bytes(ws_info['size'])})")
+                    deleted_size += ws_info["size"]
+                    deleted_count += 1
+                except Exception as e:
+                    err_msg = f"Error deleting workspace {ws_info['path']}: {e}"
+                    logger.error(err_msg)
+                    report["errors"].append(err_msg)
+            
+            report["workspaces_deleted"] = deleted_count
+            report["bytes_freed_from_workspaces"] = deleted_size
+    except Exception as e:
+        err_msg = f"Error during workspace cleanup: {e}"
+        logger.error(err_msg)
+        report["errors"].append(err_msg)
+
+    # Database Cleanup
+    try:
+        db_manager = DatabaseManager()
+        with db_manager.get_session() as session:
+            oldest_events = session.query(Event).order_by(Event.timestamp.asc()).limit(MAX_DB_ROWS_TO_DELETE).all()
+            
+            num_to_delete = len(oldest_events)
+            if num_to_delete > 0:
+                for event_record in oldest_events:
+                    session.delete(event_record)
+                session.commit()
+                report["db_rows_deleted"] = num_to_delete
+                logger.info(f"Admin Cleanup: Deleted {num_to_delete} oldest rows from Event table.")
+            else:
+                logger.info("Admin Cleanup: No old rows found in Event table to delete.")
+                
+    except Exception as e:
+        err_msg = f"Error during database cleanup: {e}"
+        logger.error(err_msg)
+        report["errors"].append(err_msg)
+
+    return create_cors_response(report)
+
+@app.get("/admin/download_data", dependencies=[Depends(verify_admin_key)])
+async def download_data():
+    """Download complete server data as ZIP file"""
+    with tempfile.TemporaryDirectory() as temp_dir:
+        zip_filename = f"server_data_backup_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.zip"
+        zip_filepath = Path(temp_dir) / zip_filename
+
+        try:
+            with zipfile.ZipFile(zip_filepath, 'w', zipfile.ZIP_DEFLATED) as zf:
+                # Add database file
+                db_manager = DatabaseManager()
+                actual_db_path = Path(db_manager.db_path)
+                if actual_db_path.exists():
+                    zf.write(actual_db_path, arcname=actual_db_path.name)
+                    logger.info(f"Admin Download: Added database {actual_db_path.name} to zip.")
+
+                # Add workspace folder
+                workspace_root = Path(PERSISTENT_WORKSPACE_ROOT)
+                if workspace_root.exists() and workspace_root.is_dir():
+                    for root, _, files in os.walk(workspace_root):
+                        for file in files:
+                            file_path = Path(root) / file
+                            arcname = file_path.relative_to(workspace_root.parent)
+                            zf.write(file_path, arcname=arcname)
+                    logger.info(f"Admin Download: Added workspace folder to zip.")
+
+                # Add log files
+                log_file_path = Path(PERSISTENT_DATA_ROOT) / "agent_logs.txt"
+                if log_file_path.exists():
+                    zf.write(log_file_path, arcname=log_file_path.name)
+                    logger.info(f"Admin Download: Added log file to zip.")
+            
+            return FileResponse(
+                path=str(zip_filepath),
+                filename=zip_filename,
+                media_type='application/zip'
+            )
+        except Exception as e:
+            logger.error(f"Error creating data zip for download: {e}")
+            raise HTTPException(status_code=500, detail=f"Failed to create data zip: {str(e)}")
 
 
 if __name__ == "__main__":
