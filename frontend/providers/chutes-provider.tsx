@@ -20,6 +20,13 @@ export const TEXT_MODELS: LLMModel[] = [
     supportsVision: false
   },
   {
+    id: "deepseek-ai/DeepSeek-R1-0528",
+    name: "DeepSeek R1 0528",
+    provider: "chutes",
+    description: "DeepSeek R1 Snapshot vom 28.05.",
+    supportsVision: false
+  },
+  {
     id: "nvidia/Llama-3_1-Nemotron-Ultra-253B-v1",
     name: "Nemotron Ultra",
     provider: "chutes",
