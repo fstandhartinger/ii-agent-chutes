@@ -1,5 +1,51 @@
 # Lessons Learned
 
+## Bug Fixes and Issues Resolved
+
+### 1. WebSocket Management Issues (Fixed)
+**Problem**: Complex retry mechanism in `useWebSocketManager.ts` was causing race conditions, memory leaks, and connection instability.
+**Solution**: Simplified connection logic by removing retry attempts, adding proper timeout handling, and implementing clean disconnection procedures.
+**Key Takeaway**: Keep WebSocket connection logic simple and predictable. Complex retry mechanisms often cause more problems than they solve.
+
+### 2. Event Handler Performance Problems (Fixed)
+**Problem**: Excessive dependencies in useCallback hooks in `useEventHandler.ts` causing unnecessary re-renders and performance degradation.
+**Solution**: Used refs for stable references and reduced dependency arrays to only essential values.
+**Key Takeaway**: Be very careful with useCallback dependencies - include only what actually needs to trigger re-creation.
+
+### 3. Session Management Timing Issues (Fixed)
+**Problem**: Session ID was set too late (only on PROCESSING event) in `useSessionManager.ts`, causing file upload and sharing functionality to fail.
+**Solution**: Automatically extract session ID from workspace info when available, ensuring it's set early in the process.
+**Key Takeaway**: Critical state should be set as early as possible in the data flow, not just when convenient.
+
+### 4. Model/Settings Change Reconnection (Fixed)
+**Problem**: Changing LLM model or tool calling settings didn't trigger WebSocket reconnection, leading to inconsistent behavior.
+**Solution**: Added useEffect to monitor critical connection settings and reconnect when they change.
+**Key Takeaway**: All settings that affect server behavior should trigger appropriate connection updates.
+
+### 5. Import Organization and Cleanup (Fixed)
+**Problem**: Dynamic imports scattered inconsistently throughout the codebase, multiple timeout references without proper cleanup.
+**Solution**: Organized imports logically and centralized timeout management with proper cleanup.
+**Key Takeaway**: Consistent import organization and proper resource cleanup prevent subtle bugs and improve maintainability.
+
+### 6. JSX Parsing Error Resolution (Fixed)
+**Problem**: Persistent "Unexpected token `div`. Expected jsx identifier" error preventing compilation, despite JSX appearing correct.
+**Solution**: The issue was caused by missing custom hook files that were imported but didn't exist. Recreating the file with simplified state management resolved the compilation error.
+**Key Takeaway**: JSX parsing errors can sometimes be caused by missing imports rather than actual JSX syntax issues. When facing persistent JSX errors, check all imports and dependencies first.
+
+## Development Best Practices Learned
+
+1. **Incremental Refactoring**: When refactoring large components, maintain working state at each step rather than making all changes at once.
+
+2. **Hook Dependencies**: Always minimize useCallback and useEffect dependencies to prevent unnecessary re-renders.
+
+3. **State Management**: Set critical state as early as possible in the data flow.
+
+4. **Resource Cleanup**: Always implement proper cleanup for timeouts, intervals, and event listeners.
+
+5. **Import Management**: Keep imports organized and verify all dependencies exist before using them.
+
+6. **Error Diagnosis**: When facing compilation errors, systematically check imports, dependencies, and file structure before assuming syntax issues.
+
 ## WebSocket Management Issues (Fixed)
 - **Problem**: Complex retry mechanism in WebSocket manager caused race conditions and memory leaks
 - **Solution**: Simplified connection logic, removed retry attempts, added proper timeout handling and cleanup

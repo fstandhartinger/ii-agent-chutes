@@ -7,6 +7,9 @@
     *   Fully functional.
     *   Stable and robust.
     *   Well-tested.
+    **Backend and Frontend**
+    *   The original frontend is in original_app_code\ii-agent-main\frontend and our new frontend is in frontend
+    *   The original backend is in original_app_code\ii-agent-main is in the root directory
 *   **Purpose & Usage:**
     *   **Reference for Debugging:** If a feature in our modified version is broken, especially one that previously worked, consult this original source code. It can help you understand the original, correct implementation and identify if our changes introduced the bug.
     *   **Baseline Understanding:** Use it as a template or baseline to understand core functionalities if you're unsure how something was intended to work.
