@@ -10,7 +10,7 @@ interface UseWebSocketManagerProps {
   isReplayMode: boolean;
   selectedModel: LLMModel; // Corrected type
   useNativeToolCalling: boolean;
-  onEventReceived: (event: any) => void;
+  onEventReceived: (event: { id: string; type: string; content: Record<string, unknown> }) => void;
   getProKey: () => string | null;
   isLoading: boolean; // Added for timeout logic
   currentMessages: Message[]; // Added to check last message for "thinking"
@@ -224,7 +224,7 @@ export const useWebSocketManager = ({
     };
 
     setSocket(wsInstance);
-  }, [deviceId, isReplayMode, handleWebSocketError, isSocketReady]); // Added isSocketReady to dependencies of connect
+  }, [deviceId, isReplayMode, handleWebSocketError, isSocketReady, socket]); // Added socket to dependencies
 
   const disconnect = useCallback(() => {
     if (socket) {

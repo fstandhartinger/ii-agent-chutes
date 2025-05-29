@@ -220,7 +220,7 @@ export const useEventHandler = ({
                 // Special handling for browser tools that return image data in result
                 newLastMessage.action.data.result =
                   data.content.result && Array.isArray(data.content.result)
-                    ? data.content.result.find((item: any) => item.type === "image")?.source?.data
+                    ? data.content.result.find((item: { type: string; source?: { data?: string } }) => item.type === "image")?.source?.data
                     : undefined;
               }
               newLastMessage.action.data.isResult = true;

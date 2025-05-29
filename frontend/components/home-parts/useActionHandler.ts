@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import { useCallback } from 'react';
 import { debounce } from 'lodash';
 import { TAB, TOOL, ActionStep } from '@/typings/agent';

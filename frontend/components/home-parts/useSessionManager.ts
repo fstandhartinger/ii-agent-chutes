@@ -24,7 +24,7 @@ export interface SessionManagerActions {
   resetSessionForNewChat: () => void; // Renamed from resetChat for clarity
   fetchSessionEvents: (
     id: string,
-    onEventProcessed: (eventPayload: any, eventId: string) => void,
+    onEventProcessed: (eventPayload: Record<string, unknown>, eventId: string) => void,
     onWorkspaceInfoLoaded: (path: string) => void,
     onLoadingComplete: () => void
   ) => Promise<void>;
@@ -91,7 +91,7 @@ export const useSessionManager = (
 
   const fetchSessionEvents = useCallback(async (
     id: string,
-    onEventProcessed: (eventPayload: any, eventId: string) => void,
+    onEventProcessed: (eventPayload: Record<string, unknown>, eventId: string) => void,
     onWorkspaceInfoLoaded: (path: string) => void,
     onLoadingComplete: () => void
   ) => {

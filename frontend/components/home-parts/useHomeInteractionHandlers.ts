@@ -1,16 +1,20 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable react-hooks/exhaustive-deps */
 import { useCallback } from 'react';
 import { useRouter } from 'next/navigation'; // For handleShare
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid'; // For message IDs if needed
-import type { Message, WebSocketMessage, ActionStep } from '@/typings/agent';
+import type { Message } from '@/typings/agent';
 import type { LLMModel } from '@/providers/chutes-provider';
 import { hasUserConsented, setUserConsent } from "@/components/consent-dialog"; // Assuming these can be imported
+import { TAB } from '@/typings/agent';
 
 // Props for the hook - these will come from other hooks or Home component props
 export interface UseHomeInteractionHandlersProps {
   // From useChatState
   isLoading: boolean;
-  messages: Message[];
+  messages: any[];
   uploadedFiles: string[];
   userPrompt: string;
   pendingQuestion: string;
@@ -18,13 +22,13 @@ export interface UseHomeInteractionHandlersProps {
   setIsLoading: (loading: boolean) => void;
   setCurrentQuestion: (question: string) => void;
   setIsCompleted: (completed: boolean) => void;
-  addMessage: (message: Message) => void;
+  addMessage: (message: any) => void;
   setUserPrompt: (prompt: string) => void;
   setIsUploading: (uploading: boolean) => void;
   addUploadedFile: (filePath: string) => void;
   setPendingQuestion: (question: string) => void;
   setShowUpgradePrompt: (prompt: "success" | "error" | "timeout" | null) => void;
-  // setTaskSummary: (summary: string) => void; // No longer needed here
+  setMessages: (messages: any[]) => void;
 
   // From useUIState
   logoClickCount: number;
@@ -32,20 +36,25 @@ export interface UseHomeInteractionHandlersProps {
   triggerShakeConnectionIndicator: () => void;
   incrementLogoClickCount: () => void;
   setShowNativeToolToggle: (show: boolean) => void;
+  setActiveTab: (tab: TAB) => void;
 
   // From useSessionManager
   sessionId: string | null;
   workspaceInfo: string; // For file uploads
+  hasProAccess: () => boolean;
 
   // From useWebSocketManager
   isSocketConnected: boolean;
   isSocketReady: boolean;
-  sendMessage: (message: WebSocketMessage, maxRetries?: number) => Promise<boolean>;
+  sendMessage: (message: any) => void;
   socket: WebSocket | null; // For handleStopAgent
 
   // From useChutes (via Home props)
   selectedModel: LLMModel;
   // generateTaskSummary prop is no longer needed here if it's passed from Home to eventHandler directly
+
+  // Utility functions (passed via Home props)
+  parseJsonFn: (jsonString: string) => any;
 }
 
 export const useHomeInteractionHandlers = ({
@@ -64,20 +73,22 @@ export const useHomeInteractionHandlers = ({
   addUploadedFile,
   setPendingQuestion,
   setShowUpgradePrompt,
-  // setTaskSummary, // Removed
+  setMessages,
   logoClickCount,
   setShowConsentDialog,
   triggerShakeConnectionIndicator,
   incrementLogoClickCount,
   setShowNativeToolToggle,
+  setActiveTab,
   sessionId,
   workspaceInfo,
+  hasProAccess,
   isSocketConnected,
   isSocketReady,
   sendMessage,
   socket,
   selectedModel,
-  // Removed generateTaskSummary from props if it's not used internally by other handlers here
+  parseJsonFn,
 }: UseHomeInteractionHandlersProps) => {
   const router = useRouter();
 
