@@ -614,6 +614,57 @@ async def websocket_endpoint(websocket: WebSocket):
                 elif msg_type == EventType.PING.value: # Simple keep-alive from client
                     await safe_websocket_send_json(websocket, {"type": "pong"}, str(connection_id))
 
+                elif msg_type == EventType.TERMINAL_COMMAND.value:
+                    # Handle terminal command execution
+                    command = content.get("command", "")
+                    if not command:
+                        await safe_websocket_send_json(websocket, RealtimeEvent(
+                            type=EventType.ERROR,
+                            content={"message": "Terminal command is required", "error_code": "MISSING_COMMAND"}
+                        ).model_dump(), str(connection_id))
+                        continue
+                    
+                    logger.info(f"WS_PROCESS ({connection_id}): Executing terminal command: {command}")
+                    
+                    # Execute the command using the bash tool if available
+                    if websocket in active_agents:
+                        agent = active_agents[websocket]
+                        try:
+                            # Create a bash tool instance to execute the command
+                            from ii_agent.tools.bash_tool import BashTool
+                            bash_tool = BashTool(workspace_manager=workspace_manager)
+                            
+                            # Execute the command
+                            result = await anyio.to_thread.run_sync(
+                                bash_tool.run_impl, {"command": command}
+                            )
+                            
+                            # Send the result back to the client
+                            await safe_websocket_send_json(websocket, RealtimeEvent(
+                                type=EventType.TERMINAL_OUTPUT,
+                                content={
+                                    "command": command,
+                                    "output": result.output if hasattr(result, 'output') else str(result),
+                                    "success": True
+                                }
+                            ).model_dump(), str(connection_id))
+                            
+                        except Exception as e_terminal:
+                            logger.error(f"WS_PROCESS ({connection_id}): Error executing terminal command '{command}': {e_terminal}")
+                            await safe_websocket_send_json(websocket, RealtimeEvent(
+                                type=EventType.TERMINAL_OUTPUT,
+                                content={
+                                    "command": command,
+                                    "output": f"Error: {str(e_terminal)}",
+                                    "success": False
+                                }
+                            ).model_dump(), str(connection_id))
+                    else:
+                        await safe_websocket_send_json(websocket, RealtimeEvent(
+                            type=EventType.ERROR,
+                            content={"message": "Agent not initialized for terminal commands", "error_code": "AGENT_NOT_INITIALIZED"}
+                        ).model_dump(), str(connection_id))
+
                 else:
                     logger.warning(f"WS_PROCESS ({connection_id}): Unknown message type '{msg_type}'.")
                     await safe_websocket_send_json(websocket, RealtimeEvent(

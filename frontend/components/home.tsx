@@ -250,7 +250,8 @@ export default function Home() {
     handleClickAction,
     selectedModel,
     generateTaskSummaryFn: generateTaskSummary,
-    hasProAccessFn: hasProAccess
+    hasProAccessFn: hasProAccess,
+    terminalRef
   });
 
   // Session Manager  

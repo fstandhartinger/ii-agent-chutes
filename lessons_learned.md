@@ -42,6 +42,11 @@ This document captures key insights and solutions discovered during development 
 **Solution**: The issue was caused by missing custom hook files that were imported but didn't exist. Recreating the file with simplified state management resolved the compilation error.
 **Key Takeaway**: JSX parsing errors can sometimes be caused by missing imports rather than actual JSX syntax issues. When facing persistent JSX errors, check all imports and dependencies first.
 
+### 7. Frontend Layout and UI Functionality Restoration (Fixed)
+**Problem**: Multiple UI issues broke the user experience: missing model picker and pro upgrade button, unwanted "fubea" text title, broken chat view layout, non-functional share button, poor message formatting, and missing action handlers.
+**Solution**: Restored proper layout using the working version as reference while maintaining modular component structure. Fixed hook dependencies and restored proper event handling flow.
+**Key Takeaway**: When refactoring complex UI components, preserve working layouts and functionality patterns. Use known-good versions as reference to ensure visual consistency and proper user experience flow.
+
 ## Development Best Practices Learned
 
 1. **Incremental Refactoring**: When refactoring large components, maintain working state at each step rather than making all changes at once.
@@ -55,6 +60,8 @@ This document captures key insights and solutions discovered during development 
 5. **Import Management**: Keep imports organized and verify all dependencies exist before using them.
 
 6. **Error Diagnosis**: When facing compilation errors, systematically check imports, dependencies, and file structure before assuming syntax issues.
+
+7. **UI Consistency**: When refactoring complex UI components, always preserve working visual layouts and user experience patterns from known-good versions.
 
 ## WebSocket Management Issues (Fixed)
 - **Problem**: Complex retry mechanism in WebSocket manager caused race conditions and memory leaks

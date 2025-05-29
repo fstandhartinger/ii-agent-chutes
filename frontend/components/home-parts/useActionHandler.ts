@@ -59,18 +59,16 @@ export const useActionHandler = ({
             // Ensure terminalRef.current exists before trying to use it
             setTimeout(() => {
               if (!data.data?.isResult) {
-                // query
-                terminalRef.current?.writeOutput(
-                  `${data.data.tool_input?.command || ""}`
-                );
+                // query - show the command being executed
+                const command = data.data.tool_input?.command || "";
+                if (command) {
+                  terminalRef.current?.writeOutput(`Executing: ${command}`);
+                }
               }
-              // result
+              // result - show the output
               if (data.data.result) {
-                const lines = `${data.data.result || ""}`.split("\n");
-                lines.forEach((line) => {
-                  terminalRef.current?.writeOutput(line);
-                });
-                terminalRef.current?.writeOutput("$ ");
+                const result = `${data.data.result || ""}`;
+                terminalRef.current?.writeOutput(result);
               }
             }, 500); // Delay to allow tab switch and terminal rendering
           }

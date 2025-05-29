@@ -3,6 +3,7 @@ import { cloneDeep } from 'lodash';
 import { toast } from 'sonner';
 import { AgentEvent, TOOL, ActionStep, Message, TAB } from '@/typings/agent';
 import type { LLMModel } from '@/providers/chutes-provider';
+import type { TerminalRef } from '@/components/terminal';
 
 // Props for the hook
 export interface UseEventHandlerProps {
@@ -40,6 +41,9 @@ export interface UseEventHandlerProps {
   generateTaskSummaryFn: (firstUserMessage: string) => Promise<void>;
   // getRemoteURLFn: (path: string | undefined) => string; // This was used for ImageBrowser, might be handled differently
   hasProAccessFn: () => boolean;
+
+  // Terminal ref for handling terminal output
+  terminalRef?: React.RefObject<TerminalRef | null>;
 }
 
 export const useEventHandler = ({
@@ -64,6 +68,7 @@ export const useEventHandler = ({
   selectedModel,
   generateTaskSummaryFn,
   hasProAccessFn,
+  terminalRef,
 }: UseEventHandlerProps) => {
   const [timeoutCheckInterval, setTimeoutCheckInterval] = useState<NodeJS.Timeout | null>(null);
   const [hasSetSessionId, setHasSetSessionId] = useState(false); // Track if sessionId has been set
@@ -120,6 +125,15 @@ export const useEventHandler = ({
         if (data.content.workspace_path) {
             setWorkspaceInfo(data.content.workspace_path as string);
             console.log("EVENT_HANDLER_DEBUG: Workspace info set from CONNECTION_ESTABLISHED:", data.content.workspace_path);
+            
+            // Extract session ID from workspace path
+            const workspacePath = data.content.workspace_path as string;
+            const sessionIdFromPath = workspacePath.split("/").pop();
+            if (sessionIdFromPath && !hasSetSessionId) {
+              setSessionId(sessionIdFromPath);
+              setHasSetSessionId(true);
+              console.log("EVENT_HANDLER_DEBUG: Session ID extracted from workspace path:", sessionIdFromPath);
+            }
         }
         break;
 
@@ -291,9 +305,19 @@ export const useEventHandler = ({
         break;
 
       case AgentEvent.UPLOAD_SUCCESS:
-        const newFiles = data.content.files as { path: string; saved_path: string }[];
-        const paths = newFiles.map((f) => f.path);
-        paths.forEach(p => addUploadedFile(p));
+        if (data.content.file && typeof data.content.file === 'object' && 'path' in data.content.file) {
+          addUploadedFile((data.content.file as { path: string }).path);
+        }
+        break;
+
+      case "terminal_output":
+        // Handle terminal output events
+        if (data.content.output && terminalRef?.current) {
+          terminalRef.current.writeOutput(data.content.output as string);
+          console.log("EVENT_HANDLER_DEBUG: Sent terminal output to terminal component:", data.content.output);
+        } else {
+          console.log("EVENT_HANDLER_DEBUG: Received terminal output but terminal ref not available:", data.content.output);
+        }
         break;
 
       case AgentEvent.ERROR:

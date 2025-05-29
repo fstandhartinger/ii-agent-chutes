@@ -26,6 +26,8 @@ class EventType(str, enum.Enum):
     QUERY = "query"
     CANCEL_PROCESSING = "cancel_processing"
     HEARTBEAT = "heartbeat"
+    TERMINAL_COMMAND = "terminal_command"
+    TERMINAL_OUTPUT = "terminal_output"
 
 
 class RealtimeEvent(BaseModel):

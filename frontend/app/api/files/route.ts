@@ -1,5 +1,13 @@
 import { NextResponse } from "next/server";
 
+interface FileStructure {
+  name: string;
+  type: "file" | "folder";
+  children?: FileStructure[];
+  language?: string;
+  path: string;
+}
+
 export async function POST(request: Request) {
   try {
     const { path: dirPath } = await request.json();
@@ -41,7 +49,20 @@ export async function POST(request: Request) {
 
     const data = await response.json();
     console.log(`Received file list with ${data.files?.length || 0} items`);
-    return NextResponse.json({ files: data.files || [] });
+    
+    // Transform the backend response to match the expected frontend format
+    const transformFiles = (files: any[], basePath: string): FileStructure[] => {
+      return files.map((file: any): FileStructure => ({
+        name: file.name,
+        type: file.type,
+        path: `${basePath}/${file.name}`,
+        language: file.language || "plaintext",
+        children: file.children ? transformFiles(file.children, `${basePath}/${file.name}`) : undefined
+      }));
+    };
+    
+    const transformedFiles = transformFiles(data.files || [], normalizedPath);
+    return NextResponse.json({ files: transformedFiles });
   } catch (error) {
     console.error("Error reading directory:", error);
     return NextResponse.json(
