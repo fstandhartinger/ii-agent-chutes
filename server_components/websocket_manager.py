@@ -451,17 +451,34 @@ async def websocket_endpoint(websocket: WebSocket):
                         # Potentially clean up old agent before creating new one
                         # For now, overwriting, create_agent_for_connection will make a new one
                     
-                    tool_args_param = content.get("tool_args", {})
-                    agent = create_agent_for_connection(
-                        session_uuid_for_connection, workspace_manager, websocket, tool_args_param
-                    )
-                    active_agents[websocket] = agent
-                    message_processors[websocket] = agent.start_message_processing() # Start agent's internal queue processor
-                    
-                    await safe_websocket_send_json(websocket, RealtimeEvent(
-                        type=EventType.AGENT_INITIALIZED,
-                        content={"message": "Agent initialized", "server_ready": True} # server_ready might be redundant here
-                    ).model_dump(), str(connection_id))
+                    try:
+                        tool_args_param = content.get("tool_args", {})
+                        logger.info(f"WS_PROCESS ({connection_id}): Creating agent with tool_args: {tool_args_param}")
+                        
+                        agent = create_agent_for_connection(
+                            session_uuid_for_connection, workspace_manager, websocket, tool_args_param
+                        )
+                        logger.info(f"WS_PROCESS ({connection_id}): Agent created successfully")
+                        
+                        active_agents[websocket] = agent
+                        logger.info(f"WS_PROCESS ({connection_id}): Agent added to active_agents")
+                        
+                        message_processors[websocket] = agent.start_message_processing() # Start agent's internal queue processor
+                        logger.info(f"WS_PROCESS ({connection_id}): Message processor started")
+                        
+                        await safe_websocket_send_json(websocket, RealtimeEvent(
+                            type=EventType.AGENT_INITIALIZED,
+                            content={"message": "Agent initialized", "server_ready": True} # server_ready might be redundant here
+                        ).model_dump(), str(connection_id))
+                        logger.info(f"WS_PROCESS ({connection_id}): AGENT_INITIALIZED response sent")
+                        
+                    except Exception as e_init_agent:
+                        logger.error(f"WS_PROCESS ({connection_id}): Error during INIT_AGENT processing: {e_init_agent}", exc_info=True)
+                        await safe_websocket_send_json(websocket, RealtimeEvent(
+                            type=EventType.ERROR,
+                            content={"message": f"Error initializing agent: {str(e_init_agent)}", "error_code": "AGENT_INIT_ERROR"}
+                        ).model_dump(), str(connection_id))
+                        continue
 
                 elif msg_type == EventType.QUERY.value:
                     if websocket in active_tasks and not active_tasks[websocket].done():
@@ -474,8 +491,10 @@ async def websocket_endpoint(websocket: WebSocket):
 
                     if websocket not in active_agents: # Auto-initialize if not done explicitly
                         logger.info(f"WS_PROCESS ({connection_id}): Agent not initialized for query. Auto-initializing.")
+                        # Extract tool_args from query content if available
+                        tool_args_for_auto_init = content.get("tool_args", {})
                         agent = create_agent_for_connection(
-                            session_uuid_for_connection, workspace_manager, websocket, {} # Empty tool_args for auto-init
+                            session_uuid_for_connection, workspace_manager, websocket, tool_args_for_auto_init
                         )
                         active_agents[websocket] = agent
                         message_processors[websocket] = agent.start_message_processing()

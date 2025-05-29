@@ -182,7 +182,7 @@ export const useWebSocketManager = ({
 
       console.log("WEBSOCKET_DEBUG: Sending workspace_info request");
       try {
-        wsInstance.send(JSON.stringify({ type: "workspace_info", content: {} }));
+        wsInstance.send(JSON.stringify({ type: "workspace_info_request", content: {} }));
       } catch (error) {
         console.error("WEBSOCKET_DEBUG: Error sending workspace_info:", error);
         handleWebSocketError(error, "sending_workspace_info_on_open");

@@ -138,20 +138,15 @@ export const useHomeInteractionHandlers = ({
 
     try {
       await sendMessage({
-        type: "init_agent",
-        content: {
-          tool_args: {
-            deep_research: isUseDeepResearch,
-            pdf: true, media_generation: true, audio_generation: true, browser: true,
-          },
-        },
-      });
-      await sendMessage({
         type: "query",
         content: {
           text: newQuestion,
           resume: messages.length > 0, // resume is true if there are previous messages
           files: uploadedFiles?.map((file) => file.startsWith('/') ? file.substring(1) : file),
+          tool_args: {
+            deep_research: isUseDeepResearch,
+            pdf: true, media_generation: true, audio_generation: true, browser: true,
+          },
         },
       });
     } catch (error) {
@@ -285,7 +280,7 @@ export const useHomeInteractionHandlers = ({
       toast.info("No active agent run to stop.");
       return;
     }
-    sendMessage({ type: "cancel", content: {} });
+    sendMessage({ type: "cancel_processing", content: {} });
     setIsLoading(false); // Optimistically update UI
     toast.success("Agent run stop request sent.");
   }, [socket, isSocketConnected, isLoading, sendMessage, setIsLoading]);

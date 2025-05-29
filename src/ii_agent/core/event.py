@@ -7,6 +7,7 @@ class EventType(str, enum.Enum):
     CONNECTION_ESTABLISHED = "connection_established"
     AGENT_INITIALIZED = "agent_initialized"
     WORKSPACE_INFO = "workspace_info"
+    WORKSPACE_INFO_REQUEST = "workspace_info_request"
     PROCESSING = "processing"
     AGENT_THINKING = "agent_thinking"
     TOOL_CALL = "tool_call"
@@ -20,6 +21,9 @@ class EventType(str, enum.Enum):
     BROWSER_USE = "browser_use"
     FILE_EDIT = "file_edit"
     USER_MESSAGE = "user_message"
+    INIT_AGENT = "init_agent"
+    QUERY = "query"
+    CANCEL_PROCESSING = "cancel_processing"
 
 
 class RealtimeEvent(BaseModel):
