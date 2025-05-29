@@ -95,3 +95,8 @@ This document captures key insights and solutions discovered during development 
 - **Problem**: Multiple timeout references without proper cleanup could cause memory leaks
 - **Solution**: Centralized timeout management with proper cleanup functions
 - **Key Takeaway**: Always clean up timeouts and intervals in useEffect cleanup functions and component unmount
+
+## WebSocket Connection Issues
+- **Problem**: Infinite WebSocket reconnection loop caused by useEffect dependency chain
+- **Root Cause**: isSocketReady state change triggered connect callback to change, causing useEffect cleanup to disconnect
+- **Solution**: Removed isSocketReady from connect callback dependencies and simplified onmessage logic

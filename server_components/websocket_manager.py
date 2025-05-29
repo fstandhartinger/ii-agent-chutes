@@ -429,17 +429,21 @@ async def websocket_endpoint(websocket: WebSocket):
             try:
                 while True:
                     await asyncio.sleep(30)
-                    if websocket.client_state.name == "DISCONNECTED": break
+                    if websocket.client_state.name == "DISCONNECTED": 
+                        logger.debug(f"WS_HEARTBEAT ({connection_id}): WebSocket disconnected, stopping heartbeat.")
+                        break
                     # FastAPI WebSocket doesn't have a ping method, so we send a custom ping message
-                    await safe_websocket_send_json(websocket, {"type": "heartbeat"}, str(connection_id))
+                    success = await safe_websocket_send_json(websocket, {"type": "heartbeat"}, str(connection_id))
+                    if not success:
+                        logger.debug(f"WS_HEARTBEAT ({connection_id}): Failed to send heartbeat, stopping.")
+                        break
             except asyncio.CancelledError:
                 logger.debug(f"WS_HEARTBEAT ({connection_id}): Cancelled.")
             except Exception as e_hb: # Catch errors during ping
                 logger.warning(f"WS_HEARTBEAT ({connection_id}): Error sending heartbeat: {e_hb}. Stopping heartbeat.")
-                # Consider this connection potentially problematic, might lead to cleanup
-                if websocket.client_state.name != "DISCONNECTED":
-                    cleanup_connection(websocket) # Proactively clean if ping fails badly
-                
+                # Don't call cleanup_connection here as it creates race conditions
+                # Just stop the heartbeat and let the main loop handle cleanup
+
         heartbeat_task_local = asyncio.create_task(heartbeat_sender())
 
         while True:

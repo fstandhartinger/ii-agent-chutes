@@ -203,10 +203,8 @@ export const useWebSocketManager = ({
         const data = JSON.parse(event.data as string);
         
         if (data.type === "connection_established" || data.type === "workspace_info") {
-          if (!isSocketReady) {
-             console.log("WEBSOCKET_DEBUG: Server ready signal received");
-             setIsSocketReady(true);
-          }
+          console.log("WEBSOCKET_DEBUG: Server ready signal received");
+          setIsSocketReady(true);
         }
         onEventReceivedRef.current({ ...data, id: data.id || uuidv4() });
       } catch (error) {
@@ -237,7 +235,7 @@ export const useWebSocketManager = ({
     };
 
     setSocket(wsInstance);
-  }, [deviceId, isReplayMode, handleWebSocketError, clearAllTimeouts, socket, isSocketReady]);
+  }, [deviceId, isReplayMode, handleWebSocketError, clearAllTimeouts, socket]);
 
   const disconnect = useCallback(() => {
     if (socket) {
