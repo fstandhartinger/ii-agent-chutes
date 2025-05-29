@@ -29,6 +29,7 @@ interface QuestionInputProps {
   isDisabled?: boolean;
   isLoading?: boolean;
   handleStopAgent?: () => void;
+  showBorder?: boolean; // Add prop to control border display
 }
 
 // Add a proper progress circle component
@@ -103,6 +104,7 @@ const QuestionInput = ({
   isDisabled,
   isLoading,
   handleStopAgent,
+  showBorder = true, // Default to showing border
 }: QuestionInputProps) => {
   const [files, setFiles] = useState<FileUploadStatus[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -517,7 +519,7 @@ const QuestionInput = ({
         )}
 
         {/* Input Container */}
-        <div className="relative bg-glass border border-white/20 rounded-2xl shadow-2xl backdrop-blur-xl overflow-hidden">
+        <div className={`relative bg-glass border ${showBorder ? 'border-white/20' : 'border-transparent'} rounded-2xl shadow-2xl backdrop-blur-xl overflow-hidden`}>
           {/* Gradient Border Effect */}
           <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-emerald-500/20 rounded-2xl blur-sm opacity-50" />
           

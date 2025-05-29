@@ -10,6 +10,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
+import { Message } from "@/typings/agent";
 // Uncomment these imports and fix them
 // import { TAB, TOOL } from "@/lib/constants";
 // import { parseJson, getRemoteURL } from "@/lib/utils";
@@ -82,7 +83,7 @@ export default function Home() {
   const terminalRef = useRef<any>(null);
   
   // Simplified state management (temporary until hooks are restored)
-  const [messages, setMessages] = useState<any[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState("");
   const [activeTab, setActiveTab] = useState(TAB.BROWSER);
@@ -93,6 +94,37 @@ export default function Home() {
   const [deviceId, setDeviceId] = useState<string | null>(null);
   const [selectedModel, setSelectedModel] = useState({ provider: 'chutes' as const, id: 'sonnet-3.5', name: 'Claude 3.5 Sonnet' });
   const [useNativeToolCalling, setUseNativeToolCalling] = useState(false);
+  
+  // Convert WebSocket events to Message objects
+  const convertEventToMessage = (event: any): Message | null => {
+    if (event.type === "user_message") {
+      return {
+        id: event.id || `user_${Date.now()}`,
+        role: "user",
+        content: event.content?.text || "",
+        timestamp: Date.now(),
+      };
+    } else if (event.type === "agent_response") {
+      return {
+        id: event.id || `assistant_${Date.now()}`,
+        role: "assistant", 
+        content: event.content?.text || "",
+        timestamp: Date.now(),
+      };
+    } else if (event.type === "tool_result") {
+      return {
+        id: event.id || `tool_${Date.now()}`,
+        role: "assistant",
+        content: event.content?.result || "",
+        timestamp: Date.now(),
+        action: event.content ? {
+          type: event.content.tool_name,
+          data: event.content
+        } : undefined
+      };
+    }
+    return null;
+  };
   
   // Initialize device ID
   useEffect(() => {
@@ -121,15 +153,58 @@ export default function Home() {
     useNativeToolCalling,
     onEventReceived: (event) => {
       console.log("Event received:", event);
-      // Handle incoming events here
-      // Update messages state to trigger chat view
-      if (event.type !== "connection_established" && event.type !== "workspace_info") {
-        setMessages(prev => [...prev, event]);
+      
+      if (event.type === "agent_thinking" || event.type === "processing") {
+        setIsLoading(true);
+      } else if (event.type === "stream_complete" || event.type === "error") {
+        setIsLoading(false);
+      }
+      
+      // Convert events to messages and add to chat
+      const message = convertEventToMessage(event);
+      if (message) {
+        setMessages(prev => [...prev, message]);
       }
     },
     getProKey: () => null,
     isLoading
   });
+  
+  // Check if we're in chat view
+  const isInChatView = messages && messages.length > 0;
+  
+  // Auto-reload when connection is poor
+  useEffect(() => {
+    let timer: NodeJS.Timeout | null = null;
+    if (!isSocketReady && !isInChatView) {
+      timer = setTimeout(() => {
+        setShowReloadButton(true);
+      }, 15000); // Show reload button after 15 seconds of poor connection
+    } else {
+      // Clear timer if connection is restored
+      setShowReloadButton(false);
+    }
+    
+    return () => {
+      if (timer) {
+        clearTimeout(timer);
+      }
+    };
+  }, [isSocketReady, isInChatView]);
+  
+  // Function to scroll to bottom
+  const scrollToBottom = useCallback(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, []);
+  
+  // Scroll to bottom when new messages arrive
+  useEffect(() => {
+    if (isInChatView) {
+      scrollToBottom();
+    }
+  }, [messages, isInChatView, scrollToBottom]);
   
   // Simplified handlers (temporary)
   const handleQuestionSubmit = async (question: string) => {
@@ -140,11 +215,11 @@ export default function Home() {
     setCurrentQuestion("");
     
     // Add user message to trigger chat view immediately
-    const userMessage = {
+    const userMessage: Message = {
       id: `user_${Date.now()}`,
-      type: "user_message",
-      content: { text: question },
-      timestamp: new Date().toISOString()
+      role: "user",
+      content: question,
+      timestamp: Date.now()
     };
     setMessages(prev => [...prev, userMessage]);
     
@@ -198,204 +273,93 @@ export default function Home() {
       });
     }
   };
-  
+
   const handleConsentAccept = () => {
     setShowConsentDialog(false);
   };
-  
+
   const handleConsentCancel = () => {
     setShowConsentDialog(false);
   };
-  
+
   const handleClickAction = (action: any, isReplay: boolean = false) => {
     console.log("Action clicked:", action, isReplay);
   };
 
-  // State
-  const [maintenanceMessage, setMaintenanceMessage] = useState<string>("");
-
-  // Computed values
-  const isInChatView = messages && messages.length > 0;
-  const isReplayMode = false;
-  const isBrowserTool = false;
-
-  // Effects
-  useEffect(() => {
-    const fetchMaintenanceMessage = async () => {
-      try {
-        const response = await fetch('/api/maintenance_message');
-        if (response.ok) {
-          const data = await response.json();
-          if (data.message) {
-            setMaintenanceMessage(data.message);
-          }
-        }
-      } catch (error) {
-        console.error('Failed to fetch maintenance message:', error);
-      }
-    };
-
-    fetchMaintenanceMessage();
-  }, []);
-
-  useEffect(() => {
-    if (messages?.length) {
-      setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-      }, 100);
-    }
-  }, [messages?.length]);
-
-  useEffect(() => {
-    let timer: NodeJS.Timeout | null = null;
-    if (!isSocketReady && !isInChatView) {
-      timer = setTimeout(() => {
-        if (!isSocketReady && !isInChatView) {
-          setShowReloadButton(true);
-        }
-      }, 5000);
-    }
-    if (isSocketReady) {
-      setShowReloadButton(false);
-    }
-    return () => { if (timer) clearTimeout(timer); };
-  }, [isSocketReady, isInChatView]);
-
-  const combinedResetChat = useCallback(() => {
-    console.log("HOME_DEBUG: Starting combined reset chat");
-    
-    // 1. Disconnect WebSocket
-    disconnect();
-    
-    // 2. Reset all states
-    setMessages([]);
-    setIsLoading(false);
-    setCurrentQuestion("");
-    
-    // 3. The WebSocket will automatically reconnect
-    console.log("HOME_DEBUG: Reset complete");
-  }, [disconnect]);
-
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleQuestionSubmit((e.target as HTMLTextAreaElement).value);
+      if (currentQuestion.trim() && isSocketReady) {
+        handleQuestionSubmit(currentQuestion);
+      }
     }
   };
 
   return (
-    <div className="relative flex flex-col flex-1 w-full min-h-screen bg-gradient-to-b from-[#181d2a] via-[#181d2a] to-[#1a1a1f] overflow-x-hidden">
-      <div className="absolute inset-0 z-0 pointer-events-none select-none" aria-hidden="true">
-        <div className="w-full h-full bg-gradient-to-b from-[#23263b] via-transparent to-[#181d2a] opacity-50" />
-      </div>
-      <div className="relative z-10 flex flex-col flex-1 min-h-screen">
-        <motion.header 
-          className="relative z-10 mobile-header-safe flex-shrink-0"
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-        >
-          <div className={`flex justify-between items-center w-full px-4 md:px-8 py-4${!isInChatView ? ' pb-0' : ''}`}>
-            {!isInChatView && (
-              <div className="flex-1" />
-            )}
-            
-            <motion.div
-              className={`flex items-center gap-3 ${
-                isInChatView ? "text-xl md:text-2xl font-semibold flex-1 min-w-0" : "hidden"
-              }`}
-              layout
-              layoutId="page-title"
-            >
-              {isInChatView && (
-                <>
-                  <ArrowLeft 
-                    className="w-6 h-6 text-white/80 hover:text-white cursor-pointer transition-colors flex-shrink-0" 
-                    onClick={combinedResetChat}
-                  />
-                  <div className="relative flex-shrink-0">
-                    <Image
-                      src="/logo-only.png"
-                      alt="fubea Logo"
-                      width={32}
-                      height={32}
-                      className="rounded-lg shadow-lg"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-lg blur-sm" />
-                  </div>
-                  <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent truncate text-base md:text-xl min-w-0 flex-1">
-                    {messages[messages.length - 1]?.summary || messages[messages.length - 1]?.prompt || "fubea"}
-                  </span>
-                </>
-              )}
-            </motion.div>
-            
-            {isInChatView ? (
-              <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleShare}
-                  className="bg-glass border-white/20 hover:bg-white/10 transition-all-smooth hover-lift"
-                  title="Share Session"
-                >
-                  <Share className="w-4 h-4" />
-                  <span className="ml-2 hidden sm:inline">Share</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                  className="md:hidden bg-glass border-white/20"
-                >
-                  <Menu className="w-4 h-4" />
-                </Button>
-              </div>
-            ) : (
-              <div className="flex-1 flex justify-end items-center gap-4">
-                {!hasProAccess() && <ProUpgradeButton />}
-                {false && (
-                  <div className="flex items-center gap-2 bg-glass border border-white/20 rounded-lg px-3 py-2">
-                    <span className="text-sm text-white/80">Native Tool Calling</span>
-                    <button
-                      onClick={() => false}
-                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                        false ? 'bg-blue-500' : 'bg-gray-600'
-                      }`}
-                      title={false ? "Using native tool calling (Squad-style)" : "Using JSON workaround (default)"}
-                    >
-                      <span
-                        className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
-                          false ? 'translate-x-5' : 'translate-x-1'
-                        }`}
-                      />
-                    </button>
-                  </div>
-                )}
-                <ModelPicker />
-              </div>
-            )}
-          </div>
+    <div className="flex flex-col h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
+      <div className="flex flex-col h-full min-h-0">
+        {/* Header */}
+        <div className={`flex justify-between items-center w-full px-4 md:px-8 py-4${!isInChatView ? ' pb-0' : ''}`}>
+          {!isInChatView && (
+            <div className="w-full">
+              {/* Home page header - minimal */}
+            </div>
+          )}
+          <h1 className={
+            isInChatView ? "text-xl md:text-2xl font-semibold flex-1 min-w-0" : "hidden"
+          }>
+            {/* Only show title in chat view, not on home page */}
+          </h1>
           
-          {isMobileMenuOpen && isInChatView && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              className="md:hidden bg-glass-dark border-t border-white/10 px-4 py-3"
-            >
+          {isInChatView && (
+            <div className="flex items-center gap-2 md:gap-4">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleShare}
-                className="w-full bg-glass border-white/20 hover:bg-white/10 mb-2"
+                className="bg-glass border-white/20 hover:bg-white/10 transition-all-smooth hover-lift shadow-lg"
               >
                 <Share className="w-4 h-4 mr-2" />
-                Share Session
+                Share
               </Button>
-            </motion.div>
+              
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="md:hidden bg-glass border border-white/20 hover:bg-white/10"
+              >
+                <Menu className="w-5 h-5" />
+              </Button>
+            </div>
           )}
-        </motion.header>
+        </div>
+
+        {/* Mobile menu overlay */}
+        {isMobileMenuOpen && isInChatView && (
+          <motion.div
+            className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm md:hidden"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsMobileMenuOpen(false)}
+          >
+            <motion.div
+              className="absolute right-0 top-0 h-full w-80 bg-glass-dark border-l border-white/20 p-6 shadow-2xl"
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold mb-4">Tools</h3>
+                <div className="space-y-2">
+                  {/* Tool buttons would go here */}
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
 
         <main className="flex-1 relative z-10 flex flex-col min-h-0 overflow-hidden h-full">
           {!isInChatView && (
@@ -543,6 +507,8 @@ export default function Home() {
                     isLoading={isLoading}
                     handleStopAgent={handleStopAgent}
                     className="w-full max-w-4xl"
+                    textareaClassName={!isInChatView ? "border-0 bg-transparent" : ""}
+                    showBorder={false}
                   />
                 </motion.div>
               </div>

@@ -375,6 +375,7 @@ const ChatMessage = ({
           isUseDeepResearch={isUseDeepResearch}
           isLoading={isLoading}
           handleStopAgent={handleStopAgent}
+          showBorder={true}
         />
       </motion.div>
     </div>
