@@ -36,6 +36,6 @@ services:
   disk:
     name: disk
     mountPath: /var/data
-    sizeGB: 1
+    sizeGB: 10
   autoDeployTrigger: "off"
 version: "1"
