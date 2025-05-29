@@ -3,6 +3,7 @@ Manages global application configuration, primarily command-line arguments.
 """
 import argparse
 import logging
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
