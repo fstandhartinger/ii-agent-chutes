@@ -431,8 +431,7 @@ export default function Home() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.8, delay: 0.4 }}
                 >
-                  THIS APP IS CURRENTLY UNDER MAINTAINANCE WHILE WE DEPLOY AN UPGRADE.
-                  PLEASE CHECK BACK IN A FEW MINUTES.
+                  How can I help you today?
                 </motion.h1>
                 
                 <motion.p

@@ -1,0 +1,53 @@
+# Cursor AI Assistant - Project Development Rules
+
+## 1. Understanding the Original Application (`original_app_code` Folder)
+
+*   **Contents:** The `original_app_code` folder houses the source code of the **original application** from which our current project is a fork.
+*   **Characteristics:** This original codebase is:
+    *   Fully functional.
+    *   Stable and robust.
+    *   Well-tested.
+*   **Purpose & Usage:**
+    *   **Reference for Debugging:** If a feature in our modified version is broken, especially one that previously worked, consult this original source code. It can help you understand the original, correct implementation and identify if our changes introduced the bug.
+    *   **Baseline Understanding:** Use it as a template or baseline to understand core functionalities if you're unsure how something was intended to work.
+
+## 2. Supporting Documentation (`explanation.md`)
+
+*   **Location:** Within the `original_app_code` folder, you'll find an `explanation.md` file.
+*   **Content:** This document provides textual descriptions and explanations of many concepts, architectures, or features of the original application. Refer to it for deeper understanding.
+
+## 3. General Development Best Practices & Workflow
+
+### 3.1. Pre-Commit & Pre-Push Checklist
+
+Before committing and pushing your changes, **you must verify the following**:
+
+1.  **Successful Build:**
+    *   Ensure both the backend and frontend can be successfully built without errors (e.g., using commands like `npm run build` or `yarn build`).
+2.  **Linter Integrity:**
+    *   Confirm that there are no linter errors in your code. Run the linter and fix any reported issues.
+3.  **Basic Runtime Test:**
+    *   Attempt to run both the backend and frontend locally.
+    *   Verify that they start and operate without immediate error messages or crashes.
+
+### 3.2. Code Maintainability & Readability
+
+*   **File Size Limit & Refactoring:**
+    *   If a source code file grows beyond approximately **500 lines**, it's a strong indicator that it should be refactored.
+    *   Break down large files into smaller, more focused, and manageable modules or components. This improves clarity, maintainability, and testability.
+    *   The goal is to keep the codebase easy to navigate and understand.
+
+### 3.3. Knowledge Sharing & Continuous Improvement (`lessons_learned.md`)
+
+*   **Location:** Create and maintain a `lessons_learned.md` file in the **root directory** of the project.
+*   **Purpose:**
+    *   Whenever a bug is identified and fixed, or a significant insight is gained, add a concise, one-line entry to this file.
+    *   This entry should briefly describe the problem and the key takeaway or solution.
+*   **Benefit:**
+    *   This file serves as a collective memory for the team.
+    *   Regularly review it (especially when tackling similar issues) to avoid repeating past mistakes and to reinforce best practices.
+    *   It helps ensure that we learn from our experiences and continuously improve our development process.
+
+---
+
+*This document outlines essential rules and guidelines for developing this project. Adhering to them will help maintain code quality, improve collaboration, and reduce errors.*
