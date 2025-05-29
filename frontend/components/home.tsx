@@ -10,6 +10,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
+// Uncomment these imports and fix them
 // import { TAB, TOOL } from "@/lib/constants";
 // import { parseJson, getRemoteURL } from "@/lib/utils";
 // import { hasProAccess } from "@/lib/pro";
@@ -64,8 +65,10 @@ const InstallPrompt = dynamic(() => import("@/components/install-prompt"), { ssr
 const ConsentDialog = dynamic(() => import("@/components/consent-dialog"), { ssr: false });
 const CookieBanner = dynamic(() => import("@/components/cookie-banner"), { ssr: false });
 
-// Custom hooks
-// import { useWebSocketManager } from "@/hooks/useWebSocketManager";
+// Import the WebSocket hook
+import { useWebSocketManager } from "@/components/home-parts/useWebSocketManager";
+
+// Custom hooks - temporarily commented but we'll implement minimal versions
 // import { useEventHandler } from "@/hooks/useEventHandler";
 // import { useSessionManager } from "@/hooks/useSessionManager";
 // import { useHomeInteractionHandlers } from "@/hooks/useHomeInteractionHandlers";
@@ -82,17 +85,73 @@ export default function Home() {
   const [messages, setMessages] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState("");
-  const [isSocketConnected, setIsSocketConnected] = useState(false);
-  const [isSocketReady, setIsSocketReady] = useState(false);
   const [activeTab, setActiveTab] = useState(TAB.BROWSER);
   const [showReloadButton, setShowReloadButton] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobileDetailPaneOpen, setIsMobileDetailPaneOpen] = useState(false);
   const [showConsentDialog, setShowConsentDialog] = useState(false);
+  const [deviceId, setDeviceId] = useState<string | null>(null);
+  const [selectedModel, setSelectedModel] = useState({ provider: 'chutes' as const, id: 'sonnet-3.5', name: 'Claude 3.5 Sonnet' });
+  const [useNativeToolCalling, setUseNativeToolCalling] = useState(false);
+  
+  // Initialize device ID
+  useEffect(() => {
+    const storedDeviceId = localStorage.getItem('deviceId');
+    if (storedDeviceId) {
+      setDeviceId(storedDeviceId);
+    } else {
+      const newDeviceId = `device_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      localStorage.setItem('deviceId', newDeviceId);
+      setDeviceId(newDeviceId);
+    }
+  }, []);
+
+  // WebSocket connection
+  const {
+    socket,
+    isSocketConnected,
+    isSocketReady,
+    sendMessage,
+    connect,
+    disconnect
+  } = useWebSocketManager({
+    deviceId,
+    isReplayMode: false,
+    selectedModel,
+    useNativeToolCalling,
+    onEventReceived: (event) => {
+      console.log("Event received:", event);
+      // Handle incoming events here
+    },
+    getProKey: () => null,
+    isLoading
+  });
   
   // Simplified handlers (temporary)
-  const handleQuestionSubmit = (question: string) => {
+  const handleQuestionSubmit = async (question: string) => {
     console.log("Question submitted:", question);
+    if (!isSocketReady || !question.trim()) return;
+    
+    setIsLoading(true);
+    setCurrentQuestion("");
+    
+    try {
+      const success = await sendMessage({
+        type: "user_message",
+        content: {
+          text: question,
+          timestamp: Date.now()
+        }
+      });
+      
+      if (!success) {
+        console.error("Failed to send message");
+        setIsLoading(false);
+      }
+    } catch (error) {
+      console.error("Error sending message:", error);
+      setIsLoading(false);
+    }
   };
   
   const handleShare = () => {
@@ -103,8 +162,11 @@ export default function Home() {
     console.log("Logo clicked");
   };
   
-  const handleExampleClick = (example: string) => {
-    console.log("Example clicked:", example);
+  const handleExampleClick = (example: string, isDeepResearch: boolean = false, fileUrl?: string) => {
+    console.log("Example clicked:", example, isDeepResearch, fileUrl);
+    setCurrentQuestion(example);
+    // Auto-submit the example
+    handleQuestionSubmit(example);
   };
   
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -113,6 +175,14 @@ export default function Home() {
   
   const handleStopAgent = () => {
     console.log("Stop agent");
+    setIsLoading(false);
+    // Send stop message to backend
+    if (isSocketReady) {
+      sendMessage({
+        type: "stop_agent",
+        content: {}
+      });
+    }
   };
   
   const handleConsentAccept = () => {
@@ -164,7 +234,7 @@ export default function Home() {
 
   useEffect(() => {
     let timer: NodeJS.Timeout | null = null;
-    if (false && !isInChatView) {
+    if (!isSocketReady && !isInChatView) {
       timer = setTimeout(() => {
         if (!isSocketReady && !isInChatView) {
           setShowReloadButton(true);
@@ -173,30 +243,24 @@ export default function Home() {
     }
     if (isSocketReady) {
       setShowReloadButton(false);
-      if (false) {
-        // sessionManager.setReturnedFromChat(false);
-      }
     }
     return () => { if (timer) clearTimeout(timer); };
-  }, [false, isSocketReady, isInChatView, setShowReloadButton]);
+  }, [isSocketReady, isInChatView]);
 
   const combinedResetChat = useCallback(() => {
     console.log("HOME_DEBUG: Starting combined reset chat");
     
     // 1. Disconnect WebSocket
-    // webSocketManager.disconnect();
+    disconnect();
     
     // 2. Reset all states
-    // eventHandlerObject.clearTimeoutCheck();
-    // eventHandlerObject.resetEventHandler();
-    // sessionManager.resetSessionForNewChat(); 
-    // chatState.resetChatState();
-    // uiState.resetUIState();
+    setMessages([]);
+    setIsLoading(false);
+    setCurrentQuestion("");
     
-    // 3. The WebSocket will automatically reconnect due to the useEffect in useWebSocketManager
-    // that watches for deviceId and isReplayMode changes
+    // 3. The WebSocket will automatically reconnect
     console.log("HOME_DEBUG: Reset complete");
-  }, []);
+  }, [disconnect]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -434,27 +498,6 @@ export default function Home() {
                 </div>
               </motion.div>
               
-              {/* Flexible Content Area - For Examples */}
-              <div className="flex-1 flex flex-col min-h-0 mobile-content-area">
-                <motion.div
-                  key="examples-view"
-                  className="flex-1 flex items-start justify-center px-4 mobile-examples-section"
-                  initial={{ opacity: 0, y: 30 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ 
-                    duration: 0.6, 
-                    delay: 0.8,
-                    exit: { duration: 0.1, delay: 0 } 
-                  }}
-                >
-                  <Examples
-                    onExampleClick={handleExampleClick}
-                    className="w-full max-w-4xl mobile-examples-wrapper"
-                  />
-                </motion.div>
-              </div>
-              
               {/* Input Section - Always Visible (Highest Priority) */}
               <div className="flex-shrink-0 mobile-input-priority">
                 <motion.div
@@ -476,9 +519,30 @@ export default function Home() {
                     isUseDeepResearch={false}
                     setIsUseDeepResearch={(value) => {}}
                     isDisabled={!isSocketConnected || !isSocketReady}
-                    isLoading={isLoading || (!isSocketConnected || !isSocketReady)}
+                    isLoading={isLoading}
                     handleStopAgent={handleStopAgent}
                     className="w-full max-w-4xl"
+                  />
+                </motion.div>
+              </div>
+              
+              {/* Flexible Content Area - For Examples */}
+              <div className="flex-1 flex flex-col min-h-0 mobile-content-area">
+                <motion.div
+                  key="examples-view"
+                  className="flex-1 flex items-start justify-center px-4 mobile-examples-section"
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ 
+                    duration: 0.6, 
+                    delay: 0.8,
+                    exit: { duration: 0.1, delay: 0 } 
+                  }}
+                >
+                  <Examples
+                    onExampleClick={handleExampleClick}
+                    className="w-full max-w-4xl mobile-examples-wrapper"
                   />
                 </motion.div>
               </div>

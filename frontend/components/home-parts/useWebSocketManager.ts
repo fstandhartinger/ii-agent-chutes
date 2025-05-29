@@ -148,7 +148,7 @@ export const useWebSocketManager = ({
     console.log("WEBSOCKET_DEBUG: Starting WebSocket connection process");
     clearAllTimeouts();
     
-    let wsUrl = `${process.env.NEXT_PUBLIC_API_URL}/ws`.replace(/^http/, 'ws');
+    let wsUrl = `${process.env.NEXT_PUBLIC_API_URL || 'https://ii-agent-chutes.onrender.com'}/ws`.replace(/^http/, 'ws');
     wsUrl += `?device_id=${deviceId}`;
     
     const currentSelectedModel = selectedModelRef.current;
