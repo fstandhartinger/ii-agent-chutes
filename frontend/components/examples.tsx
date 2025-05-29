@@ -60,7 +60,7 @@ const Examples = ({ onExampleClick, className }: ExamplesProps) => {
       transition={{ duration: 0.6, delay: 0.3 }}
     >
       <motion.h3
-        className="text-lg font-medium text-muted-foreground mb-4 text-center"
+        className="text-lg font-medium text-muted-foreground mb-4 text-center md:text-lg mobile-examples-title"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.4 }}
@@ -68,48 +68,50 @@ const Examples = ({ onExampleClick, className }: ExamplesProps) => {
         Try one of these
       </motion.h3>
       
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {selectedExamples.map((example, index) => {
-          const cleanExample = example
-            .replace(/\s*\(Deep Research\)$/, "")
-            .replace(/\s*\(file: https?:\/\/[^\)]+\)/, "");
-          
-          return (
-            <motion.button
-              key={index}
-              className="group relative bg-glass border border-white/20 rounded-xl p-4 text-left hover:bg-white/10 transition-all-smooth hover-lift shadow-lg backdrop-blur-sm"
-              onClick={() => handleExampleClick(example)}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 + index * 0.1 }}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              {/* Gradient Border Effect */}
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-emerald-500/10 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-              
-              <div className="relative">
-                <p className="text-sm text-white/90 leading-relaxed">
-                  {truncateText(cleanExample)}
-                </p>
+      <div className="md:grid md:grid-cols-3 md:gap-4 mobile-examples-container">
+        <div className="mobile-examples-grid md:contents">
+          {selectedExamples.map((example, index) => {
+            const cleanExample = example
+              .replace(/\s*\(Deep Research\)$/, "")
+              .replace(/\s*\(file: https?:\/\/[^\)]+\)/, "");
+            
+            return (
+              <motion.button
+                key={index}
+                className="group relative bg-glass border border-white/20 rounded-xl p-4 text-left hover:bg-white/10 transition-all-smooth hover-lift shadow-lg backdrop-blur-sm mobile-example-card"
+                onClick={() => handleExampleClick(example)}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 + index * 0.1 }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                {/* Gradient Border Effect */}
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-emerald-500/10 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 
-                {/* Indicators */}
-                <div className="flex items-center gap-2 mt-3">
-                  {example.includes("(Deep Research)") && (
-                    <span className="inline-flex items-center px-2 py-1 rounded-md bg-gradient-skyblue-lavender text-black text-xs font-medium">
-                      Deep Research
-                    </span>
-                  )}
-                  {example.includes("(file:") && (
-                    <span className="inline-flex items-center px-2 py-1 rounded-md bg-emerald-500/20 text-emerald-300 text-xs font-medium border border-emerald-500/30">
-                      File Attached
-                    </span>
-                  )}
+                <div className="relative">
+                  <p className="text-sm text-white/90 leading-relaxed">
+                    {truncateText(cleanExample)}
+                  </p>
+                  
+                  {/* Indicators */}
+                  <div className="flex items-center gap-2 mt-3">
+                    {example.includes("(Deep Research)") && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-md bg-gradient-skyblue-lavender text-black text-xs font-medium">
+                        Deep Research
+                      </span>
+                    )}
+                    {example.includes("(file:") && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-md bg-emerald-500/20 text-emerald-300 text-xs font-medium border border-emerald-500/30">
+                        File Attached
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </motion.button>
-          );
-        })}
+              </motion.button>
+            );
+          })}
+        </div>
       </div>
     </motion.div>
   );

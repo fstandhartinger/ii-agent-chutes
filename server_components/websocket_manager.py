@@ -392,7 +392,7 @@ async def websocket_endpoint(websocket: WebSocket):
         # workspace_scope can be 'persistent' or 'session' based on args
         # use_container_workspace also from args
         workspace_manager, session_uuid_for_connection = create_workspace_manager_for_connection(
-            base_workspace_path=current_app_args.workspace, # From global args
+            workspace_root=current_app_args.workspace, # From global args
             use_container_workspace=current_app_args.use_container_workspace # From global args
         )
         logger.info(f"WS_ENDPOINT ({connection_id}): Workspace manager created in {time.time() - ws_creation_start_time:.3f}s. Session UUID: {session_uuid_for_connection}, Root: {workspace_manager.root}")
