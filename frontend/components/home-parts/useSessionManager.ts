@@ -71,11 +71,16 @@ export const useSessionManager = (
     setDeviceId(existingDeviceId);
   }, []);
 
-  // Initialize session ID from URL search params
+  // Initialize session ID from URL search params - only for replay mode
   useEffect(() => {
     const idFromParams = searchParams.get('id');
     if (idFromParams) {
+      // Only set sessionId if we're in replay mode (URL has id parameter)
+      console.log("SESSION_MANAGER: Setting sessionId from URL params (replay mode):", idFromParams);
       setSessionId(idFromParams);
+    } else {
+      // If no id in URL, ensure sessionId is null (for fresh start)
+      setSessionId(null);
     }
   }, [searchParams]);
 

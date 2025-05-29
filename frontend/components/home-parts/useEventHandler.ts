@@ -68,6 +68,7 @@ export const useEventHandler = ({
   hasProAccessFn,
 }: UseEventHandlerProps) => {
   const [timeoutCheckInterval, setTimeoutCheckInterval] = useState<NodeJS.Timeout | null>(null);
+  const [hasSetSessionId, setHasSetSessionId] = useState(false); // Track if sessionId has been set
 
   const clearTimeoutCheck = useCallback(() => {
     if (timeoutCheckInterval) {
@@ -76,16 +77,23 @@ export const useEventHandler = ({
     }
   }, [timeoutCheckInterval]);
 
+  // Reset function to be called when a new chat starts
+  const resetEventHandler = useCallback(() => {
+    setHasSetSessionId(false);
+    clearTimeoutCheck();
+  }, [clearTimeoutCheck]);
+
   const handleEvent = useCallback((data: { id: string; type: AgentEvent; content: Record<string, unknown> }) => {
     // console.log(`EVENT_HANDLER_DEBUG: Received event type: ${data.type}`, data);
 
     switch (data.type) {
       case AgentEvent.CONNECTION_ESTABLISHED:
         console.log("Connection established (event handler):", data.content.message);
-        if (data.content.connection_id) {
-          setSessionId(data.content.connection_id as string);
-          console.log("EVENT_HANDLER_DEBUG: Session ID set from connection_id:", data.content.connection_id);
-        }
+        // Removed automatic sessionId setting here - sessionId should only be set when an actual chat begins
+        // if (data.content.connection_id) {
+        //   setSessionId(data.content.connection_id as string);
+        //   console.log("EVENT_HANDLER_DEBUG: Session ID set from connection_id:", data.content.connection_id);
+        // }
         // Also, workspace_path often comes with this event.
         if (data.content.workspace_path) {
             setWorkspaceInfo(data.content.workspace_path as string);
@@ -94,6 +102,12 @@ export const useEventHandler = ({
         break;
 
       case AgentEvent.USER_MESSAGE: // Should be handled by chat input logic primarily
+        // Set sessionId when the first user message is processed - this indicates a real chat session
+        if (data.content.connection_id && !hasSetSessionId) {
+          setSessionId(data.content.connection_id as string);
+          setHasSetSessionId(true);
+          console.log("EVENT_HANDLER_DEBUG: Session ID set from first USER_MESSAGE:", data.content.connection_id);
+        }
         addMessage({
           id: data.id,
           role: "user",
@@ -318,8 +332,8 @@ export const useEventHandler = ({
     addMessage, updateLastMessage, setIsLoading, setIsCompleted, setFileContent,
     setTaskSummary, setShowUpgradePrompt, addUploadedFile, setActiveTab, setDeployedUrl,
     workspaceInfo, setWorkspaceInfo, setSessionId, handleClickAction, selectedModel, userPrompt, taskSummary,
-    generateTaskSummaryFn, hasProAccessFn, clearTimeoutCheck, isLoading, messages.length // Added isLoading and messages.length for error context
+    generateTaskSummaryFn, hasProAccessFn, clearTimeoutCheck, isLoading, messages.length, hasSetSessionId, setHasSetSessionId
   ]);
 
-  return { handleEvent, clearTimeoutCheck };
+  return { handleEvent, clearTimeoutCheck, resetEventHandler };
 };

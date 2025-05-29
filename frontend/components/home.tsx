@@ -269,6 +269,7 @@ export default function Home() {
     }, 100); // 100ms delay
 
     eventHandlerObject.clearTimeoutCheck();
+    eventHandlerObject.resetEventHandler(); // Reset the event handler state
     sessionManager.resetSessionForNewChat(); 
     chatState.resetChatState();
     uiState.resetUIState();
