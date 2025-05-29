@@ -4,10 +4,7 @@
 
 // @ts-nocheck
 
-// Import ohne Namenskollision
-const Browser = dynamic(() => import("@/components/browser"), { ssr: false });
-const WebsiteViewer = dynamic(() => import("./website-viewer"), { ssr: false });
-const TerminalComponent = dynamic(() => import("./terminal"), { ssr: false });
+import dynamic from "next/dynamic";
 import type { TerminalRef } from "./terminal";
 import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
 import {
@@ -23,10 +20,6 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useCallback, useState } from "react"; // Ensured useState is imported
-// import { toast } from "sonner"; // toast is used by hooks
-// import { cloneDeep, debounce } from "lodash"; // Moved to hooks
-// import Cookies from "js-cookie"; // Moved to useSessionManager
-// import { v4 as uuidv4 } from "uuid"; // Moved to hooks if needed there
 import { useRouter, useSearchParams } from "next/navigation"; // Keep useRouter for /gaia, useSearchParams for isReplayMode
 import { useChutes } from "@/providers/chutes-provider";
 import Examples from "@/components/examples";
@@ -34,28 +27,27 @@ import ModelPicker from "@/components/model-picker";
 import ProUpgradeButton from "@/components/pro-upgrade-button";
 import { hasProAccess, getProKey } from "@/utils/pro-utils"; // Keep for Pro logic
 
-import dynamic from "next/dynamic";
+// Dynamic imports
+const Browser = dynamic(() => import("@/components/browser"), { ssr: false });
+const WebsiteViewer = dynamic(() => import("./website-viewer"), { ssr: false });
+const TerminalComponent = dynamic(() => import("./terminal"), { ssr: false });
 const CodeEditor = dynamic(() => import("@/components/code-editor"), { ssr: false });
-
-// Removed inline WebSocketMessage interface
+const ChatMessage = dynamic(() => import("./chat-message"), { ssr: false });
+const ImageBrowser = dynamic(() => import("./image-browser"), { ssr: false });
 
 import QuestionInput from "@/components/question-input";
 import SearchBrowser from "@/components/search-browser";
 import { Button } from "@/components/ui/button";
 import {
   ActionStep,
-  // AgentEvent, // Moved to hooks
-  // IEvent, // Moved to hooks
   Message,
   TAB,
   TOOL,
   WebSocketMessage, // Now imported from typings
 } from "@/typings/agent";
-const ChatMessage = dynamic(() => import("./chat-message"), { ssr: false });
-const ImageBrowser = dynamic(() => import("./image-browser"), { ssr: false });
 
 import InstallPrompt from "./install-prompt";
-import ConsentDialog /*, { hasUserConsented, setUserConsent } // Moved to useHomeInteractionHandlers */ from "./consent-dialog";
+import ConsentDialog from "./consent-dialog";
 import CookieBanner from "./cookie-banner";
 
 // Import new hooks
@@ -66,7 +58,6 @@ import { useWebSocketManager } from "./home-parts/useWebSocketManager";
 import { useActionHandler } from "./home-parts/useActionHandler";
 import { useEventHandler } from "./home-parts/useEventHandler";
 import { useHomeInteractionHandlers } from "./home-parts/useHomeInteractionHandlers";
-
 
 export default function Home() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -135,7 +126,6 @@ export default function Home() {
     setIsLoading: chatState.setIsLoading,
     setIsCompleted: chatState.setIsCompleted,
     setFileContent: chatState.setFileContent,
-    setTaskSummary: chatState.setTaskSummary,
     setShowUpgradePrompt: chatState.setShowUpgradePrompt,
     setUserPrompt: chatState.setUserPrompt,
     addUploadedFile: chatState.addUploadedFile,
@@ -158,7 +148,6 @@ export default function Home() {
     onEventReceived: eventHandlerObject.handleEvent as (event: { id: string; type: string; content: Record<string, unknown> }) => void,
     getProKey: getProKey,
     isLoading: chatState.isLoading,
-    currentMessages: chatState.messages,
   });
 
   const interactionHandlers = useHomeInteractionHandlers({
@@ -201,6 +190,38 @@ export default function Home() {
     [sessionManager.sessionId, sessionManager.isLoadingSession]
   );
 
+  // Handle model/settings changes that require WebSocket reconnection
+  const currentConnectionSettings = useMemo(() => ({
+    modelId: selectedModel.id,
+    modelProvider: selectedModel.provider,
+    useNativeToolCalling: sessionManager.useNativeToolCalling,
+  }), [selectedModel.id, selectedModel.provider, sessionManager.useNativeToolCalling]);
+
+  const previousConnectionSettings = useRef(currentConnectionSettings);
+
+  useEffect(() => {
+    // Check if critical WebSocket settings have changed
+    const settingsChanged = 
+      previousConnectionSettings.current.modelId !== currentConnectionSettings.modelId ||
+      previousConnectionSettings.current.modelProvider !== currentConnectionSettings.modelProvider ||
+      previousConnectionSettings.current.useNativeToolCalling !== currentConnectionSettings.useNativeToolCalling;
+
+    if (settingsChanged && webSocketManager.socket) {
+      console.log("HOME_DEBUG: Critical WebSocket settings changed, reconnecting...", {
+        previous: previousConnectionSettings.current,
+        current: currentConnectionSettings,
+      });
+      
+      // Disconnect and reconnect with new settings
+      webSocketManager.disconnect();
+      setTimeout(() => {
+        webSocketManager.connect();
+      }, 100);
+    }
+
+    previousConnectionSettings.current = currentConnectionSettings;
+  }, [currentConnectionSettings, webSocketManager]);
+
   useEffect(() => {
     const fetchMaintenanceMessage = async () => {
       try {
@@ -241,7 +262,11 @@ export default function Home() {
     if (sessionManager.sessionId && isReplayMode) { 
       sessionManager.fetchSessionEvents(
         sessionManager.sessionId,
-        (eventPayload, eventId) => eventHandlerObject.handleEvent({ ...eventPayload, id: eventId } as any), 
+        (eventPayload, eventId) => {
+          // Type assertion to match the expected event format
+          const typedEvent = { ...eventPayload, id: eventId } as { id: string; type: string; content: Record<string, unknown> };
+          eventHandlerObject.handleEvent(typedEvent);
+        }, 
         (path) => sessionManager.setWorkspaceInfo(path), 
         () => chatState.setIsLoading(false) 
       );
@@ -284,23 +309,22 @@ export default function Home() {
   }, [sessionManager.returnedFromChat, webSocketManager.isSocketReady, isInChatView, uiState.setShowReloadButton, sessionManager.setReturnedFromChat]);
 
   const combinedResetChat = useCallback(() => {
+    console.log("HOME_DEBUG: Starting combined reset chat");
+    
+    // 1. Disconnect WebSocket
     webSocketManager.disconnect();
     
-    // Add a slight delay to ensure disconnect processes, then explicitly connect
-    setTimeout(() => {
-      // webSocketManager.connect() already checks for deviceId and !isReplayMode internally
-      // We need isReplayMode here just for the console log or if we wanted to gate it here too.
-      // const currentIsReplayMode = !!searchParams.get("id"); // Recalculate or pass if needed
-      console.log("HOME_DEBUG: Explicitly calling connect() after combinedResetChat disconnect.");
-      webSocketManager.connect();
-    }, 100); // 100ms delay
-
+    // 2. Reset all states
     eventHandlerObject.clearTimeoutCheck();
-    eventHandlerObject.resetEventHandler(); // Reset the event handler state
+    eventHandlerObject.resetEventHandler();
     sessionManager.resetSessionForNewChat(); 
     chatState.resetChatState();
     uiState.resetUIState();
-  }, [webSocketManager, eventHandlerObject, sessionManager, chatState, uiState]); // searchParams could be added if used directly for currentIsReplayMode
+    
+    // 3. The WebSocket will automatically reconnect due to the useEffect in useWebSocketManager
+    // that watches for deviceId and isReplayMode changes
+    console.log("HOME_DEBUG: Reset complete");
+  }, [webSocketManager, eventHandlerObject, sessionManager, chatState, uiState]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -310,11 +334,11 @@ export default function Home() {
   };
 
   return (
-    <main className={`relative flex flex-col flex-1 w-full min-h-screen bg-gradient-to-b from-[#181d2a] via-[#181d2a] to-[#1a1a1f] overflow-x-hidden`}>
+    <div className="relative flex flex-col flex-1 w-full min-h-screen bg-gradient-to-b from-[#181d2a] via-[#181d2a] to-[#1a1a1f] overflow-x-hidden">
       <div className="absolute inset-0 z-0 pointer-events-none select-none" aria-hidden="true">
         <div className="w-full h-full bg-gradient-to-b from-[#23263b] via-transparent to-[#181d2a] opacity-50" />
       </div>
-      <div className={`relative z-10 flex flex-col flex-1 min-h-screen`}>
+      <div className="relative z-10 flex flex-col flex-1 min-h-screen">
         <motion.header 
           className="relative z-10 mobile-header-safe flex-shrink-0"
           initial={{ opacity: 0, y: -20 }}
@@ -473,7 +497,7 @@ export default function Home() {
                     title="Run GAIA Benchmark"
                   >
                     Leading
-                  </span> Deep Research Agent. For Free.
+                </span> Deep Research Agent. For Free.
                 </motion.p>
                 
                 <motion.div
@@ -881,6 +905,5 @@ export default function Home() {
       
       <CookieBanner />
     </div>
-    </main>
   );
 }

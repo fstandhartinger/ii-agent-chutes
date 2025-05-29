@@ -1,0 +1,41 @@
+# Exported from Render on 2025-05-29T16:52:11Z
+services:
+- type: web
+  name: ii-agent-chutes
+  runtime: python
+  repo: https://github.com/fstandhartinger/ii-agent-chutes
+  plan: standard
+  envVars:
+  - key: ANTHROPIC_API_KEY
+    sync: false
+  - key: ADMIN_KEY
+    sync: false
+  - key: OPENAI_BASE_URL
+    sync: false
+  - key: PRO_PRIME
+    sync: false
+  - key: NEXT_PUBLIC_VSCODE_URL
+    sync: false
+  - key: OPENROUTER_API_KEY
+    sync: false
+  - key: SERPERDEV_API_KEY
+    sync: false
+  - key: CHUTES_API_KEY
+    sync: false
+  - key: PYTHON_VERSION
+    sync: false
+  - key: SERPAPI_API_KEY
+    sync: false
+  - key: OPENAI_API_KEY
+    sync: false
+  - key: STATIC_FILE_BASE_URL
+    sync: false
+  region: oregon
+  buildCommand: chmod +x scripts/render_build_safe.sh && ./scripts/render_build_safe.sh
+  startCommand: python ws_server.py --port $PORT
+  disk:
+    name: disk
+    mountPath: /var/data
+    sizeGB: 1
+  autoDeployTrigger: "on"
+version: "1"

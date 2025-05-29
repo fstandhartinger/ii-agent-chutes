@@ -84,14 +84,31 @@ export const useSessionManager = (
     }
   }, [searchParams]);
 
+  // Automatically extract session ID from workspace info for new sessions
+  useEffect(() => {
+    // Only extract if we don't already have a session ID and we're not in replay mode
+    const isReplayMode = !!searchParams.get('id');
+    if (workspaceInfo && !sessionId && !isReplayMode) {
+      try {
+        // Extract session ID from workspace path (usually the last part)
+        const extractedId = workspaceInfo.split("/").pop();
+        if (extractedId && extractedId !== workspaceInfo) { // Ensure it's actually a subdirectory
+          console.log("SESSION_MANAGER: Extracted session ID from workspace info:", extractedId);
+          setSessionId(extractedId);
+        }
+      } catch (error) {
+        console.warn("SESSION_MANAGER: Failed to extract session ID from workspace info:", error);
+      }
+    }
+  }, [workspaceInfo, sessionId, searchParams]);
+
   const resetSessionForNewChat = useCallback(() => {
     // This function is primarily for resetting client-side session state for a new chat,
     // not for closing WebSockets, which should be handled by useWebSocketManager.
     setSessionId(null);
-    router.push("/"); // Navigate to home, clearing URL params
-    // Other states like messages, isLoading, etc., should be reset by their respective hooks/managers.
     setWorkspaceInfo(""); // Reset workspace info for new session
     setReturnedFromChat(true); // Indicate user is starting fresh after a session
+    router.push("/"); // Navigate to home, clearing URL params
   }, [router]);
 
   const fetchSessionEvents = useCallback(async (
@@ -100,51 +117,87 @@ export const useSessionManager = (
     onWorkspaceInfoLoaded: (path: string) => void,
     onLoadingComplete: () => void
   ) => {
-    if (!id) return;
+    if (!id) {
+      console.warn("SESSION_MANAGER: Cannot fetch events - no session ID provided");
+      onLoadingComplete();
+      return;
+    }
 
+    console.log("SESSION_MANAGER: Fetching session events for ID:", id);
     setIsLoadingSession(true);
+    
     try {
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/sessions/${id}/events`
       );
 
       if (!response.ok) {
-        throw new Error(`Error fetching session events: ${response.statusText}`);
+        if (response.status === 404) {
+          throw new Error("Session not found");
+        } else if (response.status >= 500) {
+          throw new Error("Server error - please try again later");
+        } else {
+          throw new Error(`Error fetching session events: ${response.statusText}`);
+        }
       }
 
       const data = await response.json();
       
+      if (!data.events || !Array.isArray(data.events)) {
+        throw new Error("Invalid session data format");
+      }
+
       // Extract workspace info if available from the first event or a specific event
       const firstEventWorkspaceDir = data.events?.[0]?.workspace_dir;
       if (firstEventWorkspaceDir) {
+        console.log("SESSION_MANAGER: Setting workspace info from first event:", firstEventWorkspaceDir);
         onWorkspaceInfoLoaded(firstEventWorkspaceDir);
       }
       
+      // Also check for specific workspace info event
       const workspaceEvent = data.events?.find(
         (e: IEvent) => e.event_type === AgentEvent.WORKSPACE_INFO
       );
       if (workspaceEvent?.event_payload?.path) {
-         onWorkspaceInfoLoaded(workspaceEvent.event_payload.path as string);
+        console.log("SESSION_MANAGER: Setting workspace info from WORKSPACE_INFO event:", workspaceEvent.event_payload.path);
+        onWorkspaceInfoLoaded(workspaceEvent.event_payload.path as string);
       }
 
-
-      if (data.events && Array.isArray(data.events)) {
-        for (let i = 0; i < data.events.length; i++) {
-          const event = data.events[i];
-          // Process each event with a small delay for smoother UI update
-          await new Promise((resolve) => setTimeout(resolve, 30)); // Reduced delay
+      // Process events with minimal delay for smoother UI updates
+      console.log(`SESSION_MANAGER: Processing ${data.events.length} events`);
+      for (let i = 0; i < data.events.length; i++) {
+        const event = data.events[i];
+        // Process each event with a small delay for smoother UI update
+        await new Promise((resolve) => setTimeout(resolve, 20)); // Reduced delay for faster loading
+        try {
           onEventProcessed({ ...event.event_payload, id: event.id }, event.id);
+        } catch (eventError) {
+          console.error(`SESSION_MANAGER: Error processing event ${i + 1}:`, eventError);
+          // Continue processing other events even if one fails
         }
       }
+      
+      console.log("SESSION_MANAGER: Successfully loaded session history");
     } catch (error) {
-      console.error("Failed to fetch session events:", error);
-      toast.error("Failed to load session history");
+      console.error("SESSION_MANAGER: Failed to fetch session events:", error);
+      
+      // Show appropriate error message based on error type
+      if (error instanceof Error) {
+        if (error.message.includes("Session not found")) {
+          toast.error("Session not found - it may have been deleted or expired");
+        } else if (error.message.includes("Server error")) {
+          toast.error("Server error loading session - please try again later");
+        } else {
+          toast.error(`Failed to load session: ${error.message}`);
+        }
+      } else {
+        toast.error("Failed to load session history - please try again");
+      }
     } finally {
       setIsLoadingSession(false);
       onLoadingComplete();
     }
   }, []);
-
 
   return {
     deviceId,
