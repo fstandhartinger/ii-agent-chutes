@@ -16,6 +16,7 @@ class EventType(str, enum.Enum):
     STREAM_COMPLETE = "stream_complete"
     ERROR = "error"
     SYSTEM = "system"
+    PING = "ping"
     PONG = "pong"
     UPLOAD_SUCCESS = "upload_success"
     BROWSER_USE = "browser_use"

@@ -544,7 +544,7 @@ async def websocket_endpoint(websocket: WebSocket):
                             content={"message": "No active query to cancel", "error_code": "NO_ACTIVE_QUERY"}
                         ).model_dump(), str(connection_id))
                 
-                elif msg_type == "ping": # Simple keep-alive from client
+                elif msg_type == EventType.PING.value: # Simple keep-alive from client
                     await safe_websocket_send_json(websocket, {"type": "pong"}, str(connection_id))
 
                 else:
