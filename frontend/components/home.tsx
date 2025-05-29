@@ -22,7 +22,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import Image from "next/image";
-import { useEffect, useMemo, useRef, useCallback } from "react"; // Removed useState
+import { useEffect, useMemo, useRef, useCallback, useState } from "react"; // Ensured useState is imported
 // import { toast } from "sonner"; // toast is used by hooks
 // import { cloneDeep, debounce } from "lodash"; // Moved to hooks
 // import Cookies from "js-cookie"; // Moved to useSessionManager
@@ -76,6 +76,8 @@ export default function Home() {
 
   // Initialize Chutes context
   const { selectedModel, setSelectedModel } = useChutes();
+
+  const [maintenanceMessage, setMaintenanceMessage] = useState<string | null>(null);
 
   // Local utility functions (must be defined before useEventHandler if passed to it)
   const parseJson = useCallback((jsonString: string) => {
@@ -198,6 +200,31 @@ export default function Home() {
     () => !!sessionManager.sessionId && !sessionManager.isLoadingSession,
     [sessionManager.sessionId, sessionManager.isLoadingSession]
   );
+
+  useEffect(() => {
+    const fetchMaintenanceMessage = async () => {
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/maintenance_message`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.message) {
+            setMaintenanceMessage(data.message);
+          }
+        } else {
+          console.error("Failed to fetch maintenance message:", response.statusText);
+        }
+      } catch (error) {
+        console.error("Error fetching maintenance message:", error);
+      }
+    };
+  
+    // Only fetch if not in chat view, as the H1 is only visible then.
+    // And also only if we haven't fetched it yet.
+    if (!isInChatView && !maintenanceMessage) {
+      fetchMaintenanceMessage();
+    }
+  }, [isInChatView, maintenanceMessage]); // Re-check if view changes or if message was somehow reset
+
   const isBrowserTool = useMemo(
     () =>
       [
@@ -431,7 +458,7 @@ export default function Home() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.8, delay: 0.4 }}
                 >
-                  How can I help you today?
+                  {maintenanceMessage || "How can I help you today?"}
                 </motion.h1>
                 
                 <motion.p

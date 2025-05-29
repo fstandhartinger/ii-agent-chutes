@@ -20,6 +20,18 @@ from .websocket_manager import start_periodic_cleanup, stop_periodic_cleanup
 
 logger = logging.getLogger(__name__)
 
+# Custom log filter to suppress /sw.js access logs
+class SwJsFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        # For uvicorn.access, record.args is typically a tuple like:
+        # (client_addr (str), method (str), path (str), http_version (str), status_code (int))
+        # Example: ('127.0.0.1:12345', 'GET', '/sw.js', 'HTTP/1.1', 200)
+        if hasattr(record, 'args') and isinstance(record.args, tuple) and len(record.args) >= 3:
+            path = record.args[2]
+            if isinstance(path, str) and path.endswith("/sw.js"):
+                return False  # Do not log this record
+        return True  # Log all other records
+
 def setup_workspace_static_files(app: FastAPI, workspace_path_str: str):
     """
     Sets up the static file serving for the workspace directory.
@@ -105,6 +117,11 @@ def main_server_start(app: FastAPI):
         logger.info("FastAPI application shutdown event triggered.")
         stop_periodic_cleanup() # Stop the WebSocket connection cleanup task
         # Add any other global resource cleanup here if necessary
+
+    # Add filter to uvicorn.access logger to suppress /sw.js logs
+    access_logger = logging.getLogger("uvicorn.access")
+    access_logger.addFilter(SwJsFilter())
+    logger.info("Added SwJsFilter to uvicorn.access logger to suppress /sw.js logs.")
 
     logger.info(f"Starting Uvicorn server on {args.host}:{args.port}")
     try:

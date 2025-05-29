@@ -247,3 +247,31 @@ async def generate_summary_endpoint(request: Request):
     except Exception as e:
         logger.error(f"Generate Summary API: Error generating summary: {str(e)}", exc_info=True)
         return create_cors_response({"error": "Internal server error"}, 500)
+
+MAINTENANCE_FILE_PATH = Path("data/maintenance.txt")
+
+@router.get("/api/maintenance_message")
+async def get_maintenance_message_endpoint(request: Request):
+    """
+    API endpoint to get the maintenance message.
+    Checks for a maintenance.txt file in the data directory.
+    """
+    try:
+        message_content = None
+        if MAINTENANCE_FILE_PATH.exists() and MAINTENANCE_FILE_PATH.is_file():
+            try:
+                message_content = MAINTENANCE_FILE_PATH.read_text(encoding="utf-8").strip()
+                logger.info(f"Maintenance message found: {message_content[:100]}...") # Log first 100 chars
+            except Exception as e:
+                logger.error(f"Error reading maintenance file {MAINTENANCE_FILE_PATH}: {str(e)}", exc_info=True)
+                # If file exists but can't be read, we might still want to indicate no specific message
+                # or return an error. For now, let's treat it as no message.
+                message_content = None
+        
+        return create_cors_response({"message": message_content})
+
+    except Exception as e:
+        logger.error(f"Maintenance Message API: Error: {str(e)}", exc_info=True)
+        return create_cors_response(
+            {"error": "Error retrieving maintenance message"}, 500
+        )
