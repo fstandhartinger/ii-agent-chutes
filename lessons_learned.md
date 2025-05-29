@@ -1,5 +1,15 @@
 # Lessons Learned
 
+This document captures key insights and solutions discovered during development to help avoid repeating mistakes and improve our development process.
+
+## WebSocket and Server Issues
+
+- **WebSocket 500 errors on Render**: Server crashed due to missing app configuration - added fallback config mechanism and proper Render deployment args
+- **FastAPI WebSocket ping errors**: FastAPI WebSocket doesn't have ping() method - use custom heartbeat messages instead
+- **UUID type mismatch**: create_workspace_manager_for_connection returned string instead of UUID object - fixed return type consistency
+
+## Database and Session Management
+
 ## Bug Fixes and Issues Resolved
 
 ### 1. WebSocket Management Issues (Fixed)
