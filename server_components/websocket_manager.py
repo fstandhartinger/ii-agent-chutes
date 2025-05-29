@@ -554,6 +554,49 @@ async def websocket_endpoint(websocket: WebSocket):
                         }
                     ).model_dump(), str(connection_id))
                 
+                elif msg_type == EventType.USER_MESSAGE.value: # Handle USER_MESSAGE as alias for QUERY
+                    # Treat USER_MESSAGE the same as QUERY for backward compatibility
+                    logger.info(f"WS_PROCESS ({connection_id}): Received USER_MESSAGE, treating as QUERY.")
+                    
+                    if websocket in active_tasks and not active_tasks[websocket].done():
+                        logger.warning(f"WS_PROCESS ({connection_id}): Query rejected, another is active.")
+                        await safe_websocket_send_json(websocket, RealtimeEvent(
+                            type=EventType.ERROR,
+                            content={"message": "A query is already being processed", "error_code": "QUERY_IN_PROGRESS"}
+                        ).model_dump(), str(connection_id))
+                        continue
+
+                    if websocket not in active_agents: # Auto-initialize if not done explicitly
+                        logger.info(f"WS_PROCESS ({connection_id}): Agent not initialized for user message. Auto-initializing.")
+                        # Extract tool_args from content if available
+                        tool_args_for_auto_init = content.get("tool_args", {})
+                        agent = create_agent_for_connection(
+                            session_uuid_for_connection, workspace_manager, websocket, tool_args_for_auto_init
+                        )
+                        active_agents[websocket] = agent
+                        message_processors[websocket] = agent.start_message_processing()
+                        await safe_websocket_send_json(websocket, RealtimeEvent( # Inform client about auto-init
+                            type=EventType.AGENT_INITIALIZED,
+                            content={"message": "Agent auto-initialized", "server_ready": True}
+                        ).model_dump(), str(connection_id))
+                        # Small delay to ensure agent is fully ready after auto-init
+                        await asyncio.sleep(0.1)
+
+                    user_input_text = content.get("text", "")
+                    resume_flag = content.get("resume", False)
+                    files_list = content.get("files", [])
+                    
+                    await safe_websocket_send_json(websocket, RealtimeEvent( # Acknowledge user message receipt
+                        type=EventType.PROCESSING,
+                        content={"message": "User message received, processing started."}
+                    ).model_dump(), str(connection_id))
+
+                    # Create and store the agent execution task
+                    agent_task = asyncio.create_task(
+                        run_agent_async(websocket, user_input_text, resume_flag, files_list)
+                    )
+                    active_tasks[websocket] = agent_task
+                
                 elif msg_type == EventType.CANCEL_PROCESSING.value: # Assuming an enum value
                     if websocket in active_tasks and not active_tasks[websocket].done():
                         logger.info(f"WS_PROCESS ({connection_id}): Cancelling active query task upon user request.")

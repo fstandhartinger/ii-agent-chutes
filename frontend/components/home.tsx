@@ -140,7 +140,8 @@ export default function Home() {
         type: "user_message",
         content: {
           text: question,
-          timestamp: Date.now()
+          resume: false,
+          files: []
         }
       });
       
@@ -438,7 +439,7 @@ export default function Home() {
                   </motion.p>
                   
                   <motion.div
-                    className="text-xs sm:text-sm text-muted-foreground"
+                    className="text-xs sm:text-sm text-muted-foreground mb-6"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.8, delay: 0.7 }}
@@ -455,48 +456,47 @@ export default function Home() {
                       </span>
                     </a>
                   </motion.div>
-                  
-                  {!isSocketReady && (
-                    <motion.div
-                      className={`mt-3 md:mt-4 ${
-                        false ? 'animate-shake' : ''
-                      }`}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>
-                          {!isSocketConnected ? "Connecting to server..." : "Initializing server..."}
-                        </span>
-                      </div>
-                      
-                      {showReloadButton && (
-                        <motion.div
-                          className="mt-3 flex flex-col items-center gap-2"
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.3 }}
-                        >
-                          <Button
-                            onClick={() => window.location.reload()}
-                            variant="outline"
-                            size="sm"
-                            className="bg-glass border-white/20 hover:bg-white/10 transition-all-smooth hover-lift"
-                          >
-                            <RefreshCw className="w-3 h-3 mr-2" />
-                            Reload Page
-                          </Button>
-                          <p className="text-xs text-muted-foreground text-center max-w-xs">
-                            Connection is taking longer than expected. This might be due to high server load.
-                          </p>
-                        </motion.div>
-                      )}
-                    </motion.div>
-                  )}
                 </div>
               </motion.div>
+              
+              {/* Connection Status - Separate Section */}
+              {!isSocketReady && (
+                <motion.div
+                  className="flex-shrink-0 px-4 pb-2"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>
+                      {!isSocketConnected ? "Connecting to server..." : "Initializing server..."}
+                    </span>
+                  </div>
+                  
+                  {showReloadButton && (
+                    <motion.div
+                      className="mt-3 flex flex-col items-center gap-2"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <Button
+                        onClick={() => window.location.reload()}
+                        variant="outline"
+                        size="sm"
+                        className="bg-glass border-white/20 hover:bg-white/10 transition-all-smooth hover-lift"
+                      >
+                        <RefreshCw className="w-3 h-3 mr-2" />
+                        Reload Page
+                      </Button>
+                      <p className="text-xs text-muted-foreground text-center max-w-xs">
+                        Connection is taking longer than expected. This might be due to high server load.
+                      </p>
+                    </motion.div>
+                  )}
+                </motion.div>
+              )}
               
               {/* Input Section - Always Visible (Highest Priority) */}
               <div className="flex-shrink-0 mobile-input-priority">

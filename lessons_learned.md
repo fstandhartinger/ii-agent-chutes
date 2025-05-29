@@ -100,3 +100,15 @@ This document captures key insights and solutions discovered during development 
 - **Problem**: Infinite WebSocket reconnection loop caused by useEffect dependency chain
 - **Root Cause**: isSocketReady state change triggered connect callback to change, causing useEffect cleanup to disconnect
 - **Solution**: Removed isSocketReady from connect callback dependencies and simplified onmessage logic
+
+## Frontend UI Layout Issues (Fixed)
+- **Problem**: "Connecting to Server" message was not visible and "Powered by CHUTES" text was too close to input components
+- **Root Cause**: CSS mobile layout priorities caused input section to overlay connection status messages  
+- **Solution**: Restructured component hierarchy to place connection status as separate section above input, added proper spacing with mb-6 class
+- **Key Takeaway**: Mobile CSS priorities can hide important status messages - always test connection states on mobile viewports
+
+## WebSocket Message Type Mismatch (Fixed)
+- **Problem**: Frontend sent "user_message" type but backend only accepted "query" type, causing "Unknown message type" errors
+- **Root Cause**: Backend websocket_manager.py didn't handle USER_MESSAGE EventType despite it being defined in event.py
+- **Solution**: Added USER_MESSAGE handling in backend that processes it the same as QUERY for backward compatibility
+- **Key Takeaway**: When EventTypes are defined, ensure all message handlers support them or document which are client-only vs server-supported
