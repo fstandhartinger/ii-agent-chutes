@@ -30,7 +30,7 @@ export async function POST(request: Request) {
       },
       body: JSON.stringify({
         workspace_id: workspaceId,
-        path: "/var/data"
+        path: ""
       }),
     });
 
