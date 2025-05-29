@@ -69,6 +69,7 @@ export const useEventHandler = ({
 }: UseEventHandlerProps) => {
   const [timeoutCheckInterval, setTimeoutCheckInterval] = useState<NodeJS.Timeout | null>(null);
   const [hasSetSessionId, setHasSetSessionId] = useState(false); // Track if sessionId has been set
+  const [pendingConnectionId, setPendingConnectionId] = useState<string | null>(null); // Store connection_id from CONNECTION_ESTABLISHED
 
   const clearTimeoutCheck = useCallback(() => {
     if (timeoutCheckInterval) {
@@ -80,6 +81,7 @@ export const useEventHandler = ({
   // Reset function to be called when a new chat starts
   const resetEventHandler = useCallback(() => {
     setHasSetSessionId(false);
+    setPendingConnectionId(null);
     clearTimeoutCheck();
   }, [clearTimeoutCheck]);
 
@@ -89,11 +91,11 @@ export const useEventHandler = ({
     switch (data.type) {
       case AgentEvent.CONNECTION_ESTABLISHED:
         console.log("Connection established (event handler):", data.content.message);
-        // Removed automatic sessionId setting here - sessionId should only be set when an actual chat begins
-        // if (data.content.connection_id) {
-        //   setSessionId(data.content.connection_id as string);
-        //   console.log("EVENT_HANDLER_DEBUG: Session ID set from connection_id:", data.content.connection_id);
-        // }
+        // Store connection_id for later use when chat actually starts
+        if (data.content.connection_id) {
+          setPendingConnectionId(data.content.connection_id as string);
+          console.log("EVENT_HANDLER_DEBUG: Stored connection_id for later use:", data.content.connection_id);
+        }
         // Also, workspace_path often comes with this event.
         if (data.content.workspace_path) {
             setWorkspaceInfo(data.content.workspace_path as string);
@@ -102,12 +104,7 @@ export const useEventHandler = ({
         break;
 
       case AgentEvent.USER_MESSAGE: // Should be handled by chat input logic primarily
-        // Set sessionId when the first user message is processed - this indicates a real chat session
-        if (data.content.connection_id && !hasSetSessionId) {
-          setSessionId(data.content.connection_id as string);
-          setHasSetSessionId(true);
-          console.log("EVENT_HANDLER_DEBUG: Session ID set from first USER_MESSAGE:", data.content.connection_id);
-        }
+        // SessionId setting moved to PROCESSING event
         addMessage({
           id: data.id,
           role: "user",
@@ -117,6 +114,12 @@ export const useEventHandler = ({
         break;
 
       case AgentEvent.PROCESSING:
+        // Set sessionId when processing starts - this indicates a real chat session has begun
+        if (pendingConnectionId && !hasSetSessionId) {
+          setSessionId(pendingConnectionId);
+          setHasSetSessionId(true);
+          console.log("EVENT_HANDLER_DEBUG: Session ID set from PROCESSING event using stored connection_id:", pendingConnectionId);
+        }
         setIsLoading(true);
         setIsCompleted(false);
         clearTimeoutCheck(); // Clear any existing interval
@@ -332,7 +335,7 @@ export const useEventHandler = ({
     addMessage, updateLastMessage, setIsLoading, setIsCompleted, setFileContent,
     setTaskSummary, setShowUpgradePrompt, addUploadedFile, setActiveTab, setDeployedUrl,
     workspaceInfo, setWorkspaceInfo, setSessionId, handleClickAction, selectedModel, userPrompt, taskSummary,
-    generateTaskSummaryFn, hasProAccessFn, clearTimeoutCheck, isLoading, messages.length, hasSetSessionId, setHasSetSessionId
+    generateTaskSummaryFn, hasProAccessFn, clearTimeoutCheck, isLoading, messages.length, hasSetSessionId, setHasSetSessionId, pendingConnectionId, setPendingConnectionId
   ]);
 
   return { handleEvent, clearTimeoutCheck, resetEventHandler };
