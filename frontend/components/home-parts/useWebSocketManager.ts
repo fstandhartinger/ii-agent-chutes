@@ -224,7 +224,7 @@ export const useWebSocketManager = ({
     };
 
     setSocket(wsInstance);
-  }, [deviceId, isReplayMode, handleWebSocketError, isSocketReady, socket]); // Added socket to dependencies
+  }, [deviceId, isReplayMode, handleWebSocketError]); // Removed isSocketReady and socket from dependencies to prevent cycles
 
   const disconnect = useCallback(() => {
     if (socket) {
@@ -268,9 +268,9 @@ export const useWebSocketManager = ({
     return () => {
       disconnect();
     };
-  }, [deviceId, isReplayMode, connect, disconnect, socket, selectedModel, useNativeToolCalling]);
-  // Added selectedModel, useNativeToolCalling to deps to trigger reconnect if they change.
-  // This means `connect` and `disconnect` must be stable.
+  }, [deviceId, isReplayMode, connect, disconnect, socket]);
+  // Removed selectedModel, useNativeToolCalling from deps to prevent reconnect cycles
+  // since they are handled through refs and should not trigger automatic reconnects
 
   // Process message queue when socket becomes ready
   useEffect(() => {

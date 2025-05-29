@@ -52,6 +52,35 @@ message_processors: Dict[WebSocket, asyncio.Task] = {} # For agent's internal me
 periodic_cleanup_task: Optional[asyncio.Task] = None
 
 
+async def safe_websocket_send_json(websocket: WebSocket, data: dict, connection_id: Optional[str] = None) -> bool:
+    """
+    Safely send JSON data over WebSocket with proper error handling.
+    Returns True if sent successfully, False otherwise.
+    """
+    if not connection_id:
+        connection_id = str(id(websocket))
+    
+    try:
+        # Check if WebSocket is still in a sendable state
+        if websocket.client_state.name == "DISCONNECTED":
+            logger.debug(f"WS_SAFE_SEND ({connection_id}): WebSocket already disconnected, skipping send.")
+            return False
+        
+        await websocket.send_json(data)
+        return True
+        
+    except RuntimeError as e:
+        if "Cannot call \"send\" once a close message has been sent" in str(e):
+            logger.debug(f"WS_SAFE_SEND ({connection_id}): WebSocket already closed, skipping send.")
+        else:
+            logger.warning(f"WS_SAFE_SEND ({connection_id}): RuntimeError sending message: {e}")
+        return False
+        
+    except Exception as e:
+        logger.error(f"WS_SAFE_SEND ({connection_id}): Error sending WebSocket message: {e}")
+        return False
+
+
 def cleanup_connection(websocket: WebSocket):
     """Clean up resources associated with a websocket connection."""
     connection_id = id(websocket)
@@ -125,15 +154,14 @@ async def run_agent_async(
 
     if not agent:
         logger.error(f"AGENT_RUN ({connection_id}): Agent not initialized for this connection.")
-        try:
-            await websocket.send_json(
-                RealtimeEvent(
-                    type=EventType.ERROR,
-                    content={"message": "Agent not initialized for this connection", "error_code": "AGENT_NOT_INITIALIZED"},
-                ).model_dump()
-            )
-        except Exception as e_send:
-            logger.error(f"AGENT_RUN ({connection_id}): Failed to send AGENT_NOT_INITIALIZED error: {e_send}")
+        await safe_websocket_send_json(
+            websocket,
+            RealtimeEvent(
+                type=EventType.ERROR,
+                content={"message": "Agent not initialized for this connection", "error_code": "AGENT_NOT_INITIALIZED"},
+            ).model_dump(),
+            str(connection_id)
+        )
         return
 
     logger.info(f"AGENT_RUN ({connection_id}): Starting agent run. Input: '{user_input[:50]}...', Resume: {resume}, Files: {len(files)}")
@@ -152,26 +180,24 @@ async def run_agent_async(
 
     except asyncio.CancelledError:
         logger.info(f"AGENT_RUN ({connection_id}): Agent task was cancelled for input: '{user_input[:50]}...'")
-        try:
-            await websocket.send_json(
-                RealtimeEvent(
-                    type=EventType.SYSTEM, # Or a more specific CANCELED type
-                    content={"message": "Processing was canceled by the user."},
-                ).model_dump()
-            )
-        except Exception as e_send_cancel:
-            logger.warning(f"AGENT_RUN ({connection_id}): Failed to send cancellation confirmation: {e_send_cancel}")
+        await safe_websocket_send_json(
+            websocket,
+            RealtimeEvent(
+                type=EventType.SYSTEM, # Or a more specific CANCELED type
+                content={"message": "Processing was canceled by the user."},
+            ).model_dump(),
+            str(connection_id)
+        )
     except Exception as e:
         logger.error(f"AGENT_RUN ({connection_id}): Error running agent: {str(e)}", exc_info=True)
-        try:
-            await websocket.send_json(
-                RealtimeEvent(
-                    type=EventType.ERROR,
-                    content={"message": f"Error running agent: {str(e)}", "error_code": "AGENT_RUNTIME_ERROR"},
-                ).model_dump()
-            )
-        except Exception as e_send_err:
-            logger.error(f"AGENT_RUN ({connection_id}): Failed to send AGENT_RUNTIME_ERROR: {e_send_err}")
+        await safe_websocket_send_json(
+            websocket,
+            RealtimeEvent(
+                type=EventType.ERROR,
+                content={"message": f"Error running agent: {str(e)}", "error_code": "AGENT_RUNTIME_ERROR"},
+            ).model_dump(),
+            str(connection_id)
+        )
     finally:
         if websocket in active_tasks: # Clean up task reference if it's this one
             del active_tasks[websocket]
@@ -371,7 +397,7 @@ async def websocket_endpoint(websocket: WebSocket):
         )
         logger.info(f"WS_ENDPOINT ({connection_id}): Workspace manager created in {time.time() - ws_creation_start_time:.3f}s. Session UUID: {session_uuid_for_connection}, Root: {workspace_manager.root}")
 
-        await websocket.send_json(RealtimeEvent(
+        await safe_websocket_send_json(websocket, RealtimeEvent(
             type=EventType.CONNECTION_ESTABLISHED,
             content={
                 "message": "Connected to Agent WebSocket Server",
@@ -381,7 +407,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 "active_connections": len(active_connections),
                 "server_ready": True,
             },
-        ).model_dump())
+        ).model_dump(), str(connection_id))
 
         async def heartbeat_sender():
             try:
@@ -432,18 +458,18 @@ async def websocket_endpoint(websocket: WebSocket):
                     active_agents[websocket] = agent
                     message_processors[websocket] = agent.start_message_processing() # Start agent's internal queue processor
                     
-                    await websocket.send_json(RealtimeEvent(
+                    await safe_websocket_send_json(websocket, RealtimeEvent(
                         type=EventType.AGENT_INITIALIZED,
                         content={"message": "Agent initialized", "server_ready": True} # server_ready might be redundant here
-                    ).model_dump())
+                    ).model_dump(), str(connection_id))
 
                 elif msg_type == EventType.QUERY.value:
                     if websocket in active_tasks and not active_tasks[websocket].done():
                         logger.warning(f"WS_PROCESS ({connection_id}): Query rejected, another is active.")
-                        await websocket.send_json(RealtimeEvent(
+                        await safe_websocket_send_json(websocket, RealtimeEvent(
                             type=EventType.ERROR,
                             content={"message": "A query is already being processed", "error_code": "QUERY_IN_PROGRESS"}
-                        ).model_dump())
+                        ).model_dump(), str(connection_id))
                         continue
 
                     if websocket not in active_agents: # Auto-initialize if not done explicitly
@@ -453,10 +479,10 @@ async def websocket_endpoint(websocket: WebSocket):
                         )
                         active_agents[websocket] = agent
                         message_processors[websocket] = agent.start_message_processing()
-                        await websocket.send_json(RealtimeEvent( # Inform client about auto-init
+                        await safe_websocket_send_json(websocket, RealtimeEvent( # Inform client about auto-init
                             type=EventType.AGENT_INITIALIZED,
                             content={"message": "Agent auto-initialized", "server_ready": True}
-                        ).model_dump())
+                        ).model_dump(), str(connection_id))
                         # Small delay to ensure agent is fully ready after auto-init
                         await asyncio.sleep(0.1)
 
@@ -465,10 +491,10 @@ async def websocket_endpoint(websocket: WebSocket):
                     resume_flag = content.get("resume", False)
                     files_list = content.get("files", [])
                     
-                    await websocket.send_json(RealtimeEvent( # Acknowledge query receipt
+                    await safe_websocket_send_json(websocket, RealtimeEvent( # Acknowledge query receipt
                         type=EventType.PROCESSING,
                         content={"message": "Query received, processing started."}
-                    ).model_dump())
+                    ).model_dump(), str(connection_id))
 
                     # Create and store the agent execution task
                     agent_task = asyncio.create_task(
@@ -478,7 +504,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
                 elif msg_type == EventType.WORKSPACE_INFO_REQUEST.value: # Assuming an enum value for this
                     # This provides info about the specific session's workspace
-                    await websocket.send_json(RealtimeEvent(
+                    await safe_websocket_send_json(websocket, RealtimeEvent(
                         type=EventType.WORKSPACE_INFO,
                         content={
                             "workspace_path": str(workspace_manager.root), # This session's workspace
@@ -486,7 +512,7 @@ async def websocket_endpoint(websocket: WebSocket):
                             "server_ready": True, # General server status
                             "connection_ready": True # This specific connection is ready
                         }
-                    ).model_dump())
+                    ).model_dump(), str(connection_id))
                 
                 elif msg_type == EventType.CANCEL_PROCESSING.value: # Assuming an enum value
                     if websocket in active_tasks and not active_tasks[websocket].done():
@@ -494,31 +520,31 @@ async def websocket_endpoint(websocket: WebSocket):
                         active_tasks[websocket].cancel()
                         # run_agent_async's CancelledError handler will send confirmation
                     else:
-                        await websocket.send_json(RealtimeEvent(
+                        await safe_websocket_send_json(websocket, RealtimeEvent(
                             type=EventType.ERROR,
                             content={"message": "No active query to cancel", "error_code": "NO_ACTIVE_QUERY"}
-                        ).model_dump())
+                        ).model_dump(), str(connection_id))
                 
                 elif msg_type == "ping": # Simple keep-alive from client
-                    await websocket.send_json({"type": "pong"})
+                    await safe_websocket_send_json(websocket, {"type": "pong"}, str(connection_id))
 
                 else:
                     logger.warning(f"WS_PROCESS ({connection_id}): Unknown message type '{msg_type}'.")
-                    await websocket.send_json(RealtimeEvent(
+                    await safe_websocket_send_json(websocket, RealtimeEvent(
                         type=EventType.ERROR,
                         content={"message": f"Unknown message type: {msg_type}", "error_code": "UNKNOWN_MESSAGE_TYPE"}
-                    ).model_dump())
+                    ).model_dump(), str(connection_id))
 
             except json.JSONDecodeError:
                 logger.error(f"WS_PROCESS ({connection_id}): Invalid JSON received: {raw_data[:200]}...")
-                await websocket.send_json(RealtimeEvent(
+                await safe_websocket_send_json(websocket, RealtimeEvent(
                     type=EventType.ERROR, content={"message": "Invalid JSON format", "error_code": "INVALID_JSON"}
-                ).model_dump())
+                ).model_dump(), str(connection_id))
             except Exception as e_process_msg:
                 logger.error(f"WS_PROCESS ({connection_id}): Error processing message: {e_process_msg}", exc_info=True)
-                await websocket.send_json(RealtimeEvent(
+                await safe_websocket_send_json(websocket, RealtimeEvent(
                     type=EventType.ERROR, content={"message": f"Error processing request: {str(e_process_msg)}", "error_code": "MESSAGE_PROCESSING_ERROR"}
-                ).model_dump())
+                ).model_dump(), str(connection_id))
 
     except WebSocketDisconnect as e_main_disconnect: # Catch disconnect at the outer loop too
         logger.info(f"WS_ENDPOINT ({connection_id}): WebSocket disconnected (code: {e_main_disconnect.code}, reason: '{e_main_disconnect.reason}') from {client_ip}.")
