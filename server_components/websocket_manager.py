@@ -433,7 +433,10 @@ async def websocket_endpoint(websocket: WebSocket):
                         logger.debug(f"WS_HEARTBEAT ({connection_id}): WebSocket disconnected, stopping heartbeat.")
                         break
                     # FastAPI WebSocket doesn't have a ping method, so we send a custom ping message
-                    success = await safe_websocket_send_json(websocket, {"type": "heartbeat"}, str(connection_id))
+                    success = await safe_websocket_send_json(websocket, RealtimeEvent(
+                        type=EventType.HEARTBEAT,
+                        content={}
+                    ).model_dump(), str(connection_id))
                     if not success:
                         logger.debug(f"WS_HEARTBEAT ({connection_id}): Failed to send heartbeat, stopping.")
                         break

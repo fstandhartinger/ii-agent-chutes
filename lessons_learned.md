@@ -112,3 +112,16 @@ This document captures key insights and solutions discovered during development 
 - **Root Cause**: Backend websocket_manager.py didn't handle USER_MESSAGE EventType despite it being defined in event.py
 - **Solution**: Added USER_MESSAGE handling in backend that processes it the same as QUERY for backward compatibility
 - **Key Takeaway**: When EventTypes are defined, ensure all message handlers support them or document which are client-only vs server-supported
+
+## EventType Synchronization Issues (Fixed)
+- **Problem**: Frontend and Backend had mismatched EventType enums and magic constants causing compatibility issues
+- **Issues Found**: 
+  - Frontend sent "stop_agent" but backend expected "cancel_processing"
+  - Frontend AgentEvent enum was missing several EventTypes defined in backend (WORKSPACE_INFO_REQUEST, INIT_AGENT, QUERY, CANCEL_PROCESSING, PING, AGENT_INITIALIZED, HEARTBEAT)
+  - Backend sent raw "heartbeat" messages instead of using EventType.HEARTBEAT
+- **Solution**: 
+  - Synchronized EventType enums between frontend (AgentEvent) and backend (EventType)
+  - Updated frontend to send "cancel_processing" instead of "stop_agent"
+  - Added proper HEARTBEAT event handling in frontend
+  - Updated backend to use EventType.HEARTBEAT for heartbeat messages
+- **Key Takeaway**: Maintain strict synchronization between Frontend and Backend enum definitions. Regular audits should check for mismatched constants and ensure complete compatibility

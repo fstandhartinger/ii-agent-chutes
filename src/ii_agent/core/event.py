@@ -25,6 +25,7 @@ class EventType(str, enum.Enum):
     INIT_AGENT = "init_agent"
     QUERY = "query"
     CANCEL_PROCESSING = "cancel_processing"
+    HEARTBEAT = "heartbeat"
 
 
 class RealtimeEvent(BaseModel):

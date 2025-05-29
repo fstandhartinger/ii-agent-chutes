@@ -180,7 +180,7 @@ export default function Home() {
     // Send stop message to backend
     if (isSocketReady) {
       sendMessage({
-        type: "stop_agent",
+        type: "cancel_processing",
         content: {}
       });
     }

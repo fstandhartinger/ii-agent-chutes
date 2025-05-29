@@ -14,6 +14,7 @@ export enum AgentEvent {
   USER_MESSAGE = "user_message",
   CONNECTION_ESTABLISHED = "connection_established",
   WORKSPACE_INFO = "workspace_info",
+  WORKSPACE_INFO_REQUEST = "workspace_info_request",
   PROCESSING = "processing",
   AGENT_THINKING = "agent_thinking",
   TOOL_CALL = "tool_call",
@@ -22,10 +23,16 @@ export enum AgentEvent {
   STREAM_COMPLETE = "stream_complete",
   ERROR = "error",
   SYSTEM = "system",
+  PING = "ping",
   PONG = "pong",
   UPLOAD_SUCCESS = "upload_success",
   BROWSER_USE = "browser_use",
   FILE_EDIT = "file_edit",
+  INIT_AGENT = "init_agent",
+  QUERY = "query",
+  CANCEL_PROCESSING = "cancel_processing",
+  AGENT_INITIALIZED = "agent_initialized",
+  HEARTBEAT = "heartbeat",
 }
 
 export enum TOOL {

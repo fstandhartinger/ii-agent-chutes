@@ -328,6 +328,11 @@ export const useEventHandler = ({
         setIsLoading(false);
         break;
       
+      case AgentEvent.HEARTBEAT:
+        // Heartbeat from server - no action needed, just keep alive
+        console.debug("EVENT_HANDLER_DEBUG: Received heartbeat from server");
+        break;
+      
       default:
         console.warn("Unhandled event type in handleEvent:", data.type, data);
         break;
