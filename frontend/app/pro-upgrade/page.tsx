@@ -1,17 +1,20 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Crown, Sparkles, ArrowLeft, Zap, Brain, Rocket } from "lucide-react";
+import { Crown, Sparkles, ArrowLeft, Zap, Brain, Rocket, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 const STRIPE_PAYMENT_LINK = "https://buy.stripe.com/5kQ00ibzwencbx09wk1Jm00";
 
 export default function ProUpgradePage() {
   const router = useRouter();
+  const [showInfoModal, setShowInfoModal] = useState(false);
 
   const handleUpgrade = () => {
     window.open(STRIPE_PAYMENT_LINK, '_blank');
+    setShowInfoModal(true);
   };
 
   return (
@@ -157,6 +160,46 @@ export default function ProUpgradePage() {
           </motion.div>
         </div>
       </div>
+
+      {showInfoModal && (
+        <motion.div
+          initial={{ opacity: 0, y: 50 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 50 }}
+          transition={{ duration: 0.3 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+          onClick={() => setShowInfoModal(false)} // Close on backdrop click
+        >
+          <div 
+            className="bg-gradient-to-br from-gray-800 via-gray-900 to-black border border-yellow-500/50 rounded-xl p-6 sm:p-8 shadow-2xl max-w-lg w-full text-center relative"
+            onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside modal
+          >
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setShowInfoModal(false)} 
+              className="absolute top-3 right-3 text-gray-400 hover:text-white"
+              aria-label="Close modal"
+            >
+              <X className="w-5 h-5" />
+            </Button>
+            <Sparkles className="w-12 h-12 text-yellow-400 mx-auto mb-4 animate-pulse" />
+            <h2 className="text-2xl font-semibold mb-4 text-yellow-400">Payment Initiated!</h2>
+            <p className="text-gray-300 mb-3">
+              Awesome! Please complete your payment with Stripe in the new tab. 
+            </p>
+            <p className="text-gray-300 mb-3">
+              After that, you&apos;ll receive an email with your special access link to unlock Pro mode.
+            </p>
+            <p className="text-gray-400 text-sm mb-6">
+              <strong>Just a little heads-up:</strong> This email might take a few hours to land in your inbox. Our amazing founder, Florian, is personally sending these out (what a hero!). He&apos;s burning the midnight oil to automate this, but for now, it&apos;s a human touch! 🤖➡️👨‍💻
+            </p>
+            <p className="text-lg font-semibold text-orange-400">
+              Thanks a million for upgrading and supporting us! You rock! 🚀
+            </p>
+          </div>
+        </motion.div>
+      )}
     </div>
   );
-} 
+}

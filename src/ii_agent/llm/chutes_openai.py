@@ -434,6 +434,47 @@ class ChutesOpenAIClient(LLMClient):
             
             # Update model in payload
             payload["model"] = current_model
+
+            # Special handling for "deepseek-ai/DeepSeek-R1-0528"
+            if current_model == "deepseek-ai/DeepSeek-R1-0528":
+                logging.info(f"[CHUTES] Applying <think></think> prefix for model {current_model}")
+                # payload["messages"] is the list of messages for the API
+                if payload.get("messages"): # Ensure messages list exists
+                    first_message_obj = payload["messages"][0] # Get the first message
+                    current_content = first_message_obj.get("content")
+
+                    if isinstance(current_content, str):
+                        # Prepend to string content
+                        first_message_obj["content"] = "<think></think>" + current_content
+                    elif isinstance(current_content, list):
+                        # Handle list content (e.g., multimodal)
+                        # Try to prepend to the first text part
+                        inserted_think_in_list = False
+                        for part_idx, part in enumerate(current_content):
+                            if part.get("type") == "text" and isinstance(part.get("text"), str):
+                                current_content[part_idx]["text"] = "<think></think>" + part["text"]
+                                inserted_think_in_list = True
+                                break
+                        if not inserted_think_in_list:
+                            # If no text part, or first text part couldn't be modified,
+                            # insert a new text part at the beginning of the list.
+                            current_content.insert(0, {"type": "text", "text": "<think></think>"})
+                    elif current_content is None:
+                        # If content is None (e.g. an empty system prompt or a user prompt that became None)
+                        # We can set it to "<think></think>"
+                        first_message_obj["content"] = "<think></think>"
+                    else:
+                        # Log if content is of an unexpected type
+                        logging.warning(
+                            f"[CHUTES] Could not apply <think></think> prefix for {current_model}: "
+                            f"First message content is of unexpected type: {type(current_content)}"
+                        )
+                else:
+                    # Log if there are no messages in the payload
+                    logging.warning(
+                        f"[CHUTES] Could not apply <think></think> prefix for {current_model}: "
+                        f"Payload contains no messages."
+                    )
             
             # Retry logic for current model
             for retry in range(self.max_retries):

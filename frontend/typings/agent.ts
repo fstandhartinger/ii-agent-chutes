@@ -118,3 +118,13 @@ export interface IEvent {
   timestamp: string;
   workspace_dir: string;
 }
+
+// Message type for WebSocket communication
+export interface WebSocketMessage {
+  type: string;
+  content?: unknown;
+  text?: string;
+  resume?: boolean;
+  files?: { name: string; content: string }[]; // More specific type for files if known
+  // Add other potential properties of your WebSocket messages here
+}
