@@ -521,7 +521,7 @@ const QuestionInput = ({
           {/* Gradient Border Effect */}
           <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-emerald-500/20 rounded-2xl blur-sm opacity-50" />
           
-          <div className="relative bg-black/20 rounded-2xl bottom-aligned-textarea">
+          <div className="relative rounded-2xl bottom-aligned-textarea">
             <Textarea
               ref={textareaRef}
               className={`w-full p-6 pb-20 bg-transparent border-0 text-lg placeholder:text-muted-foreground/70 focus:ring-0 resize-none text-white ${textareaClassName}`}

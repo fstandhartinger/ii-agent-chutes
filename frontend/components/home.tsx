@@ -122,6 +122,10 @@ export default function Home() {
     onEventReceived: (event) => {
       console.log("Event received:", event);
       // Handle incoming events here
+      // Update messages state to trigger chat view
+      if (event.type !== "connection_established" && event.type !== "workspace_info") {
+        setMessages(prev => [...prev, event]);
+      }
     },
     getProKey: () => null,
     isLoading
@@ -134,6 +138,15 @@ export default function Home() {
     
     setIsLoading(true);
     setCurrentQuestion("");
+    
+    // Add user message to trigger chat view immediately
+    const userMessage = {
+      id: `user_${Date.now()}`,
+      type: "user_message",
+      content: { text: question },
+      timestamp: new Date().toISOString()
+    };
+    setMessages(prev => [...prev, userMessage]);
     
     try {
       const success = await sendMessage({
@@ -194,7 +207,7 @@ export default function Home() {
     setShowConsentDialog(false);
   };
   
-  const handleClickAction = (action: any, isReplay: boolean) => {
+  const handleClickAction = (action: any, isReplay: boolean = false) => {
     console.log("Action clicked:", action, isReplay);
   };
 
@@ -400,42 +413,50 @@ export default function Home() {
                     onClick={handleLogoClick}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.8, delay: 0.3 }}
                   >
                     <div className="relative">
                       <Image
                         src="/logo-only.png"
                         alt="fubea Logo"
-                        width={120}
-                        height={86}
-                        className="w-[120px] h-[86px] md:w-[200px] md:h-[144px] rounded-2xl shadow-2xl transition-all-smooth group-hover:shadow-glow"
+                        width={80}
+                        height={80}
+                        className="rounded-2xl shadow-2xl transition-all duration-300 group-hover:shadow-blue-500/25"
+                        priority
                       />
-                      <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all-smooth" />
-                      <Sparkles className="absolute -top-2 -right-2 w-4 h-4 md:w-5 md:h-5 text-yellow-400 animate-pulse" />
+                      <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-2xl blur-sm group-hover:blur-md transition-all duration-300" />
                     </div>
                   </motion.div>
                   
                   <motion.h1
-                    className="text-xl sm:text-2xl md:text-5xl lg:text-6xl font-bold mb-2 md:mb-4 bg-gradient-to-r from-white via-blue-100 to-purple-100 bg-clip-text text-transparent"
+                    className="text-4xl md:text-6xl font-bold mb-4 tracking-tight"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.8, delay: 0.4 }}
                   >
-                    {maintenanceMessage || "How can I help you today?"}
+                    <span className="bg-gradient-to-r from-blue-400 via-purple-400 to-emerald-400 bg-clip-text text-transparent">
+                      fubea
+                    </span>
                   </motion.h1>
                   
+                  <motion.h2
+                    className="text-xl md:text-2xl text-white/90 mb-2 font-light"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.8, delay: 0.5 }}
+                  >
+                    How can I help you today?
+                  </motion.h2>
+                  
                   <motion.p
-                    className="text-sm sm:text-base md:text-xl text-muted-foreground max-w-2xl mx-auto mb-2 md:mb-4"
+                    className="text-base md:text-lg text-muted-foreground mb-6 font-light"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.8, delay: 0.6 }}
                   >
-                    <span 
-                      className="cursor-pointer hover:text-blue-400 transition-colors underline decoration-dotted underline-offset-4"
-                      onClick={() => router.push('/gaia')}
-                      title="Run GAIA Benchmark"
-                    >
-                      Leading
-                    </span> Deep Research Agent. For Free.
+                    Leading Deep Research Agent. For Free.
                   </motion.p>
                   
                   <motion.div
@@ -547,6 +568,43 @@ export default function Home() {
                 </motion.div>
               </div>
             </div>
+          )}
+
+          {/* Chat View - When conversation has started */}
+          {isInChatView && (
+            <motion.div
+              key="chat-view"
+              initial={{ opacity: 0, y: 30, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -20, scale: 0.95 }}
+              transition={{
+                type: "spring",
+                stiffness: 300,
+                damping: 30,
+                mass: 1,
+              }}
+              className="flex-1 flex flex-col min-h-0 overflow-hidden"
+            >
+              <div className="flex-1 overflow-hidden px-4 md:px-8 pb-4">
+                <ChatMessage
+                  messages={messages}
+                  isLoading={isLoading}
+                  isCompleted={false}
+                  workspaceInfo=""
+                  handleClickAction={(action: any, isReplay: boolean = false) => handleClickAction(action, isReplay)}
+                  isUploading={false}
+                  isUseDeepResearch={false}
+                  isReplayMode={false}
+                  currentQuestion={currentQuestion}
+                  messagesEndRef={messagesEndRef}
+                  setCurrentQuestion={setCurrentQuestion}
+                  handleKeyDown={handleKeyDown}
+                  handleQuestionSubmit={handleQuestionSubmit}
+                  handleFileUpload={handleFileUpload}
+                  handleStopAgent={handleStopAgent}
+                />
+              </div>
+            </motion.div>
           )}
 
           {false && (
