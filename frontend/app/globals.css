@@ -542,6 +542,165 @@
     z-index: 200 !important;
     border-radius: 0 !important;
   }
+
+  /* Main home container for mobile */
+  .mobile-home-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+
+  /* Hero section should be compact but always visible */
+  .mobile-hero-section {
+    flex-shrink: 0;
+    max-height: 40vh;
+    overflow: hidden;
+  }
+
+  /* Content area for examples - flexible and scrollable */
+  .mobile-content-area {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    flex: 1;
+    max-height: 35vh;
+  }
+
+  .mobile-examples-section {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .mobile-examples-wrapper {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Input section - highest priority, always visible */
+  .mobile-input-priority {
+    flex-shrink: 0;
+    background: rgba(0, 0, 0, 0.9);
+    backdrop-filter: blur(10px);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: env(safe-area-inset-bottom, 0.5rem);
+  }
+
+  .mobile-input-container {
+    position: relative;
+    z-index: 50;
+  }
+
+  /* Examples container improvements for mobile */
+  .mobile-examples-container {
+    max-height: calc(100% - 2rem) !important;
+    min-height: auto !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding: 0.75rem !important;
+    margin-bottom: 0.5rem !important;
+    background: rgba(255, 255, 255, 0.02) !important;
+    border-radius: 1rem !important;
+    border: 1px solid rgba(255, 255, 255, 0.05) !important;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .mobile-examples-grid {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    flex: 1;
+  }
+
+  .mobile-example-card {
+    min-height: 70px !important;
+    flex-shrink: 0 !important;
+    padding: 0.75rem !important;
+  }
+
+  /* Ensure examples title is smaller on mobile */
+  .mobile-examples-title {
+    font-size: 0.9rem !important;
+    margin-bottom: 0.5rem !important;
+    flex-shrink: 0;
+  }
+
+  /* Landscape mobile optimizations */
+  @media (orientation: landscape) and (max-height: 500px) {
+    .mobile-hero-section {
+      max-height: 25vh;
+    }
+    
+    .mobile-content-area {
+      max-height: 50vh;
+    }
+    
+    .mobile-examples-title {
+      font-size: 0.8rem !important;
+      margin-bottom: 0.25rem !important;
+    }
+    
+    .mobile-example-card {
+      min-height: 60px !important;
+      padding: 0.5rem !important;
+    }
+  }
+
+  /* Very short screens - prioritize input */
+  @media (max-height: 600px) {
+    .mobile-hero-section {
+      max-height: 30vh;
+    }
+    
+    .mobile-content-area {
+      max-height: 40vh;
+    }
+  }
+
+  @media (max-height: 500px) {
+    .mobile-hero-section {
+      max-height: 25vh;
+    }
+    
+    .mobile-content-area {
+      max-height: 35vh;
+    }
+  }
+
+  /* Mobile example text and indicators */
+  .mobile-example-text {
+    line-height: 1.4 !important;
+    font-size: 0.875rem !important;
+  }
+
+  .mobile-example-indicators {
+    margin-top: 0.5rem !important;
+    gap: 0.375rem !important;
+  }
+
+  .mobile-example-indicators span {
+    font-size: 0.75rem !important;
+    padding: 0.25rem 0.5rem !important;
+  }
+
+  /* Ensure proper scroll behavior for mobile examples */
+  .mobile-examples-container::-webkit-scrollbar {
+    width: 2px;
+  }
+
+  .mobile-examples-container::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .mobile-examples-container::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 1px;
+  }
 }
 
 /* Ensure prompt box is bottom aligned */

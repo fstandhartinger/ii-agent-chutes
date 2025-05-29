@@ -139,7 +139,7 @@ export default function Home() {
   useEffect(() => {
     const fetchMaintenanceMessage = async () => {
       try {
-        const response = await fetch('/api/maintenance-message');
+        const response = await fetch('/api/maintenance_message');
         if (response.ok) {
           const data = await response.json();
           if (data.message) {
@@ -321,16 +321,17 @@ export default function Home() {
 
         <main className="flex-1 relative z-10 flex flex-col min-h-0 overflow-hidden h-full">
           {!isInChatView && (
-            <div className="flex-1 flex flex-col min-h-0">
+            <div className="flex-1 flex flex-col min-h-0 mobile-home-container">
+              {/* Hero Section - Always Visible Priority */}
               <motion.div
-                className="flex flex-col items-center justify-center flex-1 px-4 min-h-0"
+                className="flex-shrink-0 mobile-hero-section px-4 pt-4 md:pt-8"
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.8, delay: 0.2 }}
               >
-                <div className="text-center mb-8 md:mb-12">
+                <div className="text-center">
                   <motion.div 
-                    className="flex items-center justify-center mb-6 md:mb-8 cursor-pointer group"
+                    className="flex items-center justify-center mb-4 md:mb-8 cursor-pointer group"
                     onClick={handleLogoClick}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
@@ -339,17 +340,17 @@ export default function Home() {
                       <Image
                         src="/logo-only.png"
                         alt="fubea Logo"
-                        width={150}
-                        height={108}
-                        className="w-[150px] h-[108px] md:w-[200px] md:h-[144px] rounded-2xl shadow-2xl transition-all-smooth group-hover:shadow-glow"
+                        width={120}
+                        height={86}
+                        className="w-[120px] h-[86px] md:w-[200px] md:h-[144px] rounded-2xl shadow-2xl transition-all-smooth group-hover:shadow-glow"
                       />
                       <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all-smooth" />
-                      <Sparkles className="absolute -top-2 -right-2 w-5 h-5 text-yellow-400 animate-pulse" />
+                      <Sparkles className="absolute -top-2 -right-2 w-4 h-4 md:w-5 md:h-5 text-yellow-400 animate-pulse" />
                     </div>
                   </motion.div>
                   
                   <motion.h1
-                    className="text-2xl sm:text-3xl md:text-5xl lg:text-6xl font-bold mb-3 md:mb-4 bg-gradient-to-r from-white via-blue-100 to-purple-100 bg-clip-text text-transparent"
+                    className="text-xl sm:text-2xl md:text-5xl lg:text-6xl font-bold mb-2 md:mb-4 bg-gradient-to-r from-white via-blue-100 to-purple-100 bg-clip-text text-transparent"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.8, delay: 0.4 }}
@@ -358,7 +359,7 @@ export default function Home() {
                   </motion.h1>
                   
                   <motion.p
-                    className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto"
+                    className="text-sm sm:text-base md:text-xl text-muted-foreground max-w-2xl mx-auto mb-2 md:mb-4"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.8, delay: 0.6 }}
@@ -373,7 +374,7 @@ export default function Home() {
                   </motion.p>
                   
                   <motion.div
-                    className="mt-4 text-sm text-muted-foreground"
+                    className="text-xs sm:text-sm text-muted-foreground"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.8, delay: 0.7 }}
@@ -393,7 +394,7 @@ export default function Home() {
                   
                   {!isSocketReady && (
                     <motion.div
-                      className={`mt-4 ${
+                      className={`mt-3 md:mt-4 ${
                         false ? 'animate-shake' : ''
                       }`}
                       initial={{ opacity: 0 }}
@@ -433,10 +434,32 @@ export default function Home() {
                 </div>
               </motion.div>
               
-              <div className="mt-auto flex-shrink-0">
+              {/* Flexible Content Area - For Examples */}
+              <div className="flex-1 flex flex-col min-h-0 mobile-content-area">
+                <motion.div
+                  key="examples-view"
+                  className="flex-1 flex items-start justify-center px-4 mobile-examples-section"
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ 
+                    duration: 0.6, 
+                    delay: 0.8,
+                    exit: { duration: 0.1, delay: 0 } 
+                  }}
+                >
+                  <Examples
+                    onExampleClick={handleExampleClick}
+                    className="w-full max-w-4xl mobile-examples-wrapper"
+                  />
+                </motion.div>
+              </div>
+              
+              {/* Input Section - Always Visible (Highest Priority) */}
+              <div className="flex-shrink-0 mobile-input-priority">
                 <motion.div
                   key="input-view"
-                  className="flex items-center justify-center px-4 pb-4"
+                  className="flex items-center justify-center px-4 pb-4 mobile-input-container"
                   initial={{ opacity: 0, y: 30 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
@@ -455,24 +478,6 @@ export default function Home() {
                     isDisabled={!isSocketConnected || !isSocketReady}
                     isLoading={isLoading || (!isSocketConnected || !isSocketReady)}
                     handleStopAgent={handleStopAgent}
-                    className="w-full max-w-4xl"
-                  />
-                </motion.div>
-                
-                <motion.div
-                  key="examples-view"
-                  className="flex items-center justify-center px-4 pb-4"
-                  initial={{ opacity: 0, y: 30 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ 
-                    duration: 0.6, 
-                    delay: 0.2,
-                    exit: { duration: 0.1, delay: 0 } 
-                  }}
-                >
-                  <Examples
-                    onExampleClick={handleExampleClick}
                     className="w-full max-w-4xl"
                   />
                 </motion.div>

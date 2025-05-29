@@ -22,11 +22,23 @@ const EXAMPLES = [
 
 const Examples = ({ onExampleClick, className }: ExamplesProps) => {
   const [selectedExamples, setSelectedExamples] = useState<string[]>([]);
+  const [isMobile, setIsMobile] = useState(false);
 
   // Randomly select 3 examples on component mount
   useEffect(() => {
     const shuffled = [...EXAMPLES].sort(() => 0.5 - Math.random());
     setSelectedExamples(shuffled.slice(0, 3));
+  }, []);
+
+  // Check if mobile on mount and resize
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 767);
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
   const handleExampleClick = (example: string) => {
@@ -54,7 +66,7 @@ const Examples = ({ onExampleClick, className }: ExamplesProps) => {
 
   return (
     <motion.div
-      className={`w-full max-w-4xl ${className}`}
+      className={`w-full max-w-4xl ${className} mobile-examples-wrapper`}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, delay: 0.3 }}
@@ -90,12 +102,12 @@ const Examples = ({ onExampleClick, className }: ExamplesProps) => {
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-emerald-500/10 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 
                 <div className="relative">
-                  <p className="text-sm text-white/90 leading-relaxed">
-                    {truncateText(cleanExample)}
+                  <p className="text-sm text-white/90 leading-relaxed mobile-example-text">
+                    {truncateText(cleanExample, isMobile ? 60 : 80)}
                   </p>
                   
                   {/* Indicators */}
-                  <div className="flex items-center gap-2 mt-3">
+                  <div className="flex items-center gap-2 mt-2 mobile-example-indicators">
                     {example.includes("(Deep Research)") && (
                       <span className="inline-flex items-center px-2 py-1 rounded-md bg-gradient-skyblue-lavender text-black text-xs font-medium">
                         Deep Research
