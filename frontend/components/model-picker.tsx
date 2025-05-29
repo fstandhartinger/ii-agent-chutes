@@ -59,7 +59,7 @@ export default function ModelPicker() {
         localStorage.setItem("hasAutoSwitchedToSonnet4", "true");
       }
     }
-  }, [hasProAccess, selectedModel.id, setSelectedModel, hasAutoSwitched]);
+  }, [selectedModel.id, setSelectedModel, hasAutoSwitched]);
 
   // Filter models - show all models including Sonnet 4
   const visibleModels = CHUTES_MODELS;
