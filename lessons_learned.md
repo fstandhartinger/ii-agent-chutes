@@ -1,0 +1,2 @@
+- Suppressed noisy Uvicorn access logs for /sw.js by adding a custom logging.Filter to the 'uvicorn.access' logger.
+- Fixed WebSocket disconnections caused by File API 404/500 errors: Frontend was sending incorrect '/var/data/' path prefixes to backend, but backend expects relative paths and constructs workspace paths internally.
