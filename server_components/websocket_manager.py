@@ -352,10 +352,18 @@ async def websocket_endpoint(websocket: WebSocket):
     connection_id = id(websocket)
     logger.info(f"WS_ENDPOINT ({connection_id}): New connection attempt from {client_ip}.")
 
-    current_app_args = app_config.get_args()
-    if not current_app_args:
-        logger.error(f"WS_ENDPOINT ({connection_id}): Server not configured (args missing). Rejecting.")
-        await websocket.close(code=1011, reason="Server configuration error") # Internal server error
+    try:
+        current_app_args = app_config.get_args()
+        if not current_app_args:
+            logger.error(f"WS_ENDPOINT ({connection_id}): Server not configured (args missing). Rejecting.")
+            await websocket.close(code=1011, reason="Server configuration error") # Internal server error
+            return
+    except Exception as e:
+        logger.error(f"WS_ENDPOINT ({connection_id}): Error getting app config: {e}", exc_info=True)
+        try:
+            await websocket.close(code=1011, reason="Server configuration error")
+        except Exception:
+            pass
         return
 
     if len(active_connections) >= MAX_CONCURRENT_CONNECTIONS:
@@ -388,14 +396,22 @@ async def websocket_endpoint(websocket: WebSocket):
         connection_timestamps[websocket] = datetime.utcnow()
         logger.info(f"WS_ENDPOINT ({connection_id}): Connection accepted from {client_ip}. Active: {len(active_connections)}")
 
-        ws_creation_start_time = time.time()
-        # workspace_scope can be 'persistent' or 'session' based on args
-        # use_container_workspace also from args
-        workspace_manager, session_uuid_for_connection = create_workspace_manager_for_connection(
-            workspace_root=current_app_args.workspace, # From global args
-            use_container_workspace=current_app_args.use_container_workspace # From global args
-        )
-        logger.info(f"WS_ENDPOINT ({connection_id}): Workspace manager created in {time.time() - ws_creation_start_time:.3f}s. Session UUID: {session_uuid_for_connection}, Root: {workspace_manager.root}")
+        try:
+            ws_creation_start_time = time.time()
+            # workspace_scope can be 'persistent' or 'session' based on args
+            # use_container_workspace also from args
+            workspace_manager, session_uuid_for_connection = create_workspace_manager_for_connection(
+                workspace_root=current_app_args.workspace, # From global args
+                use_container_workspace=current_app_args.use_container_workspace # From global args
+            )
+            logger.info(f"WS_ENDPOINT ({connection_id}): Workspace manager created in {time.time() - ws_creation_start_time:.3f}s. Session UUID: {session_uuid_for_connection}, Root: {workspace_manager.root}")
+        except Exception as e:
+            logger.error(f"WS_ENDPOINT ({connection_id}): Error creating workspace manager: {e}", exc_info=True)
+            await safe_websocket_send_json(websocket, RealtimeEvent(
+                type=EventType.ERROR,
+                content={"message": f"Error creating workspace: {str(e)}", "error_code": "WORKSPACE_CREATION_ERROR"}
+            ).model_dump(), str(connection_id))
+            return
 
         await safe_websocket_send_json(websocket, RealtimeEvent(
             type=EventType.CONNECTION_ESTABLISHED,
@@ -414,11 +430,12 @@ async def websocket_endpoint(websocket: WebSocket):
                 while True:
                     await asyncio.sleep(30)
                     if websocket.client_state.name == "DISCONNECTED": break
-                    await websocket.ping()
+                    # FastAPI WebSocket doesn't have a ping method, so we send a custom ping message
+                    await safe_websocket_send_json(websocket, {"type": "heartbeat"}, str(connection_id))
             except asyncio.CancelledError:
                 logger.debug(f"WS_HEARTBEAT ({connection_id}): Cancelled.")
             except Exception as e_hb: # Catch errors during ping
-                logger.warning(f"WS_HEARTBEAT ({connection_id}): Error sending ping: {e_hb}. Stopping heartbeat.")
+                logger.warning(f"WS_HEARTBEAT ({connection_id}): Error sending heartbeat: {e_hb}. Stopping heartbeat.")
                 # Consider this connection potentially problematic, might lead to cleanup
                 if websocket.client_state.name != "DISCONNECTED":
                     cleanup_connection(websocket) # Proactively clean if ping fails badly

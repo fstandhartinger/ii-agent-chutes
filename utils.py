@@ -97,9 +97,9 @@ def create_workspace_manager_for_connection(
 ):
     """Create a new workspace manager instance for a websocket connection."""
     # Create unique subdirectory for this connection
-    connection_id = str(uuid.uuid4())
+    connection_uuid = uuid.uuid4()  # Keep as UUID object
     workspace_path = Path(workspace_root).resolve()
-    connection_workspace = workspace_path / connection_id
+    connection_workspace = workspace_path / str(connection_uuid)  # Convert to string only for path
     connection_workspace.mkdir(parents=True, exist_ok=True)
 
     # Initialize workspace manager with connection-specific subdirectory
@@ -108,4 +108,4 @@ def create_workspace_manager_for_connection(
         container_workspace=use_container_workspace,
     )
 
-    return workspace_manager, connection_id
+    return workspace_manager, connection_uuid  # Return UUID object

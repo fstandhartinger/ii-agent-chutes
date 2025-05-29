@@ -32,7 +32,7 @@ services:
     sync: false
   region: oregon
   buildCommand: chmod +x scripts/render_build_safe.sh && ./scripts/render_build_safe.sh
-  startCommand: python ws_server.py --port $PORT
+  startCommand: python ws_server.py --port $PORT --workspace /var/data/workspaces --logs-path /var/data/logs/agent_logs.txt --minimize-stdout-logs
   disk:
     name: disk
     mountPath: /var/data

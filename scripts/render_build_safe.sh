@@ -24,6 +24,13 @@ if [ -d "/var/data" ]; then
     export PLAYWRIGHT_BROWSERS_PATH="/var/data/playwright"
     mkdir -p "$PLAYWRIGHT_BROWSERS_PATH"
     echo "PLAYWRIGHT_BROWSERS_PATH set to: $PLAYWRIGHT_BROWSERS_PATH"
+    
+    # Create necessary directories for the application
+    echo "Creating application directories..."
+    mkdir -p "/var/data/workspaces"
+    mkdir -p "/var/data/logs"
+    mkdir -p "/var/data/db"
+    echo "Application directories created"
 fi
 
 # Install Playwright browsers using persistent storage if available
