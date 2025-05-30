@@ -132,3 +132,9 @@ This document captures key insights and solutions discovered during development 
   - Added proper HEARTBEAT event handling in frontend
   - Updated backend to use EventType.HEARTBEAT for heartbeat messages
 - **Key Takeaway**: Maintain strict synchronization between Frontend and Backend enum definitions. Regular audits should check for mismatched constants and ensure complete compatibility
+
+- **Bug**: File Viewer not displaying files - workspaceInfo was undefined in frontend (2025-05-30)
+  - Frontend expected `data.content.path` in WORKSPACE_INFO event handler
+  - Backend sent `data.content.workspace_path` in the event payload
+  - Fixed by changing frontend handler to use `data.content.workspace_path`
+- **Key Takeaway**: Verify property names match between frontend event handlers and backend event payloads, especially for critical state like workspace paths

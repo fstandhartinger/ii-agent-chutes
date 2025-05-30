@@ -169,7 +169,7 @@ export const useEventHandler = ({
         break;
 
       case AgentEvent.WORKSPACE_INFO:
-        setWorkspaceInfo(data.content.path as string);
+        setWorkspaceInfo(data.content.workspace_path as string);
         break;
 
       case AgentEvent.AGENT_THINKING:
