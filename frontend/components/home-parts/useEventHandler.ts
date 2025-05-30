@@ -316,33 +316,17 @@ export const useEventHandler = ({
 
       case AgentEvent.ERROR:
         const errorMessage = data.content.message as string;
-        const errorCode = data.content.error_code as string;
-        const userFriendlyMessage = data.content.user_friendly as string;
         
         clearTimeoutCheck();
         
-        console.group("🚨 Server Error Details (event handler)");
-        console.log("Error message:", errorMessage);
-        console.log("Error code:", errorCode);
-        console.log("User friendly message:", userFriendlyMessage);
-        console.log("Current state:", { 
-          isLoading: isLoadingRef.current, 
-          messagesLength: messagesLengthRef.current 
-        });
-        console.groupEnd();
+        console.log("🚨 Server Error (event handler):", errorMessage);
         
-        const displayMessage = userFriendlyMessage || errorMessage;
-        
-        if (errorMessage.includes("Error running agent") && isLoadingRef.current && messagesLengthRef.current > 0) {
-          toast.error("Sorry, a new version was just released. This caused the current run to be interrupted. We're working extremely hard on this software. Sorry and thank you for your understanding!");
-        } else {
-          toast.error(displayMessage);
-          const currentSelectedModel = selectedModelRef.current;
-          const currentHasProAccess = hasProAccessRef.current;
-          if (currentSelectedModel.id !== "claude-sonnet-4-20250514" && !currentHasProAccess() && isLoadingRef.current) {
-            setShowUpgradePrompt("error");
-          }
-        }
+        toast.error(errorMessage);
+        setIsLoading(false);
+        break;
+      
+      case "error":
+        toast.error(data.content.message as string);
         setIsLoading(false);
         break;
       
