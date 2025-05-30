@@ -73,6 +73,7 @@ export const useEventHandler = ({
   const [timeoutCheckInterval, setTimeoutCheckInterval] = useState<NodeJS.Timeout | null>(null);
   const [hasSetSessionId, setHasSetSessionId] = useState(false); // Track if sessionId has been set
   const [pendingConnectionId, setPendingConnectionId] = useState<string | null>(null); // Store connection_id from CONNECTION_ESTABLISHED
+  const [pendingSessionUuid, setPendingSessionUuid] = useState<string | null>(null); // Store session_uuid from CONNECTION_ESTABLISHED
 
   // Use refs for stable references to prevent unnecessary re-renders
   const selectedModelRef = useRef(selectedModel);
@@ -107,6 +108,7 @@ export const useEventHandler = ({
   const resetEventHandler = useCallback(() => {
     setHasSetSessionId(false);
     setPendingConnectionId(null);
+    setPendingSessionUuid(null);
     clearTimeoutCheck();
   }, [clearTimeoutCheck]);
 
@@ -116,10 +118,14 @@ export const useEventHandler = ({
     switch (data.type) {
       case AgentEvent.CONNECTION_ESTABLISHED:
         console.log("Connection established (event handler):", data.content.message);
-        // Store connection_id for later use when chat actually starts
+        // Store both connection_id and session_uuid for later use when chat actually starts
         if (data.content.connection_id) {
           setPendingConnectionId(data.content.connection_id as string);
           console.log("EVENT_HANDLER_DEBUG: Stored connection_id for later use:", data.content.connection_id);
+        }
+        if (data.content.session_uuid) {
+          setPendingSessionUuid(data.content.session_uuid as string);
+          console.log("EVENT_HANDLER_DEBUG: Stored session_uuid for later use:", data.content.session_uuid);
         }
         // Also, workspace_path often comes with this event.
         if (data.content.workspace_path) {
@@ -143,10 +149,11 @@ export const useEventHandler = ({
 
       case AgentEvent.PROCESSING:
         // Set sessionId when processing starts - this indicates a real chat session has begun
-        if (pendingConnectionId && !hasSetSessionId) {
-          setSessionId(pendingConnectionId);
+        // Use session_uuid instead of connection_id for database lookups
+        if (pendingSessionUuid && !hasSetSessionId) {
+          setSessionId(pendingSessionUuid);
           setHasSetSessionId(true);
-          console.log("EVENT_HANDLER_DEBUG: Session ID set from PROCESSING event using stored connection_id:", pendingConnectionId);
+          console.log("EVENT_HANDLER_DEBUG: Session ID set from PROCESSING event using stored session_uuid:", pendingSessionUuid);
         }
         setIsLoading(true);
         setIsCompleted(false);
@@ -352,7 +359,7 @@ export const useEventHandler = ({
     addMessage, updateLastMessage, setIsLoading, setIsCompleted, setFileContent,
     setShowUpgradePrompt, addUploadedFile, setActiveTab, setDeployedUrl,
     setWorkspaceInfo, setSessionId, handleClickAction, clearTimeoutCheck, 
-    hasSetSessionId, pendingConnectionId
+    hasSetSessionId, pendingConnectionId, pendingSessionUuid
   ]);
 
   return { handleEvent, clearTimeoutCheck, resetEventHandler };
