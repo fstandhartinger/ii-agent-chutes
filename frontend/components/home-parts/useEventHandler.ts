@@ -214,6 +214,14 @@ export const useEventHandler = ({
             const filePath = (data.content.path as string)?.includes(currentWorkspaceInfo)
               ? (data.content.path as string)
               : `${currentWorkspaceInfo}/${data.content.path}`;
+            
+            console.log("FILE_EDIT_DEBUG: Setting file content", {
+              originalPath: data.content.path,
+              computedFilePath: filePath,
+              workspaceInfo: currentWorkspaceInfo,
+              contentLength: (data.content.content as string)?.length || 0
+            });
+            
             setFileContent(filePath, data.content.content as string);
           }
           

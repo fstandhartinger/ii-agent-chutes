@@ -194,15 +194,29 @@ const CodeEditor = ({
         const filePath = activeFile.startsWith(workspaceInfo)
           ? activeFile
           : `${workspaceInfo}/${activeFile}`;
+        
+        setActiveLanguage(getFileLanguage(filePath));
+        
+        // Check if we have the file content in filesContent (from FILE_EDIT events)
+        if (filesContent && filesContent[filePath]) {
+          console.log("CODE_EDITOR_DEBUG: Using filesContent", {
+            filePath,
+            hasContent: !!filesContent[filePath],
+            contentLength: filesContent[filePath]?.length || 0,
+            availableFiles: Object.keys(filesContent)
+          });
+          setFileContent(filesContent[filePath]);
+          return;
+        }
+        
         // If we are in replay mode, use the file content from the filesContent prop
         if (isReplayMode) {
           const content = filesContent?.[filePath] || "";
-          setActiveLanguage(getFileLanguage(filePath));
           setFileContent(content);
           return;
         }
 
-        setActiveLanguage(getFileLanguage(filePath));
+        // Otherwise, load from server
         const content = await loadFileContent(filePath);
         setFileContent(content);
       }
