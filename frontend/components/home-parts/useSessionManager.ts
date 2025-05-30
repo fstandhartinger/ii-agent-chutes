@@ -84,24 +84,6 @@ export const useSessionManager = (
     }
   }, [searchParams]);
 
-  // Automatically extract session ID from workspace info for new sessions
-  useEffect(() => {
-    // Only extract if we don't already have a session ID and we're not in replay mode
-    const isReplayMode = !!searchParams.get('id');
-    if (workspaceInfo && !sessionId && !isReplayMode) {
-      try {
-        // Extract session ID from workspace path (usually the last part)
-        const extractedId = workspaceInfo.split("/").pop();
-        if (extractedId && extractedId !== workspaceInfo) { // Ensure it's actually a subdirectory
-          console.log("SESSION_MANAGER: Extracted session ID from workspace info:", extractedId);
-          setSessionId(extractedId);
-        }
-      } catch (error) {
-        console.warn("SESSION_MANAGER: Failed to extract session ID from workspace info:", error);
-      }
-    }
-  }, [workspaceInfo, sessionId, searchParams]);
-
   const resetSessionForNewChat = useCallback(() => {
     // This function is primarily for resetting client-side session state for a new chat,
     // not for closing WebSockets, which should be handled by useWebSocketManager.

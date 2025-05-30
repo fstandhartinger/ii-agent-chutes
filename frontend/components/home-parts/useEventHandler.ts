@@ -126,14 +126,8 @@ export const useEventHandler = ({
             setWorkspaceInfo(data.content.workspace_path as string);
             console.log("EVENT_HANDLER_DEBUG: Workspace info set from CONNECTION_ESTABLISHED:", data.content.workspace_path);
             
-            // Extract session ID from workspace path
-            const workspacePath = data.content.workspace_path as string;
-            const sessionIdFromPath = workspacePath.split("/").pop();
-            if (sessionIdFromPath && !hasSetSessionId) {
-              setSessionId(sessionIdFromPath);
-              setHasSetSessionId(true);
-              console.log("EVENT_HANDLER_DEBUG: Session ID extracted from workspace path:", sessionIdFromPath);
-            }
+            // DO NOT automatically set session ID here - only set it when a chat actually starts
+            // This was causing the issue where the chat view would open immediately
         }
         break;
 

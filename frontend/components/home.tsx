@@ -134,35 +134,12 @@ export default function Home() {
   } = chatState;
 
   // Additional state
-  const [deviceId, setDeviceId] = useState<string>("");
-  const [sessionId, setSessionId] = useState<string | null>(null);
-  const [isLoadingSession, setIsLoadingSession] = useState(false);
-  const [workspaceInfo, setWorkspaceInfo] = useState("");
   const [useNativeToolCalling, setUseNativeToolCalling] = useState(false);
   const [timeoutCheckInterval, setTimeoutCheckInterval] = useState<NodeJS.Timeout | null>(null);
   const [returnedFromChat, setReturnedFromChat] = useState(false);
 
   const isReplayMode = useMemo(() => !!searchParams.get("id"), [searchParams]);
   const { selectedModel, setSelectedModel } = useChutes();
-
-  // Initialize device ID on page load
-  useEffect(() => {
-    let existingDeviceId = Cookies.get("device_id");
-
-    if (!existingDeviceId) {
-      existingDeviceId = uuidv4();
-      Cookies.set("device_id", existingDeviceId, {
-        expires: 365,
-        sameSite: "strict",
-        secure: window.location.protocol === "https:",
-      });
-      console.log("Generated new device ID:", existingDeviceId);
-    } else {
-      console.log("Using existing device ID:", existingDeviceId);
-    }
-
-    setDeviceId(existingDeviceId);
-  }, []);
 
   // Auto-switch Pro users to Sonnet 4
   useEffect(() => {
@@ -191,6 +168,21 @@ export default function Home() {
       return null;
     }
   };
+
+  // Session Manager  
+  const {
+    deviceId,
+    sessionId,
+    setSessionId,
+    isLoadingSession,
+    setIsLoadingSession,
+    workspaceInfo,
+    setWorkspaceInfo,
+    fetchSessionEvents
+  } = useSessionManager({
+    returnedFromChat,
+    useNativeToolCalling
+  });
 
   // Action Handler
   const { handleClickAction } = useActionHandler({
@@ -254,24 +246,6 @@ export default function Home() {
     terminalRef
   });
 
-  // Session Manager  
-  const {
-    fetchSessionEvents
-  } = useSessionManager({
-    deviceId,
-    sessionId,
-    isLoadingSession: false,
-    workspaceInfo,
-    returnedFromChat,
-    useNativeToolCalling
-  });
-
-  // Session-ID beim Mount aus URL initialisieren
-  useEffect(() => {
-    const id = searchParams.get('id');
-    if (id) setSessionId(id);
-  }, [searchParams]);
-
   // Fetch session events when session ID is available
   useEffect(() => {
     const id = searchParams.get("id");
@@ -283,7 +257,7 @@ export default function Home() {
         () => setIsLoadingSession(false)
       );
     }
-  }, [searchParams, fetchSessionEvents, handleEvent, setWorkspaceInfo, setIsLoadingSession]);
+  }, [searchParams, fetchSessionEvents, handleEvent, setWorkspaceInfo]);
 
   // WebSocket Manager
   const {
