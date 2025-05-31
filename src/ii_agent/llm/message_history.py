@@ -16,6 +16,39 @@ from ii_agent.llm.base import (
 class MessageHistory:
     """Stores the sequence of messages in a dialog."""
 
+    def _make_hashable(self, item: Any) -> Any:
+        """Converts an item into a hashable type."""
+        if isinstance(item, list):
+            return tuple(self._make_hashable(x) for x in item)
+        if isinstance(item, dict):
+            return tuple(
+                sorted((k, self._make_hashable(v)) for k, v in item.items())
+            )
+        # Check for basic hashable types explicitly.
+        # This includes str, int, float, bool, NoneType, and tuple (if elements are hashable).
+        # collections.abc.Hashable is a more general check but might be too broad
+        # if we want to strictly control the types we consider "natively hashable"
+        # for this specific conversion.
+        if isinstance(item, (str, int, float, bool, type(None))):
+            return item
+        if isinstance(item, tuple):
+            # Ensure all elements in the tuple are hashable
+            return tuple(self._make_hashable(x) for x in item)
+
+        # If the item is not one of the above, and not already hashable by default,
+        # it might be an unhandled complex type.
+        # For now, we'll raise a TypeError, but one could also convert to str(item)
+        # as a fallback, though that might lose semantic meaning for equality.
+        try:
+            hash(item)
+            return item
+        except TypeError:
+            # Fallback for unhandled types: convert to string.
+            # This is a pragmatic choice for now, but might not be ideal for all cases.
+            # Consider if a more specific error or handling is needed based on expected data.
+            # print(f"Warning: Converting unhashable type {type(item)} to string for hashing.")
+            return str(item)
+
     def __init__(self):
         self._message_lists: list[list[GeneralContentBlock]] = []
 
@@ -64,25 +97,9 @@ class MessageHistory:
         for message in last_turn:
             if isinstance(message, ToolCall):
                 # Create a unique key based on tool name and arguments
-                # Handle both dict and list types for tool_input
-                if isinstance(message.tool_input, dict):
-                    # Convert tool_input dict to a sorted tuple for consistent hashing
-                    tool_key = (
-                        message.tool_name,
-                        tuple(sorted(message.tool_input.items()))
-                    )
-                elif isinstance(message.tool_input, list):
-                    # Convert list to tuple (lists are not hashable)
-                    tool_key = (
-                        message.tool_name,
-                        tuple(message.tool_input)
-                    )
-                else:
-                    # For other types, convert to string representation
-                    tool_key = (
-                        message.tool_name,
-                        str(message.tool_input)
-                    )
+                hashable_tool_name = self._make_hashable(message.tool_name)
+                hashable_tool_input = self._make_hashable(message.tool_input)
+                tool_key = (hashable_tool_name, hashable_tool_input)
                 
                 # Only add if we haven't seen this exact call before
                 if tool_key not in seen_calls:
@@ -90,8 +107,8 @@ class MessageHistory:
                     tool_calls.append(
                         ToolCallParameters(
                             tool_call_id=message.tool_call_id,
-                            tool_name=message.tool_name,
-                            tool_input=message.tool_input,
+                            tool_name=message.tool_name, # Keep original for ToolCallParameters
+                            tool_input=message.tool_input, # Keep original for ToolCallParameters
                         )
                     )
         return tool_calls
