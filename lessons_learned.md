@@ -156,3 +156,18 @@ This document captures key insights and solutions discovered during development 
 - OpenRouter requires robust fallback since native tool calling isn't always supported
 - Database schema migrations need careful coordination between old and new column names
 - Frontend model picker needs provider-specific logic for proper routing
+
+## Model Selection Issues
+- **Problem**: Model picker automatically falls back to default model when selecting new models
+- **Solution**: Ensure all models in model-picker.tsx are also included in AVAILABLE_MODELS in chutes-provider.tsx
+- **Key Learning**: Frontend model selection requires models to be defined in both the picker component AND the provider's available models list
+
+## PRESENTATION Tool "unhashable type: list" Error  
+- **Problem**: Python TypeError when PRESENTATION tool uses list inputs in message_history.py
+- **Solution**: Implement recursive make_hashable() function to convert nested lists/dicts to hashable tuples
+- **Key Learning**: Tool inputs with complex nested data structures need special handling for deduplication logic
+
+## Debugging Complex Issues
+- **Problem**: Hard to trace issues across frontend/backend boundaries
+- **Solution**: Add comprehensive console.log() in frontend and logger.debug() in backend with consistent prefixes
+- **Key Learning**: Extensive logging with clear prefixes ([COMPONENT_DEBUG]) makes debugging much faster
