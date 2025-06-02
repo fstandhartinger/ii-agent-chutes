@@ -118,6 +118,15 @@ export const useEventHandler = ({
     const currentMessages = messagesLengthRef.current;
     switch (data.type) {
       case AgentEvent.USER_MESSAGE:
+        console.log("EVENT_HANDLER_DEBUG: User message received, setting sessionId if needed");
+        
+        // Set sessionId when the first user message is received (indicating chat has started)
+        if (pendingSessionUuid && !hasSetSessionId) {
+          console.log("EVENT_HANDLER_DEBUG: Setting sessionId from pending:", pendingSessionUuid);
+          setSessionId(pendingSessionUuid);
+          setHasSetSessionId(true);
+        }
+        
         addMessage({
           id: data.id,
           role: "user",
@@ -130,14 +139,12 @@ export const useEventHandler = ({
         console.log("EVENT_HANDLER_DEBUG: Connection established with session:", data.content.session_uuid);
         
         const sessionUuid = data.content.session_uuid as string;
-        if (sessionUuid && !hasSetSessionId) {
-          setSessionId(sessionUuid);
-          setHasSetSessionId(true);
-        }
+        // Don't automatically set sessionId on connection - only set it when a user actually starts a chat
+        // Store the session UUID for when it's needed
+        setPendingSessionUuid(sessionUuid);
         
         // Store connection ID for potential cleanup
         setPendingConnectionId(data.content.connection_id as string);
-        setPendingSessionUuid(sessionUuid);
         break;
 
       case "thinking":
@@ -320,7 +327,16 @@ export const useEventHandler = ({
         break;
 
       case AgentEvent.AGENT_RESPONSE:
-        console.log("EVENT_HANDLER_DEBUG: Agent response received:", data.content.text);
+        console.log("EVENT_HANDLER_DEBUG: Agent response received, setting sessionId if needed");
+        
+        // Set sessionId when agent response is received (indicating chat has started)
+        if (pendingSessionUuid && !hasSetSessionId) {
+          console.log("EVENT_HANDLER_DEBUG: Setting sessionId from pending (agent response):", pendingSessionUuid);
+          setSessionId(pendingSessionUuid);
+          setHasSetSessionId(true);
+        }
+        
+        console.log("EVENT_HANDLER_DEBUG: Agent response content:", data.content.text);
         addMessage({
           id: Date.now().toString(),
           role: "assistant",

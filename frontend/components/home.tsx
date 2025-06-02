@@ -179,10 +179,21 @@ export default function Home() {
     workspaceInfo,
     setWorkspaceInfo,
     fetchSessionEvents
-  } = useSessionManager({
-    returnedFromChat,
-    useNativeToolCalling
-  });
+  } = useSessionManager();
+
+  // Debug logging for sessionId and URL params
+  useEffect(() => {
+    const currentUrl = window.location.href;
+    const idFromParams = searchParams.get('id');
+    console.log('[DEBUG] Home component mount/update:', {
+      currentUrl,
+      idFromParams,
+      sessionId,
+      isInChatView: !!sessionId && !isLoadingSession,
+      isLoadingSession,
+      returnedFromChat
+    });
+  }, [sessionId, isLoadingSession, searchParams, returnedFromChat]);
 
   // Action Handler
   const { handleClickAction } = useActionHandler({
@@ -221,7 +232,7 @@ export default function Home() {
   }, [selectedModel.id, setTaskSummary]);
 
   // Event Handler
-  const { handleEvent } = useEventHandler({
+  const { handleEvent, resetEventHandler } = useEventHandler({
     messages,
     userPrompt,
     taskSummary,
@@ -328,6 +339,8 @@ export default function Home() {
   }, [handleQuestionSubmit]);
 
   const resetChat = useCallback(() => {
+    console.log('[DEBUG] resetChat called');
+    
     if (socket) {
       socket.close();
     }
@@ -338,12 +351,19 @@ export default function Home() {
       setTimeoutCheckInterval(null);
     }
     
+    // Reset event handler state
+    resetEventHandler();
+    
     setSessionId(null);
-    router.push("/");
     resetChatState();
     resetUIState();
     setReturnedFromChat(true);
-  }, [socket, timeoutCheckInterval, setTimeoutCheckInterval, setSessionId, router, resetChatState, resetUIState, setReturnedFromChat]);
+    
+    // Navigate to home without any URL params to ensure clean state
+    router.push("/");
+    
+    console.log('[DEBUG] resetChat completed, sessionId should be null');
+  }, [socket, timeoutCheckInterval, setTimeoutCheckInterval, resetEventHandler, setSessionId, router, resetChatState, resetUIState, setReturnedFromChat]);
 
   const isInChatView = useMemo(
     () => !!sessionId && !isLoadingSession,

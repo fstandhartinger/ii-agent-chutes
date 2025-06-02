@@ -74,13 +74,18 @@ export const useSessionManager = (
   // Initialize session ID from URL search params - only for replay mode
   useEffect(() => {
     const idFromParams = searchParams.get('id');
-    if (idFromParams) {
+    console.log("SESSION_MANAGER: URL check - idFromParams:", idFromParams);
+    
+    if (idFromParams && idFromParams.trim()) {
       // Only set sessionId if we're in replay mode (URL has id parameter)
       console.log("SESSION_MANAGER: Setting sessionId from URL params (replay mode):", idFromParams);
       setSessionId(idFromParams);
+      setIsLoadingSession(true); // Set loading state when we're about to load a session
     } else {
       // If no id in URL, ensure sessionId is null (for fresh start)
+      console.log("SESSION_MANAGER: No id in URL, ensuring sessionId is null");
       setSessionId(null);
+      setIsLoadingSession(false);
     }
   }, [searchParams]);
 
