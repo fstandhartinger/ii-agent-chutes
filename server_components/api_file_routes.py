@@ -16,9 +16,67 @@ from .config import app_config # Relative import
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+def build_file_tree_recursive(target_path: Path, workspace_path: Path, max_depth: int = 10, current_depth: int = 0) -> list:
+    """
+    Recursively build file tree structure with children.
+    
+    Args:
+        target_path: The directory to scan
+        workspace_path: The root workspace path for security checks and relative path calculation
+        max_depth: Maximum recursion depth to prevent infinite loops
+        current_depth: Current recursion depth
+    
+    Returns:
+        List of file/folder dictionaries with children populated for folders
+    """
+    if current_depth >= max_depth:
+        logger.warning(f"[FILE_BROWSER] Max depth {max_depth} reached at {target_path}")
+        return []
+    
+    files = []
+    try:
+        for item in sorted(list(target_path.iterdir()), key=lambda p: (p.is_file(), p.name.lower())):
+            if item.name.startswith('.'): # Skip hidden files/folders
+                logger.debug(f"[FILE_BROWSER] Skipping hidden item: {item.name}")
+                continue
+            
+            # Construct path relative to the workspace_id directory for client-side display
+            display_path = str(item.relative_to(workspace_path))
+
+            file_info = {
+                "name": item.name,
+                "type": "folder" if item.is_dir() else "file",
+                "path": display_path, # Use relative path for client
+            }
+            
+            if item.is_file():
+                file_info["language"] = item.suffix[1:].lower() if item.suffix else "plaintext"
+            elif item.is_dir():
+                # Recursively get children for folders
+                try:
+                    children = build_file_tree_recursive(item, workspace_path, max_depth, current_depth + 1)
+                    file_info["children"] = children
+                except PermissionError:
+                    logger.warning(f"[FILE_BROWSER] Permission denied accessing children of: {item}")
+                    file_info["children"] = []
+                except Exception as e:
+                    logger.error(f"[FILE_BROWSER] Error accessing children of {item}: {e}")
+                    file_info["children"] = []
+
+            files.append(file_info)
+            
+    except PermissionError:
+        logger.error(f"[FILE_BROWSER] Permission denied accessing: {target_path}")
+        raise
+    except Exception as e:
+        logger.error(f"[FILE_BROWSER] Error reading directory {target_path}: {e}")
+        raise
+    
+    return files
+
 @router.post("/api/files/list")
 async def list_files_endpoint(request: Request):
-    """API endpoint for listing files in a workspace directory."""
+    """API endpoint for listing files in a workspace directory with recursive children."""
     try:
         data = await request.json()
         workspace_id = data.get("workspace_id")
@@ -29,11 +87,6 @@ async def list_files_endpoint(request: Request):
         if not workspace_id:
             logger.error("[FILE_BROWSER] Missing workspace_id")
             return create_cors_response({"error": "workspace_id is required"}, 400)
-
-        # Path can be empty, meaning root of workspace_id
-        # if not path_str:
-        #     logger.error("[FILE_BROWSER] Missing path")
-        #     return create_cors_response({"error": "path is required"}, 400)
 
         current_args = app_config.get_args()
         if not current_args or not hasattr(current_args, 'workspace'):
@@ -66,40 +119,16 @@ async def list_files_endpoint(request: Request):
                 logger.error(f"[FILE_BROWSER] Access denied: {target_path} is outside workspace {workspace_path}")
                 return create_cors_response({"error": "Access denied to path"}, 403)
 
-
         if not target_path.exists() or not target_path.is_dir():
             logger.error(f"[FILE_BROWSER] Target path not found or not a directory: {target_path}")
             return create_cors_response(
                 {"error": f"Path not found: {path_str}"}, 404
             )
 
-        files = []
+        # Use the recursive function to build the complete file tree
         try:
-            for item in sorted(list(target_path.iterdir()), key=lambda p: (p.is_file(), p.name.lower())): # Sort for consistency
-                if item.name.startswith('.'): # Skip hidden files/folders
-                    logger.debug(f"[FILE_BROWSER] Skipping hidden item: {item.name}")
-                    continue
-                
-                # Construct path relative to the workspace_id directory for client-side display
-                display_path = str(item.relative_to(workspace_path))
-
-                file_info = {
-                    "name": item.name,
-                    "type": "folder" if item.is_dir() else "file",
-                    "path": display_path, # Use relative path for client
-                    "absolute_path_for_server": str(item) # Keep absolute for server-side ops if needed later
-                }
-                
-                if item.is_file():
-                    file_info["language"] = item.suffix[1:].lower() if item.suffix else "plaintext"
-                
-                # Optionally, list children for folders (can be heavy, consider if needed by default)
-                # For now, not listing children recursively to keep it simple and performant.
-                # Client can make new requests for subfolders.
-
-                files.append(file_info)
-            logger.info(f"[FILE_BROWSER] Returning {len(files)} visible items from {target_path}")
-                
+            files = build_file_tree_recursive(target_path, workspace_path)
+            logger.info(f"[FILE_BROWSER] Returning {len(files)} visible items from {target_path} with recursive children")
         except PermissionError:
             logger.error(f"[FILE_BROWSER] Permission denied accessing: {target_path}")
             return create_cors_response(

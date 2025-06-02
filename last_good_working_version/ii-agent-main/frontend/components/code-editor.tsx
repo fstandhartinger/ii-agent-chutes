@@ -159,20 +159,6 @@ const CodeEditor = ({
     }
   }, [currentActionData, workspaceInfo, activeTab]);
 
-  // Auto-expand root level folders when fileStructure is loaded
-  useEffect(() => {
-    if (fileStructure.length > 0) {
-      const rootFolders = fileStructure
-        .filter(item => item.type === "folder")
-        .map(item => item.path);
-      
-      if (rootFolders.length > 0) {
-        setExpandedFolders(prev => new Set([...prev, ...rootFolders]));
-        console.log(`[FILE_BROWSER] Auto-expanded root folders: ${rootFolders.join(', ')}`);
-      }
-    }
-  }, [fileStructure]);
-
   const toggleFolder = (folderPath: string) => {
     setExpandedFolders((prev) => {
       const next = new Set(prev);
@@ -208,29 +194,15 @@ const CodeEditor = ({
         const filePath = activeFile.startsWith(workspaceInfo)
           ? activeFile
           : `${workspaceInfo}/${activeFile}`;
-        
-        setActiveLanguage(getFileLanguage(filePath));
-        
-        // Check if we have the file content in filesContent (from FILE_EDIT events)
-        if (filesContent && filesContent[filePath]) {
-          console.log("CODE_EDITOR_DEBUG: Using filesContent", {
-            filePath,
-            hasContent: !!filesContent[filePath],
-            contentLength: filesContent[filePath]?.length || 0,
-            availableFiles: Object.keys(filesContent)
-          });
-          setFileContent(filesContent[filePath]);
-          return;
-        }
-        
         // If we are in replay mode, use the file content from the filesContent prop
         if (isReplayMode) {
           const content = filesContent?.[filePath] || "";
+          setActiveLanguage(getFileLanguage(filePath));
           setFileContent(content);
           return;
         }
 
-        // Otherwise, load from server
+        setActiveLanguage(getFileLanguage(filePath));
         const content = await loadFileContent(filePath);
         setFileContent(content);
       }

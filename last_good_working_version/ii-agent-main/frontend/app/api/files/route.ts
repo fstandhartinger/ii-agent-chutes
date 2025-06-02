@@ -1,13 +1,5 @@
 import { NextResponse } from "next/server";
 
-interface FileStructure {
-  name: string;
-  type: "file" | "folder";
-  children?: FileStructure[];
-  language?: string;
-  path: string;
-}
-
 export async function POST(request: Request) {
   try {
     const { path: dirPath } = await request.json();
@@ -38,7 +30,7 @@ export async function POST(request: Request) {
       },
       body: JSON.stringify({
         workspace_id: workspaceId,
-        path: ""
+        path: "/var/data"
       }),
     });
 
@@ -49,21 +41,7 @@ export async function POST(request: Request) {
 
     const data = await response.json();
     console.log(`Received file list with ${data.files?.length || 0} items`);
-    
-    // Transform the backend response to match the expected frontend format
-    // The backend now provides relative paths directly, so we need to construct absolute paths for the frontend
-    const transformFiles = (files: any[], workspaceBasePath: string): FileStructure[] => {
-      return files.map((file: any): FileStructure => ({
-        name: file.name,
-        type: file.type,
-        path: `${workspaceBasePath}/${file.path}`, // Use the relative path from backend
-        language: file.language || "plaintext",
-        children: file.children ? transformFiles(file.children, workspaceBasePath) : undefined
-      }));
-    };
-    
-    const transformedFiles = transformFiles(data.files || [], normalizedPath);
-    return NextResponse.json({ files: transformedFiles });
+    return NextResponse.json({ files: data.files || [] });
   } catch (error) {
     console.error("Error reading directory:", error);
     return NextResponse.json(
