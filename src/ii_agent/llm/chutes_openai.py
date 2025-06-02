@@ -91,6 +91,10 @@ class ChutesOpenAIClient(LLMClient):
                 "Qwen/Qwen2.5-VL-32B-Instruct",  # Vision capable
                 "deepseek-ai/DeepSeek-R1",  # Text only
                 "deepseek-ai/DeepSeek-R1-0528",  # Text only (new model)
+                "qwen/qwen3-32b:fast",  # NEU: Qwen3 32B Fast
+                "meta-llama/llama-4-maverick:fast",  # NEU: Llama Maverick 4 Fast
+                "deepseek/deepseek-r1-distill-llama-70b:fast",  # NEU: R1 Distill Llama
+                "claude-opus-4-0",  # NEU: Opus 4
             ]
         else:
             self.fallback_models = fallback_models

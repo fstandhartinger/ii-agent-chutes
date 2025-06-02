@@ -93,6 +93,10 @@ class OpenRouterOpenAIClient(LLMClient):
                 "meta-llama/llama-4-maverick:free",
                 "qwen/qwen2.5-vl-32b-instruct:free",
                 "deepseek/deepseek-r1:free",
+                "qwen/qwen3-32b:fast",  # NEU: Qwen3 32B Fast
+                "meta-llama/llama-4-maverick:fast",  # NEU: Llama Maverick 4 Fast
+                "deepseek/deepseek-r1-distill-llama-70b:fast",  # NEU: R1 Distill Llama
+                "claude-opus-4-0",  # NEU: Opus 4
             ]
             
             # Paid models that support tools (affordable options)
@@ -101,6 +105,10 @@ class OpenRouterOpenAIClient(LLMClient):
                 "anthropic/claude-3-haiku",  # Fast and affordable Claude with tools
                 "google/gemini-flash-1.5",  # Google's fast model with tools
                 "mistralai/mistral-7b-instruct",  # Affordable Mistral with tools
+                "qwen/qwen3-32b:fast",  # NEU: Qwen3 32B Fast
+                "meta-llama/llama-4-maverick:fast",  # NEU: Llama Maverick 4 Fast
+                "deepseek/deepseek-r1-distill-llama-70b:fast",  # NEU: R1 Distill Llama
+                "claude-opus-4-0",  # NEU: Opus 4
             ]
         else:
             self.free_fallback_models = fallback_models
