@@ -115,7 +115,6 @@ export const useEventHandler = ({
   const handleEvent = useCallback((data: { id: string; type: string; content: Record<string, unknown> }) => {
     console.log("EVENT_HANDLER_DEBUG: Received event type:", data.type, data);
     
-    const currentMessages = messagesLengthRef.current;
     switch (data.type) {
       case AgentEvent.USER_MESSAGE:
         console.log("EVENT_HANDLER_DEBUG: User message received, setting sessionId if needed");
@@ -145,6 +144,47 @@ export const useEventHandler = ({
         
         // Store connection ID for potential cleanup
         setPendingConnectionId(data.content.connection_id as string);
+        break;
+
+      case AgentEvent.AGENT_INITIALIZED:
+        console.log("EVENT_HANDLER_DEBUG: Agent initialized:", data.content.message);
+        
+        // Set sessionId when agent is initialized (indicating chat is starting)
+        if (pendingSessionUuid && !hasSetSessionId) {
+          console.log("EVENT_HANDLER_DEBUG: Setting sessionId from pending (agent initialized):", pendingSessionUuid);
+          setSessionId(pendingSessionUuid);
+          setHasSetSessionId(true);
+        }
+        break;
+
+      case AgentEvent.PROCESSING:
+        console.log("EVENT_HANDLER_DEBUG: Processing started:", data.content.message);
+        setIsLoading(true);
+        setIsCompleted(false);
+        
+        // Set sessionId when processing starts (indicating chat has started)
+        if (pendingSessionUuid && !hasSetSessionId) {
+          console.log("EVENT_HANDLER_DEBUG: Setting sessionId from pending (processing):", pendingSessionUuid);
+          setSessionId(pendingSessionUuid);
+          setHasSetSessionId(true);
+        }
+        
+        // Set a timeout to check if the agent is stuck
+        const processingInterval = setInterval(() => {
+          console.log("EVENT_HANDLER_DEBUG: Checking if agent is stuck after processing timeout");
+          if (isLoadingRef.current) {
+            console.log("EVENT_HANDLER_DEBUG: Agent appears to be stuck, showing upgrade prompt");
+            
+            const currentSelectedModel = selectedModelRef.current;
+            const currentHasProAccess = hasProAccessRef.current;
+            if (currentSelectedModel.id !== "claude-sonnet-4-0" && !currentHasProAccess()) {
+              setShowUpgradePrompt("timeout");
+            }
+            clearInterval(processingInterval);
+            setTimeoutCheckInterval(null);
+          }
+        }, 15000); // 15 seconds timeout
+        setTimeoutCheckInterval(processingInterval);
         break;
 
       case "thinking":

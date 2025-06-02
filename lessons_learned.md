@@ -171,3 +171,9 @@ This document captures key insights and solutions discovered during development 
 - **Problem**: Hard to trace issues across frontend/backend boundaries
 - **Solution**: Add comprehensive console.log() in frontend and logger.debug() in backend with consistent prefixes
 - **Key Learning**: Extensive logging with clear prefixes ([COMPONENT_DEBUG]) makes debugging much faster
+
+## Unhandled Event Types Preventing Chat View Navigation
+- **Problem**: Frontend showed "Unhandled event type" errors for `agent_initialized` and `processing` events, preventing navigation to chat view
+- **Root Cause**: Event handler in useEventHandler.ts was missing cases for AgentEvent.AGENT_INITIALIZED and AgentEvent.PROCESSING despite these being sent by the backend
+- **Solution**: Added missing event handlers that set sessionId when chat starts and handle loading states properly
+- **Key Learning**: All event types sent by backend must have corresponding handlers in frontend, even if just for acknowledgment and state transitions
