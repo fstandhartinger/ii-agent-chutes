@@ -34,7 +34,7 @@ export const TEXT_MODELS: LLMModel[] = [
     supportsVision: false
   },
   {
-    id: "claude-opus-4-20250514",
+    id: "claude-opus-4-0",
     name: "Claude Opus 4",
     provider: "anthropic",
     description: "Claude Opus 4 - Most capable model with vision",
@@ -53,6 +53,28 @@ export const TEXT_MODELS: LLMModel[] = [
     provider: "chutes", 
     description: "Large-scale reasoning model",
     supportsVision: false
+  },
+  // OpenRouter models
+  {
+    id: "qwen/qwen3-32b:fast",
+    name: "Qwen3 32B Fast",
+    provider: "openrouter",
+    description: "Fast Qwen3 model via OpenRouter",
+    supportsVision: true
+  },
+  {
+    id: "meta-llama/llama-4-maverick:fast", 
+    name: "Llama 4 Maverick Fast",
+    provider: "openrouter",
+    description: "Fast Llama 4 Maverick via OpenRouter",
+    supportsVision: true
+  },
+  {
+    id: "deepseek/deepseek-r1-distill-llama-70b:fast",
+    name: "R1 Distill Llama 70B Fast", 
+    provider: "openrouter",
+    description: "Fast R1 Distilled model via OpenRouter",
+    supportsVision: true
   }
 ];
 
@@ -105,29 +127,57 @@ export function ChutesProvider({ children }: { children: ReactNode }) {
 
   // Load state from localStorage when component mounts
   useEffect(() => {
+    console.log("[CHUTES_PROVIDER_DEBUG] Loading saved model state from localStorage");
+    
     const savedModelId = localStorage.getItem("selectedModelId");
+    console.log("[CHUTES_PROVIDER_DEBUG] Saved model ID from localStorage:", savedModelId);
+    
     if (savedModelId) {
       const model = AVAILABLE_MODELS.find(m => m.id === savedModelId);
+      console.log("[CHUTES_PROVIDER_DEBUG] Found model in AVAILABLE_MODELS:", model);
+      
       if (model) {
+        console.log("[CHUTES_PROVIDER_DEBUG] Setting saved model:", model);
         setSelectedModelState(model);
+      } else {
+        console.warn("[CHUTES_PROVIDER_DEBUG] Saved model ID not found in AVAILABLE_MODELS, falling back to default");
+        console.log("[CHUTES_PROVIDER_DEBUG] Available model IDs:", AVAILABLE_MODELS.map(m => m.id));
+        setSelectedModelState(VISION_MODELS[0]);
       }
     } else {
       // Try to migrate from old useChutesLLM setting or set default to DeepSeek V3
       const savedChutesValue = localStorage.getItem("useChutesLLM");
+      console.log("[CHUTES_PROVIDER_DEBUG] No saved model ID, checking old useChutesLLM value:", savedChutesValue);
+      
       if (savedChutesValue === "true") {
+        console.log("[CHUTES_PROVIDER_DEBUG] Setting default to DeepSeek V3 (migration from useChutesLLM)");
         setSelectedModelState(VISION_MODELS[0]); // DeepSeek V3 is now default
       } else {
         // Default to DeepSeek V3 for new users
+        console.log("[CHUTES_PROVIDER_DEBUG] Setting default to DeepSeek V3 (new user)");
         setSelectedModelState(VISION_MODELS[0]);
       }
     }
   }, []);
 
   const setSelectedModel = (model: LLMModel) => {
+    console.log("[CHUTES_PROVIDER_DEBUG] setSelectedModel called with:", model);
+    console.log("[CHUTES_PROVIDER_DEBUG] Current selected model:", selectedModel);
+    
+    // Check if the model is in AVAILABLE_MODELS
+    const isModelAvailable = AVAILABLE_MODELS.find(m => m.id === model.id);
+    if (!isModelAvailable) {
+      console.error("[CHUTES_PROVIDER_DEBUG] Model not found in AVAILABLE_MODELS:", model.id);
+      console.log("[CHUTES_PROVIDER_DEBUG] Available model IDs:", AVAILABLE_MODELS.map(m => m.id));
+      return;
+    }
+    
     setSelectedModelState(model);
     localStorage.setItem("selectedModelId", model.id);
+    console.log("[CHUTES_PROVIDER_DEBUG] Model set and saved to localStorage:", model.id);
     
     // Reload the page to re-establish WebSocket connection with the new setting
+    console.log("[CHUTES_PROVIDER_DEBUG] Reloading page in 100ms to apply new model");
     setTimeout(() => {
       window.location.reload();
     }, 100);

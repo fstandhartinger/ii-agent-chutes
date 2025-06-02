@@ -1,4 +1,5 @@
 import json
+import logging
 from typing import Optional, cast, Any
 from ii_agent.llm.base import (
     AssistantContentBlock,
@@ -12,6 +13,8 @@ from ii_agent.llm.base import (
     ImageBlock,
 )
 
+# Set up logger for debugging
+logger = logging.getLogger(__name__)
 
 class MessageHistory:
     """Stores the sequence of messages in a dialog."""
@@ -54,46 +57,94 @@ class MessageHistory:
 
     def get_pending_tool_calls(self) -> list[ToolCallParameters]:
         """Returns tool calls from the last assistant turn, if any."""
+        logger.debug(f"[MESSAGE_HISTORY_DEBUG] Getting pending tool calls. Next turn assistant: {self.is_next_turn_assistant()}, Messages count: {len(self._message_lists)}")
+        
         if self.is_next_turn_assistant() or not self._message_lists:
+            logger.debug("[MESSAGE_HISTORY_DEBUG] No pending calls - either user turn or empty history")
             return []  # No pending calls if it's user turn or history is empty
 
         last_turn = self._message_lists[-1]
         tool_calls = []
         seen_calls = set()  # Track unique tool calls
         
-        for message in last_turn:
+        logger.debug(f"[MESSAGE_HISTORY_DEBUG] Processing {len(last_turn)} messages in last turn")
+        
+        for i, message in enumerate(last_turn):
+            logger.debug(f"[MESSAGE_HISTORY_DEBUG] Message {i}: type={type(message)}, isinstance(ToolCall)={isinstance(message, ToolCall)}")
+            
             if isinstance(message, ToolCall):
-                # Create a unique key based on tool name and arguments
-                # Handle both dict and list types for tool_input
-                if isinstance(message.tool_input, dict):
-                    # Convert tool_input dict to a sorted tuple for consistent hashing
-                    tool_key = (
-                        message.tool_name,
-                        tuple(sorted(message.tool_input.items()))
-                    )
-                elif isinstance(message.tool_input, list):
-                    # Convert list to tuple (lists are not hashable)
-                    tool_key = (
-                        message.tool_name,
-                        tuple(message.tool_input)
-                    )
-                else:
-                    # For other types, convert to string representation
-                    tool_key = (
-                        message.tool_name,
-                        str(message.tool_input)
-                    )
+                logger.debug(f"[MESSAGE_HISTORY_DEBUG] Processing ToolCall: name={message.tool_name}, input_type={type(message.tool_input)}")
                 
-                # Only add if we haven't seen this exact call before
-                if tool_key not in seen_calls:
-                    seen_calls.add(tool_key)
-                    tool_calls.append(
-                        ToolCallParameters(
-                            tool_call_id=message.tool_call_id,
-                            tool_name=message.tool_name,
-                            tool_input=message.tool_input,
+                try:
+                    # Create a unique key based on tool name and arguments
+                    # Handle both dict and list types for tool_input more safely
+                    if isinstance(message.tool_input, dict):
+                        # Convert tool_input dict to a sorted tuple for consistent hashing
+                        try:
+                            tool_key = (
+                                message.tool_name,
+                                tuple(sorted(message.tool_input.items()))
+                            )
+                            logger.debug(f"[MESSAGE_HISTORY_DEBUG] Created dict-based tool_key for {message.tool_name}")
+                        except Exception as e:
+                            logger.error(f"[MESSAGE_HISTORY_DEBUG] Error creating dict-based tool_key for {message.tool_name}: {e}")
+                            # Fallback to string representation
+                            tool_key = (message.tool_name, str(message.tool_input))
+                    elif isinstance(message.tool_input, (list, tuple)):
+                        # Convert list/tuple to tuple (lists are not hashable)
+                        try:
+                            def make_hashable(obj):
+                                """Recursively convert lists to tuples to make them hashable"""
+                                if isinstance(obj, list):
+                                    return tuple(make_hashable(item) for item in obj)
+                                elif isinstance(obj, dict):
+                                    return tuple(sorted((k, make_hashable(v)) for k, v in obj.items()))
+                                else:
+                                    return obj
+                            
+                            hashable_input = make_hashable(message.tool_input)
+                            tool_key = (message.tool_name, hashable_input)
+                            logger.debug(f"[MESSAGE_HISTORY_DEBUG] Created list/tuple-based tool_key for {message.tool_name}")
+                        except Exception as e:
+                            logger.error(f"[MESSAGE_HISTORY_DEBUG] Error creating list/tuple-based tool_key for {message.tool_name}: {e}")
+                            # Fallback to string representation
+                            tool_key = (message.tool_name, str(message.tool_input))
+                    else:
+                        # For other types, convert to string representation
+                        tool_key = (message.tool_name, str(message.tool_input))
+                        logger.debug(f"[MESSAGE_HISTORY_DEBUG] Created string-based tool_key for {message.tool_name}")
+                    
+                    # Only add if we haven't seen this exact call before
+                    if tool_key not in seen_calls:
+                        seen_calls.add(tool_key)
+                        tool_calls.append(
+                            ToolCallParameters(
+                                tool_call_id=message.tool_call_id,
+                                tool_name=message.tool_name,
+                                tool_input=message.tool_input,
+                            )
                         )
-                    )
+                        logger.debug(f"[MESSAGE_HISTORY_DEBUG] Added unique tool call: {message.tool_name} (ID: {message.tool_call_id})")
+                    else:
+                        logger.debug(f"[MESSAGE_HISTORY_DEBUG] Skipped duplicate tool call: {message.tool_name}")
+                        
+                except Exception as e:
+                    logger.error(f"[MESSAGE_HISTORY_DEBUG] Critical error processing ToolCall {message.tool_name}: {e}")
+                    logger.error(f"[MESSAGE_HISTORY_DEBUG] tool_input type: {type(message.tool_input)}, content: {message.tool_input}")
+                    # Add the tool call anyway with a fallback key
+                    fallback_key = (message.tool_name, f"error_fallback_{i}")
+                    if fallback_key not in seen_calls:
+                        seen_calls.add(fallback_key)
+                        tool_calls.append(
+                            ToolCallParameters(
+                                tool_call_id=message.tool_call_id,
+                                tool_name=message.tool_name,
+                                tool_input=message.tool_input,
+                            )
+                        )
+                        logger.debug(f"[MESSAGE_HISTORY_DEBUG] Added tool call with fallback key due to error")
+        
+        logger.debug(f"[MESSAGE_HISTORY_DEBUG] Returning {len(tool_calls)} pending tool calls")
         return tool_calls
 
     def add_tool_call_result(self, parameters: ToolCallParameters, result: str):
