@@ -16,7 +16,7 @@ from pathlib import Path
 load_dotenv()
 
 from ii_agent.core.event import RealtimeEvent, EventType
-from ii_agent.utils.constants import DEFAULT_MODEL, PERSISTENT_DATA_ROOT
+from ii_agent.utils.constants import SONNET_4, PERSISTENT_DATA_ROOT
 from utils import parse_common_args, create_workspace_manager_for_connection
 from rich.console import Console
 from rich.panel import Panel
@@ -102,7 +102,7 @@ async def async_main():
     # Initialize LLM client
     client = get_client(
         "anthropic-direct",
-        model_name=DEFAULT_MODEL,
+        model_name=SONNET_4,
         use_caching=False,
         project_id=args.project_id,
         region=args.region,

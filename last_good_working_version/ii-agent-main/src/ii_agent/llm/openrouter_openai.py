@@ -27,7 +27,7 @@ from ii_agent.llm.base import (
     recursively_remove_invoke_tag,
     ImageBlock,
 )
-from ii_agent.utils.constants import DEFAULT_MODEL
+from ii_agent.utils.constants import SONNET_4
 
 
 class OpenRouterOpenAIClient(LLMClient):

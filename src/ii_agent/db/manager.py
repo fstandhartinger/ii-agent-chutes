@@ -7,7 +7,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session as DBSession
 from ii_agent.db.models import Base, Session, Event, ProUsage
 from ii_agent.core.event import RealtimeEvent
-from ii_agent.utils.constants import PERSISTENT_DATA_ROOT, PERSISTENT_DB_PATH
+from ii_agent.utils.constants import PERSISTENT_DATA_ROOT, PERSISTENT_DB_PATH, OPUS_4, SONNET_4, QWEN3_32B_FAST, LLAMA_4_MAVERICK_FAST, R1_DISTILL_LLAMA_70B_FAST
 from datetime import datetime
 
 
@@ -170,24 +170,46 @@ class DatabaseManager:
         with self.get_session() as session:
             return session.query(Session).filter(Session.device_id == device_id).first()
 
-    def track_pro_usage(self, pro_key: str) -> dict:
-        """Track a Sonnet 4 request for a Pro user.
+    def track_pro_usage(self, pro_key: str, model_name: str = "claude-sonnet-4-0") -> dict:
+        """Track a premium model request for a Pro user.
 
         Args:
             pro_key: The Pro key (8-character hex string)
+            model_name: The model name being used
 
         Returns:
             dict: {
-                'allowed': bool,  # True if Sonnet 4 request is allowed
-                'current_usage': int,  # Current request count
+                'allowed': bool,  # True if premium model request is allowed
+                'current_usage': int,  # Current credit usage
                 'limit_reached': bool,  # True if monthly limit reached
                 'warning_threshold': bool,  # True if warning threshold reached
-                'use_fallback': bool  # True if should use DeepSeek V3 instead
+                'use_fallback': bool  # True if should use fallback model instead
             }
         """
+        # Determine credit cost based on model
+        credits_needed = 0
+        if model_name in [SONNET_4, "claude-sonnet-4-0", "claude-sonnet-4-20250514"]:
+            credits_needed = 1  # Sonnet 4 costs 1 credit
+        elif model_name in [OPUS_4, "claude-opus-4-0", "claude-opus-4-20250514"]:
+            credits_needed = 4  # Opus 4 costs 4 credits (4x more expensive)
+        elif model_name in [QWEN3_32B_FAST, LLAMA_4_MAVERICK_FAST, R1_DISTILL_LLAMA_70B_FAST]:
+            credits_needed = 0  # OpenRouter models are free for Pro users
+        else:
+            credits_needed = 1  # Default for unknown premium models
+        
+        # OpenRouter models are free, always allow
+        if credits_needed == 0:
+            return {
+                'allowed': True,
+                'current_usage': 0,
+                'limit_reached': False,
+                'warning_threshold': False,
+                'use_fallback': False
+            }
+        
         current_month = datetime.now().strftime("%Y-%m")
-        monthly_limit = 1000
-        warning_threshold = 300
+        monthly_limit = 1000  # 1000 credits per month
+        warning_threshold = 300  # Warning at 300 credits
         
         with self.get_session() as session:
             # Get or create usage record for this month
@@ -199,16 +221,17 @@ class DatabaseManager:
             
             if usage_record is None:
                 # Create new usage record
-                usage_record = ProUsage(pro_key=pro_key, month_year=current_month, sonnet_requests=1)
+                usage_record = ProUsage(pro_key=pro_key, month_year=current_month, premium_credits=credits_needed)
                 session.add(usage_record)
-                current_usage = 1
+                current_usage = credits_needed
             else:
-                current_usage = usage_record.sonnet_requests
+                current_usage = usage_record.premium_credits
                 
-                # Check if user has exceeded limit
-                if current_usage >= monthly_limit:
-                    print(f" CRITICAL: Pro user {pro_key} has exceeded monthly limit ({monthly_limit}) in {current_month}")
-                    print(f" FALLBACK: Switching to DeepSeek V3 for this user")
+                # Check if user would exceed limit with this request
+                if current_usage + credits_needed > monthly_limit:
+                    print(f"🚫 CRITICAL: Pro user {pro_key} would exceed monthly limit ({monthly_limit}) in {current_month}")
+                    print(f"   Current usage: {current_usage} credits, requested: {credits_needed} credits")
+                    print(f"🔄 FALLBACK: Switching to free model for this user")
                     return {
                         'allowed': False,
                         'current_usage': current_usage,
@@ -217,15 +240,18 @@ class DatabaseManager:
                         'use_fallback': True
                     }
                 
-                # Log warning at 300 requests
-                if current_usage == warning_threshold:
-                    print(f" WARNING: Pro user {pro_key} has reached {warning_threshold} Sonnet 4 requests in {current_month}!")
-                    print(f" ALERT: Monitor this user closely - approaching monthly limit of {monthly_limit}")
+                # Log warning at threshold
+                if current_usage >= warning_threshold:
+                    print(f"⚠️  WARNING: Pro user {pro_key} has used {current_usage} credits in {current_month}!")
+                    print(f"📊 ALERT: Monitor this user closely - approaching monthly limit of {monthly_limit}")
                 
                 # Increment usage
-                usage_record.sonnet_requests += 1
+                usage_record.premium_credits += credits_needed
                 usage_record.updated_at = datetime.utcnow()
-                current_usage += 1
+                current_usage += credits_needed
+            
+            # Log the usage
+            print(f"💳 Pro Usage: User {pro_key} used {credits_needed} credits for {model_name} (Total: {current_usage}/{monthly_limit})")
             
             return {
                 'allowed': True,
@@ -256,14 +282,14 @@ class DatabaseManager:
             if usage_record is None:
                 return {
                     "month": current_month,
-                    "sonnet_requests": 0,
+                    "premium_credits": 0,
                     "limit": 1000,
                     "remaining": 1000
                 }
             
             return {
                 "month": current_month,
-                "sonnet_requests": usage_record.sonnet_requests,
+                "premium_credits": usage_record.premium_credits,
                 "limit": 1000,
-                "remaining": max(0, 1000 - usage_record.sonnet_requests)
+                "remaining": max(0, 1000 - usage_record.premium_credits)
             }

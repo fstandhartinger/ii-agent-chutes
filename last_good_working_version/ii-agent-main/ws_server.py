@@ -39,7 +39,7 @@ from sqlalchemy import asc, text
 
 from ii_agent.core.event import RealtimeEvent, EventType
 from ii_agent.db.models import Event
-from ii_agent.utils.constants import DEFAULT_MODEL, UPLOAD_FOLDER_NAME, PERSISTENT_DATA_ROOT, PERSISTENT_WORKSPACE_ROOT
+from ii_agent.utils.constants import SONNET_4, UPLOAD_FOLDER_NAME, PERSISTENT_DATA_ROOT, PERSISTENT_WORKSPACE_ROOT
 from utils import parse_common_args, create_workspace_manager_for_connection, get_persistent_path
 from ii_agent.agents.anthropic_fc import AnthropicFC
 from ii_agent.agents.base import BaseAgent
@@ -669,11 +669,11 @@ def create_agent_for_connection(
         # Default to Anthropic if no provider is specified
         logger_for_agent_logs.info("=========================================")
         logger_for_agent_logs.info("USING ANTHROPIC LLM PROVIDER (DEFAULT)")
-        logger_for_agent_logs.info(f"Model: {DEFAULT_MODEL}")
+        logger_for_agent_logs.info(f"Model: {SONNET_4}")
         logger_for_agent_logs.info("=========================================")
         client = get_client(
             "anthropic-direct",
-            model_name=DEFAULT_MODEL,
+            model_name=SONNET_4,
             use_caching=False,
             project_id=global_args.project_id,
             region=global_args.region,

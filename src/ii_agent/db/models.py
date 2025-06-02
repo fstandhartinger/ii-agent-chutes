@@ -78,21 +78,21 @@ class ProUsage(Base):
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     pro_key = Column(String(8), nullable=False, index=True)  # 8-character hex key
     month_year = Column(String(7), nullable=False)  # Format: YYYY-MM
-    sonnet_requests = Column(Integer, default=0)  # Number of Sonnet 4 requests
+    premium_credits = Column(Integer, default=0)  # Premium model credits used (Sonnet=1, Opus=4, OpenRouter=0)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    def __init__(self, pro_key: str, month_year: str, sonnet_requests: int = 0):
+    def __init__(self, pro_key: str, month_year: str, premium_credits: int = 0):
         """Initialize Pro usage tracking.
 
         Args:
             pro_key: The Pro key (8-character hex string)
             month_year: The month and year in YYYY-MM format
-            sonnet_requests: Number of Sonnet 4 requests (default: 0)
+            premium_credits: Premium model credits used (default: 0)
         """
         self.pro_key = pro_key
         self.month_year = month_year
-        self.sonnet_requests = sonnet_requests
+        self.premium_credits = premium_credits
 
 
 def init_db(engine):

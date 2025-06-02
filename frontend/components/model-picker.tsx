@@ -21,8 +21,13 @@ const CHUTES_MODELS = [
   { id: "Qwen/Qwen3-235B-A22B", name: "Qwen3 235B", isPremium: false },
   { id: "chutesai/Llama-4-Maverick-17B-128E-Instruct-FP8", name: "Llama 4 Maverick", isPremium: false },
   { id: "nvidia/Llama-3_1-Nemotron-Ultra-253B-v1", name: "Nemotron Ultra", isPremium: false },
-  // Premium models - only Sonnet 4 is offered now
+  // Premium models - Pro plan exclusive
   { id: "claude-sonnet-4-20250514", name: "Claude Sonnet 4", isPremium: true, hidden: false },
+  { id: "claude-opus-4-0", name: "Claude Opus 4", isPremium: true, hidden: false },
+  // OpenRouter models - Free for Pro users
+  { id: "qwen/qwen3-32b:fast", name: "Qwen3 32B Fast", isPremium: true, hidden: false, isOpenRouter: true },
+  { id: "meta-llama/llama-4-maverick:fast", name: "Llama 4 Maverick Fast", isPremium: true, hidden: false, isOpenRouter: true },
+  { id: "deepseek/deepseek-r1-distill-llama-70b:fast", name: "R1 Distill Llama 70B Fast", isPremium: true, hidden: false, isOpenRouter: true },
 ];
 
 export default function ModelPicker() {
@@ -72,7 +77,7 @@ export default function ModelPicker() {
   const handleModelChange = useCallback((modelId: string) => {
     const model = CHUTES_MODELS.find(m => m.id === modelId);
     if (model) {
-      // Check if user is trying to select Sonnet 4 without Pro access
+      // Check if user is trying to select a premium model without Pro access
       if (model.isPremium && !userHasProAccess) {
         router.push("/pro-upgrade");
         return;
@@ -85,12 +90,18 @@ export default function ModelPicker() {
       let provider: "anthropic" | "chutes" | "openrouter" = "chutes";
       if (modelId.startsWith("claude-")) {
         provider = "anthropic";
+      } else if (model.isOpenRouter) {
+        provider = "openrouter";
       }
       
       // Determine vision support
       let supportsVision = model.id.includes("V3") || model.id.includes("Maverick");
       // Claude 4 models support vision
-      if (modelId === "claude-sonnet-4-20250514") {
+      if (modelId === "claude-sonnet-4-20250514" || modelId === "claude-opus-4-0") {
+        supportsVision = true;
+      }
+      // OpenRouter models support vision
+      if (model.isOpenRouter) {
         supportsVision = true;
       }
       

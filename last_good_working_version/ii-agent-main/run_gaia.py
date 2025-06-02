@@ -59,7 +59,7 @@ from ii_agent.utils import WorkspaceManager
 from ii_agent.llm import get_client
 from ii_agent.llm.context_manager.standard import StandardContextManager
 from ii_agent.llm.token_counter import TokenCounter
-from ii_agent.utils.constants import DEFAULT_MODEL, UPLOAD_FOLDER_NAME, PERSISTENT_DATA_ROOT
+from ii_agent.utils.constants import SONNET_4, UPLOAD_FOLDER_NAME, PERSISTENT_DATA_ROOT
 from utils import parse_common_args, get_persistent_path
 from ii_agent.db.manager import DatabaseManager
 from ii_agent.core.event import RealtimeEvent, EventType
@@ -511,7 +511,7 @@ def main():
         # Default to anthropic-direct with DEFAULT_MODEL
         client = get_client(
             "anthropic-direct",
-            model_name=DEFAULT_MODEL,
+            model_name=SONNET_4,
             use_caching=False,
             project_id=args.project_id,
             region=args.region,

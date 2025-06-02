@@ -181,14 +181,14 @@ def get_database_stats() -> Dict[str, Any]:
             stats["total_pro_usage_records"] = cursor.fetchone()[0]
             
             cursor.execute("""
-                SELECT pro_key, SUM(sonnet_requests) as total_requests
+                SELECT pro_key, SUM(premium_credits) as total_credits
                 FROM pro_usage
                 GROUP BY pro_key
-                ORDER BY total_requests DESC
+                ORDER BY total_credits DESC
                 LIMIT 10
             """)
             stats["top_pro_users"] = [
-                {"pro_key": row[0][:4] + "****", "requests": row[1]}
+                {"pro_key": row[0][:4] + "****", "credits": row[1]}
                 for row in cursor.fetchall()
             ]
         except sqlite3.OperationalError:

@@ -138,3 +138,21 @@ This document captures key insights and solutions discovered during development 
   - Backend sent `data.content.workspace_path` in the event payload
   - Fixed by changing frontend handler to use `data.content.workspace_path`
 - **Key Takeaway**: Verify property names match between frontend event handlers and backend event payloads, especially for critical state like workspace paths
+
+## File Viewer Recursive Structure Implementation
+- **Problem**: File viewer only showed flat directory structure, requiring multiple API calls for folder expansion
+- **Solution**: Implemented recursive `build_file_tree_recursive()` function in backend with `children` property population
+- **Key Insight**: Single API call with recursive structure provides better performance and UX than multiple lazy-loading calls
+- **Security Note**: Always include max depth protection (default 10) to prevent infinite recursion and memory issues
+
+## Pro Plan Model Implementation - Credit-Based System with OpenRouter Integration
+
+**Issue**: Extended Pro plan to support multiple model tiers with different cost structures and free OpenRouter models.
+
+**Solution**: Implemented a credit-based system where Sonnet 4 = 1 credit, Opus 4 = 4 credits, OpenRouter models = 0 credits (free for Pro users). Added comprehensive fallback mechanism for OpenRouter models (native tool calling → JSON workaround).
+
+**Key Takeaways**: 
+- Credit-based pricing is more flexible than request-based counting for different model costs
+- OpenRouter requires robust fallback since native tool calling isn't always supported
+- Database schema migrations need careful coordination between old and new column names
+- Frontend model picker needs provider-specific logic for proper routing

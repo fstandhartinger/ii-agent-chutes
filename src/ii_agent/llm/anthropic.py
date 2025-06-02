@@ -52,7 +52,7 @@ from ii_agent.llm.base import (
     recursively_remove_invoke_tag,
     ImageBlock,
 )
-from ii_agent.utils.constants import DEFAULT_MODEL
+from ii_agent.utils.constants import SONNET_4
 
 
 class AnthropicDirectClient(LLMClient):
@@ -60,7 +60,7 @@ class AnthropicDirectClient(LLMClient):
 
     def __init__(
         self,
-        model_name=DEFAULT_MODEL,
+        model_name=SONNET_4,
         max_retries=2,
         use_caching=True,
         use_low_qos_server: bool = False,

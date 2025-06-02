@@ -251,15 +251,15 @@ try breaking down the task into smaller steps. After call this tool to update or
                 # We need to update the message list in the `history` object to use the truncated version.
                 self.history.set_message_list(truncated_messages_for_llm)
 
-                # Track Pro usage if using Sonnet 4
+                # Track Pro usage if using premium models
                 if hasattr(self, 'pro_key') and self.pro_key and hasattr(self.client, 'model_name'):
-                    if self.client.model_name == "claude-sonnet-4-20250514":
+                    if self.client.model_name in ["claude-sonnet-4-20250514", "claude-opus-4-0"]:
                         # Track the usage before making the request
-                        usage_result = self.db_manager.track_pro_usage(self.pro_key)
+                        usage_result = self.db_manager.track_pro_usage(self.pro_key, self.client.model_name)
                         
                         if not usage_result['allowed'] or usage_result['use_fallback']:
                             # Switch to DeepSeek V3 as fallback
-                            print(f"🔄 FALLBACK: Switching from Sonnet 4 to DeepSeek V3 for Pro user {self.pro_key}")
+                            print(f"🔄 FALLBACK: Switching from {self.client.model_name} to DeepSeek V3 for Pro user {self.pro_key}")
                             self.model = "deepseek-chat"  # Use DeepSeek V3 instead
                             
                             # Update client to use DeepSeek

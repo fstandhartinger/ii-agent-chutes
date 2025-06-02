@@ -17,7 +17,7 @@ from fastapi import WebSocket, WebSocketDisconnect
 # Imports from original ws_server.py that are relevant here
 from ii_agent.core.event import RealtimeEvent, EventType
 from ii_agent.db.models import Event as DBEvent # Alias to avoid conflict if EventType.EVENT is used
-from ii_agent.utils.constants import DEFAULT_MODEL, UPLOAD_FOLDER_NAME, PERSISTENT_DATA_ROOT, PERSISTENT_WORKSPACE_ROOT
+from ii_agent.utils.constants import SONNET_4, UPLOAD_FOLDER_NAME, PERSISTENT_DATA_ROOT, PERSISTENT_WORKSPACE_ROOT
 from utils import parse_common_args, create_workspace_manager_for_connection # Assuming utils.py is in PYTHONPATH
 from ii_agent.agents.anthropic_fc import AnthropicFC
 from ii_agent.agents.base import BaseAgent
@@ -228,21 +228,21 @@ def create_agent_for_connection(
     use_native_tool_calling_str = websocket.query_params.get("use_native_tool_calling", "false")
     use_native_tool_calling = use_native_tool_calling_str.lower() == "true"
     
-    model_id_param = websocket.query_params.get("model_id", DEFAULT_MODEL) # Use constant default
+    model_id_param = websocket.query_params.get("model_id", SONNET_4) # Use constant default
 
     pro_key = extract_pro_key_from_query(dict(websocket.query_params))
     has_pro_access = pro_key is not None
     
     # Model selection logic
-    anthropic_models = ["claude-3-5-sonnet-20241022", "claude-3-opus-20240229", "claude-3-haiku-20240307", "claude-sonnet-4-20250514"]
+    anthropic_models = ["claude-3-5-sonnet-20241022", "claude-3-opus-20240229", "claude-3-haiku-20240307", "claude-sonnet-4-20250514", "claude-opus-4-0"]
     is_anthropic_model_selected = model_id_param in anthropic_models
     
     # Determine provider and final model_id
     llm_provider_type = "anthropic-direct" # Default
     final_model_id = model_id_param
 
-    if model_id_param == "claude-sonnet-4-20250514" and not has_pro_access:
-        logger.warning(f"AGENT_CREATE ({connection_id}): Sonnet 4 access denied for non-Pro user. Falling back to Chutes/DeepSeek.")
+    if model_id_param in ["claude-sonnet-4-20250514", "claude-opus-4-0"] and not has_pro_access:
+        logger.warning(f"AGENT_CREATE ({connection_id}): Premium model ({model_id_param}) access denied for non-Pro user. Falling back to Chutes/DeepSeek.")
         final_model_id = "deepseek-ai/DeepSeek-V3-0324" # Fallback model
         llm_provider_type = "chutes-openai" # Fallback provider
         # Ensure native tool calling is sensible for fallback
