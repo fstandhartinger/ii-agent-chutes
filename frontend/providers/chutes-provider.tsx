@@ -41,7 +41,7 @@ export const TEXT_MODELS: LLMModel[] = [
     supportsVision: true
   },
   {
-    id: "claude-sonnet-4-20250514",
+    id: "claude-sonnet-4-0",
     name: "Claude Sonnet 4",
     provider: "anthropic",
     description: "Claude Sonnet 4 - High-performance model with vision",

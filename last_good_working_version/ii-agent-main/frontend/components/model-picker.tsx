@@ -22,7 +22,7 @@ const CHUTES_MODELS = [
   { id: "chutesai/Llama-4-Maverick-17B-128E-Instruct-FP8", name: "Llama 4 Maverick", isPremium: false },
   { id: "nvidia/Llama-3_1-Nemotron-Ultra-253B-v1", name: "Nemotron Ultra", isPremium: false },
   // Premium models - only Sonnet 4 is offered now
-  { id: "claude-sonnet-4-20250514", name: "Claude Sonnet 4", isPremium: true, hidden: false },
+  { id: "claude-sonnet-4-0", name: "Claude Sonnet 4", isPremium: true, hidden: false },
 ];
 
 export default function ModelPicker() {
@@ -42,11 +42,11 @@ export default function ModelPicker() {
     // Auto-switch to Sonnet 4 for Pro users if they haven't manually switched
     if (proAccess && !hasAutoSwitched && manualSwitch !== "true") {
       // Only auto-switch if current model is not already Sonnet 4
-      if (selectedModel.id !== "claude-sonnet-4-20250514") {
+      if (selectedModel.id !== "claude-sonnet-4-0") {
         console.log("Auto-switching Pro user to Claude Sonnet 4");
         
         const sonnet4Model = {
-          id: "claude-sonnet-4-20250514",
+          id: "claude-sonnet-4-0",
           name: "Claude Sonnet 4",
           provider: "anthropic" as const,
           supportsVision: true
@@ -90,7 +90,7 @@ export default function ModelPicker() {
       // Determine vision support
       let supportsVision = model.id.includes("V3") || model.id.includes("Maverick");
       // Claude 4 models support vision
-      if (modelId === "claude-sonnet-4-20250514") {
+      if (modelId === "claude-sonnet-4-0") {
         supportsVision = true;
       }
       

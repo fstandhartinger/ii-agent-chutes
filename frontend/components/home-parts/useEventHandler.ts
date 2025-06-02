@@ -150,7 +150,7 @@ export const useEventHandler = ({
             
             const currentSelectedModel = selectedModelRef.current;
             const currentHasProAccess = hasProAccessRef.current;
-            if (currentSelectedModel.id !== "claude-sonnet-4-20250514" && !currentHasProAccess()) {
+            if (currentSelectedModel.id !== "claude-sonnet-4-0" && !currentHasProAccess()) {
               setShowUpgradePrompt("timeout");
             }
             clearInterval(interval);
@@ -337,7 +337,7 @@ export const useEventHandler = ({
         const currentTaskSummary = taskSummaryRef.current;
         const currentGenerateTaskSummary = generateTaskSummaryRef.current;
         
-        if (currentSelectedModel.id !== "claude-sonnet-4-20250514" && !currentHasProAccess()) {
+        if (currentSelectedModel.id !== "claude-sonnet-4-0" && !currentHasProAccess()) {
           setShowUpgradePrompt("success");
         }
         if (currentUserPrompt && !currentTaskSummary) {

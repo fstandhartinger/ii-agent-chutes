@@ -586,11 +586,11 @@ def create_agent_for_connection(
     has_pro_access = pro_key is not None
     
     # Check if this is an Anthropic model based on model_id
-    anthropic_models = ["claude-3-5-sonnet-20241022", "claude-3-opus-20240229", "claude-3-haiku-20240307", "claude-sonnet-4-20250514"]
+    anthropic_models = ["claude-3-5-sonnet-20241022", "claude-3-opus-20240229", "claude-3-haiku-20240307", "claude-sonnet-4-0"]
     use_anthropic = model_id in anthropic_models and not use_chutes and not use_openrouter
     
     # Check if user is trying to use Sonnet 4 without Pro access
-    if model_id == "claude-sonnet-4-20250514" and not has_pro_access:
+    if model_id == "claude-sonnet-4-0" and not has_pro_access:
         logger_for_agent_logs = logging.getLogger(f"agent_logs_{id(websocket)}")
         logger_for_agent_logs.error(f"Access denied: Sonnet 4 requires Pro access. Model ID: {model_id}")
         # Fall back to default model

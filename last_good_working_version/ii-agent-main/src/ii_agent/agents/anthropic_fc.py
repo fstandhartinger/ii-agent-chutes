@@ -253,7 +253,7 @@ try breaking down the task into smaller steps. After call this tool to update or
 
                 # Track Pro usage if using Sonnet 4
                 if hasattr(self, 'pro_key') and self.pro_key and hasattr(self.client, 'model_name'):
-                    if self.client.model_name == "claude-sonnet-4-20250514":
+                    if self.client.model_name == "claude-sonnet-4-0":
                         # Track the usage before making the request
                         usage_result = self.db_manager.track_pro_usage(self.pro_key)
                         

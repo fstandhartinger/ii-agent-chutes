@@ -188,7 +188,7 @@ class DatabaseManager:
         """
         # Determine credit cost based on model
         credits_needed = 0
-        if model_name in [SONNET_4, "claude-sonnet-4-0", "claude-sonnet-4-20250514"]:
+        if model_name in [SONNET_4, "claude-sonnet-4-0", "claude-sonnet-4-0"]:
             credits_needed = 1  # Sonnet 4 costs 1 credit
         elif model_name in [OPUS_4, "claude-opus-4-0", "claude-opus-4-20250514"]:
             credits_needed = 4  # Opus 4 costs 4 credits (4x more expensive)

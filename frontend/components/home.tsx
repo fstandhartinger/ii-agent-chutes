@@ -146,11 +146,11 @@ export default function Home() {
     const proAccess = hasProAccess();
     const manualSwitch = localStorage.getItem("userManuallySwitchedModel");
     
-    if (proAccess && manualSwitch !== "true" && selectedModel.id !== "claude-sonnet-4-20250514") {
+    if (proAccess && manualSwitch !== "true" && selectedModel.id !== "claude-sonnet-4-0") {
       console.log("Home: Auto-switching Pro user to Claude Sonnet 4");
       
       const sonnet4Model = {
-        id: "claude-sonnet-4-20250514",
+        id: "claude-sonnet-4-0",
         name: "Claude Sonnet 4",
         provider: "anthropic" as const,
         supportsVision: true

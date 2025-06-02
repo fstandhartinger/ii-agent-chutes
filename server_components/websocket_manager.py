@@ -234,14 +234,14 @@ def create_agent_for_connection(
     has_pro_access = pro_key is not None
     
     # Model selection logic
-    anthropic_models = ["claude-3-5-sonnet-20241022", "claude-3-opus-20240229", "claude-3-haiku-20240307", "claude-sonnet-4-20250514", "claude-opus-4-0"]
+    anthropic_models = ["claude-3-5-sonnet-20241022", "claude-3-opus-20240229", "claude-3-haiku-20240307", "claude-sonnet-4-0", "claude-opus-4-0"]
     is_anthropic_model_selected = model_id_param in anthropic_models
     
     # Determine provider and final model_id
     llm_provider_type = "anthropic-direct" # Default
     final_model_id = model_id_param
 
-    if model_id_param in ["claude-sonnet-4-20250514", "claude-opus-4-0"] and not has_pro_access:
+    if model_id_param in ["claude-sonnet-4-0", "claude-opus-4-0"] and not has_pro_access:
         logger.warning(f"AGENT_CREATE ({connection_id}): Premium model ({model_id_param}) access denied for non-Pro user. Falling back to Chutes/DeepSeek.")
         final_model_id = "deepseek-ai/DeepSeek-V3-0324" # Fallback model
         llm_provider_type = "chutes-openai" # Fallback provider

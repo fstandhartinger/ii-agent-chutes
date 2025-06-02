@@ -249,11 +249,11 @@ export default function Home() {
     const manualSwitch = localStorage.getItem("userManuallySwitchedModel");
     
     // Only auto-switch if user has Pro access, hasn't manually switched, and current model isn't Sonnet 4
-    if (proAccess && manualSwitch !== "true" && selectedModel.id !== "claude-sonnet-4-20250514") {
+    if (proAccess && manualSwitch !== "true" && selectedModel.id !== "claude-sonnet-4-0") {
       console.log("Home: Auto-switching Pro user to Claude Sonnet 4");
       
       const sonnet4Model = {
-        id: "claude-sonnet-4-20250514",
+        id: "claude-sonnet-4-0",
         name: "Claude Sonnet 4",
         provider: "anthropic" as const,
         supportsVision: true
@@ -852,7 +852,7 @@ export default function Home() {
         const interval = setInterval(() => {
           if (Date.now() - startTime > 60000) {
             // Check if using free model (not Sonnet 4)
-            if (selectedModel.id !== "claude-sonnet-4-20250514" && !hasProAccess()) {
+            if (selectedModel.id !== "claude-sonnet-4-0" && !hasProAccess()) {
               setShowUpgradePrompt("timeout");
             }
             clearInterval(interval);
@@ -1050,7 +1050,7 @@ export default function Home() {
         }
         
         // Check if we should show upgrade prompt for successful completion
-        if (selectedModel.id !== "claude-sonnet-4-20250514" && !hasProAccess()) {
+        if (selectedModel.id !== "claude-sonnet-4-0" && !hasProAccess()) {
           setShowUpgradePrompt("success");
         }
         
@@ -1102,7 +1102,7 @@ export default function Home() {
           toast.error(displayMessage);
           
           // Show upgrade prompt for errors if using free model
-          if (selectedModel.id !== "claude-sonnet-4-20250514" && !hasProAccess() && isLoading) {
+          if (selectedModel.id !== "claude-sonnet-4-0" && !hasProAccess() && isLoading) {
             setShowUpgradePrompt("error");
           }
         }
