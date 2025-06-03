@@ -138,9 +138,9 @@ IMPORTANT: You can call multiple tools per turn when needed. The system will exe
     - Detail description of the icon, charts, and other elements, layout, and other details
     - Detail data points and data sources for charts and other elements
     - CSS description across slides must be consistent
-- **CRITICAL**: After finalizing the presentation with the "final_check" action, you MUST IMMEDIATELY call the static_deploy tool with the path "presentation/reveal.js/index.html" to deploy the presentation
+- **CRITICAL**: After finalizing the presentation with the "final_check" action, you MUST IMMEDIATELY call the static_deploy tool with the path "presentation/reveal.js" (the entire directory) to deploy the complete presentation
 - The presentation creates a complete reveal.js structure under ./presentation/reveal.js/ with an index.html and all necessary CSS/JS files
-- You must provide the deployed URL to the user as a clickable link to view the presentation
+- You must provide the deployed URL to the user as a clickable link to view the presentation (the URL will be: deployed_base_url/index.html)
 - For important images, you must provide the urls in the images field of the presentation tool call
 </presentation_rules>
 
@@ -160,6 +160,7 @@ IMPORTANT: You can call multiple tools per turn when needed. The system will exe
 - Provide the path to the main HTML file (e.g., `index.html`) or the root directory of the website project to this tool.
 - If the tool lists files that you intended to create but haven't, create them.
 - Remember to do this rule before you start to deploy the website.
+- **For multi-file websites**: After completing all files, deploy the entire website directory using static_deploy to ensure all assets are accessible.
 </website_review_rules>
 
 <deploy_rules>
@@ -168,13 +169,21 @@ IMPORTANT: You can call multiple tools per turn when needed. The system will exe
   1. First create the file in the workspace
   2. Then IMMEDIATELY call the static_deploy tool with the file path to get the public URL
   3. Finally use the complete tool with the real URL from static_deploy
+- **DIRECTORY DEPLOYMENT**: For projects with multiple interdependent files (presentations, websites, applications):
+  1. Deploy the entire project directory using static_deploy with the directory path
+  2. This ensures all CSS, JS, images, and other resources are accessible via HTTP
+  3. The main file (e.g., index.html) will be accessible at: deployed_base_url/index.html
 - **PRESENTATION DEPLOYMENT**: After completing any presentation with the presentation tool:
-  1. ALWAYS call static_deploy with the path "presentation/reveal.js/index.html"
+  1. ALWAYS call static_deploy with the path "presentation/reveal.js"
   2. This will make the entire presentation accessible including all CSS, JS, and image files
   3. The presentation will be available at a URL like: https://ii-agent-chutes.onrender.com/workspace/{{uuid}}/presentation/reveal.js/index.html
   4. Present this URL to the user as a clickable link
+- **WEBSITE DEPLOYMENT**: For multi-file websites or applications:
+  1. Deploy the entire project directory instead of individual files
+  2. This ensures all assets (CSS, JS, images) are properly accessible
+  3. Test the deployed website to verify all resources load correctly
 - NEVER include placeholder URLs like "static-deploy-url", "/path/to/file", or made-up URLs - always call static_deploy first to get the real URL
-- The static_deploy tool returns a URL like: https://ii-agent-chutes.onrender.com/workspace/{{uuid}}/{{filename}}
+- The static_deploy tool returns a URL like: https://ii-agent-chutes.onrender.com/workspace/{{uuid}}/{{filename_or_directory}}
 - You must use this exact URL when providing links to the user
 - After deployment test the website
 - If a user asks for a PDF report, document, or any downloadable file:
@@ -185,12 +194,15 @@ IMPORTANT: You can call multiple tools per turn when needed. The system will exe
 
 <result_presentation_rules>
 - At the end of agent tasks, include hosted website links when meaningful to enhance user experience
-- Static deploy works best for HTML pages and should be used whenever the result can be presented as HTML
+- Static deploy works for both individual files and entire directories, making all contained files accessible via HTTP
+- **For multi-file projects** (presentations, websites, applications): Deploy the entire directory to ensure all resources (CSS, JS, images) are accessible
+- **For single files** (documents, reports): Deploy the individual file
+- The Website tab uses iframe technology which works best with properly deployed HTML pages and their resources
 - For other file formats (txt, markdown, etc.), direct users to the Files Browser for download instead of using the Website tab
-- The Website tab uses iframe technology which doesn't work well with non-HTML file formats like txt or markdown
 - Prefer creating HTML outputs with nice formatting, styling, and potential markdown viewers with copy-to-clipboard functionality
 - When results are better suited for direct file access, explicitly mention using Files Browser rather than showing unusable Website tab
 - Consider converting text-based results to well-formatted HTML pages for better presentation in the Website tab
+- **Always verify** that deployed websites load correctly with all their CSS, JS, and image resources working properly
 </result_presentation_rules>
 
 <writing_rules>

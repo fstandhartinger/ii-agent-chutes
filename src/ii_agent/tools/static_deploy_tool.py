@@ -14,14 +14,14 @@ class StaticDeployTool(LLMTool):
     """Tool for managing static file deployments"""
 
     name = "static_deploy"
-    description = "Get the public URL for static files in the workspace. Use this tool to make files accessible via HTTP URLs for download or viewing. Always call this tool when you need to provide a file URL to the user."
+    description = "Get the public URL for static files or directories in the workspace. Use this tool to make files accessible via HTTP URLs for download or viewing. Always call this tool when you need to provide a file URL to the user. For directories, all files within will be made accessible."
 
     input_schema = {
         "type": "object",
         "properties": {
             "file_path": {
                 "type": "string",
-                "description": "Path to the static file (relative to workspace)",
+                "description": "Path to the static file or directory (relative to workspace). For directories, all contained files will be made accessible.",
             }
         },
         "required": ["file_path"],
@@ -42,29 +42,43 @@ class StaticDeployTool(LLMTool):
         file_path = tool_input["file_path"]
         ws_path = self.workspace_manager.workspace_path(Path(file_path))
 
-        # Validate path
+        # Validate path exists
         if not ws_path.exists():
             return ToolImplOutput(
                 f"Path does not exist: {file_path}",
                 f"Path does not exist: {file_path}",
             )
 
-        if not ws_path.is_file():
-            return ToolImplOutput(
-                f"Path is not a file: {file_path}",
-                f"Path is not a file: {file_path}",
-            )
-
         # Get the UUID from the workspace path (it's the last directory in the path)
         connection_uuid = self.workspace_manager.root.name
 
-        # Get the relative path from workspace root
-        rel_path = ws_path.relative_to(self.workspace_manager.root)
-
-        # Construct the public URL using the base URL and connection UUID
-        public_url = f"{self.base_url}/workspace/{connection_uuid}/{rel_path}"
-
-        return ToolImplOutput(
-            public_url,
-            f"Static file available at: {public_url}",
-        )
+        # Handle both files and directories
+        if ws_path.is_file():
+            # Single file deployment
+            rel_path = ws_path.relative_to(self.workspace_manager.root)
+            public_url = f"{self.base_url}/workspace/{connection_uuid}/{rel_path}"
+            
+            return ToolImplOutput(
+                public_url,
+                f"Static file available at: {public_url}",
+            )
+            
+        elif ws_path.is_dir():
+            # Directory deployment - make all files accessible
+            rel_path = ws_path.relative_to(self.workspace_manager.root)
+            base_public_url = f"{self.base_url}/workspace/{connection_uuid}/{rel_path}"
+            
+            # Count files in directory for reporting
+            file_count = sum(1 for p in ws_path.rglob('*') if p.is_file())
+            
+            # For directories, return the base URL where files can be accessed
+            return ToolImplOutput(
+                base_public_url,
+                f"Static directory deployed: {base_public_url} (contains {file_count} files - all files within this directory are now accessible via HTTP)",
+            )
+        
+        else:
+            return ToolImplOutput(
+                f"Path is neither a file nor directory: {file_path}",
+                f"Path is neither a file nor directory: {file_path}",
+            )
