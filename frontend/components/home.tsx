@@ -428,7 +428,7 @@ export default function Home() {
 
   return (
     <>
-      {!isReplayMode && <SidebarButton workspaceInfo={workspaceInfo} />}
+      {!isReplayMode && !isInChatView && <SidebarButton workspaceInfo={workspaceInfo} />}
       <main className={`relative flex flex-col flex-1 w-full min-h-screen bg-gradient-to-b from-[#181d2a] via-[#181d2a] to-[#1a1a1f] overflow-x-hidden`}>
         <div className="absolute inset-0 z-0 pointer-events-none select-none" aria-hidden="true">
           <div className="w-full h-full bg-gradient-to-b from-[#23263b] via-transparent to-[#181d2a] opacity-50" />
