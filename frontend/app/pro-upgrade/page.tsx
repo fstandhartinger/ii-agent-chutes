@@ -127,6 +127,30 @@ export default function ProUpgradePage() {
               </p>
             </div>
 
+            {/* Pro Plan Details */}
+            <div className="text-left text-gray-300 my-6 px-4">
+              <h4 className="text-lg font-semibold text-white mb-3">Your Pro subscription includes:</h4>
+              <ul className="list-disc list-inside space-y-2">
+                <li>
+                  <strong>Up to 300 Claude Sonnet 4 calls per month</strong> (or equivalent)
+                </li>
+                <li>
+                  <strong>Up to 75 Claude Opus 4 calls per month</strong> (as Opus 4 is 4x the cost)
+                  <p className="text-sm text-gray-400 ml-4">
+                    <em>You can flexibly mix Sonnet 4 and Opus 4 calls; your quota will be debited accordingly.</em>
+                  </p>
+                </li>
+                <li>
+                  <strong>Unlimited access to our fast models:</strong>
+                  <ul className="list-disc list-inside ml-6 text-gray-400">
+                    <li>Qwen3 32B Fast</li>
+                    <li>Llama Maverick 4 Fast</li>
+                    <li>DeepSeek R1 Distill Llama Fast</li>
+                  </ul>
+                </li>
+              </ul>
+            </div>
+
             <Button
               onClick={handleUpgrade}
               size="lg"
