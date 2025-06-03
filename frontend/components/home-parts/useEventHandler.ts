@@ -233,15 +233,6 @@ export const useEventHandler = ({
             content: (data.content.tool_input as { thought: string }).thought as string,
             timestamp: Date.now(),
           });
-        } else if (data.content.tool_name === TOOL.PRESENTATION) {
-          console.log("EVENT_HANDLER_DEBUG: Processing PRESENTATION tool call");
-          // Handle PRESENTATION tool specially to avoid the UI action
-          addMessage({
-            id: data.id,
-            role: "assistant", 
-            content: `Creating presentation: ${JSON.stringify(data.content.tool_input)}`,
-            timestamp: Date.now(),
-          });
         } else {
           console.log("EVENT_HANDLER_DEBUG: Processing regular tool call:", data.content.tool_name);
           const message: Message = {
@@ -306,16 +297,10 @@ export const useEventHandler = ({
             content: data.content.result as string,
             timestamp: Date.now(),
           });
-        } else if (data.content.tool_name === TOOL.PRESENTATION) {
-          console.log("EVENT_HANDLER_DEBUG: Processing PRESENTATION tool result - NOT updating UI");
-          // For PRESENTATION tool, just add a simple message indicating completion
-          addMessage({
-            id: data.id,
-            role: "assistant",
-            content: `Presentation created successfully: ${data.content.result}`,
-            timestamp: Date.now(),
-          });
-        } else if (data.content.tool_name !== TOOL.SEQUENTIAL_THINKING) {
+        } else if (
+          data.content.tool_name !== TOOL.SEQUENTIAL_THINKING &&
+          data.content.tool_name !== TOOL.PRESENTATION
+        ) {
           console.log("EVENT_HANDLER_DEBUG: Processing regular tool result for:", data.content.tool_name);
           
           if (data.content.tool_name === TOOL.STATIC_DEPLOY) {
@@ -358,7 +343,7 @@ export const useEventHandler = ({
             }
           });
         } else {
-          console.log("EVENT_HANDLER_DEBUG: Skipping SEQUENTIAL_THINKING result");
+          console.log("EVENT_HANDLER_DEBUG: Skipping tool result for:", data.content.tool_name);
         }
         break;
 
