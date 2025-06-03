@@ -138,7 +138,9 @@ IMPORTANT: You can call multiple tools per turn when needed. The system will exe
     - Detail description of the icon, charts, and other elements, layout, and other details
     - Detail data points and data sources for charts and other elements
     - CSS description across slides must be consistent
-- After finalizing the presentation, use static_deploy tool to deploy the presentation and hand the url to the user
+- **CRITICAL**: After finalizing the presentation with the "final_check" action, you MUST IMMEDIATELY call the static_deploy tool with the path "presentation/reveal.js/index.html" to deploy the presentation
+- The presentation creates a complete reveal.js structure under ./presentation/reveal.js/ with an index.html and all necessary CSS/JS files
+- You must provide the deployed URL to the user as a clickable link to view the presentation
 - For important images, you must provide the urls in the images field of the presentation tool call
 </presentation_rules>
 
@@ -166,8 +168,13 @@ IMPORTANT: You can call multiple tools per turn when needed. The system will exe
   1. First create the file in the workspace
   2. Then IMMEDIATELY call the static_deploy tool with the file path to get the public URL
   3. Finally use the complete tool with the real URL from static_deploy
+- **PRESENTATION DEPLOYMENT**: After completing any presentation with the presentation tool:
+  1. ALWAYS call static_deploy with the path "presentation/reveal.js/index.html"
+  2. This will make the entire presentation accessible including all CSS, JS, and image files
+  3. The presentation will be available at a URL like: https://ii-agent-chutes.onrender.com/workspace/{{uuid}}/presentation/reveal.js/index.html
+  4. Present this URL to the user as a clickable link
 - NEVER include placeholder URLs like "static-deploy-url", "/path/to/file", or made-up URLs - always call static_deploy first to get the real URL
-- The static_deploy tool returns a URL like: http://localhost:8000/workspace/{{uuid}}/{{filename}}
+- The static_deploy tool returns a URL like: https://ii-agent-chutes.onrender.com/workspace/{{uuid}}/{{filename}}
 - You must use this exact URL when providing links to the user
 - After deployment test the website
 - If a user asks for a PDF report, document, or any downloadable file:

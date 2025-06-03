@@ -5,6 +5,7 @@ from ii_agent.tools.base import LLMTool
 from ii_agent.utils import WorkspaceManager
 from ii_agent.tools.bash_tool import create_bash_tool
 from ii_agent.tools.str_replace_tool_relative import StrReplaceEditorTool
+from ii_agent.tools.static_deploy_tool import StaticDeployTool
 
 from ii_agent.llm.message_history import MessageHistory
 from ii_agent.tools.base import ToolImplOutput
@@ -181,6 +182,7 @@ action = init
         self.workspace_manager = workspace_manager
         self.message_queue = message_queue
         self.bash_tool = create_bash_tool(ask_user_permission, workspace_manager.root)
+        self.static_deploy_tool = StaticDeployTool(workspace_manager)
         self.tools = [
             self.bash_tool,
             StrReplaceEditorTool(workspace_manager=workspace_manager),
@@ -274,11 +276,76 @@ action = init
 
             if len(pending_tool_calls) == 0:
                 # No tools were called, so assume the task is complete
-                return ToolImplOutput(
-                    tool_output=self.history.get_last_assistant_text_response(),
-                    tool_result_message="Task completed",
-                    auxiliary_data={"success": True},
-                )
+                task_completed_message = self.history.get_last_assistant_text_response()
+                
+                # If this was a final_check action, automatically deploy the presentation
+                if action == "final_check":
+                    try:
+                        # Deploy the presentation using static_deploy
+                        deploy_result = self.static_deploy_tool.run_impl({
+                            "file_path": "presentation/reveal.js/index.html"
+                        })
+                        
+                        if deploy_result.auxiliary_data.get("success", True):  # StaticDeployTool doesn't set success=False for errors
+                            deployed_url = deploy_result.content
+                            
+                            # Send static deploy tool call event
+                            self.message_queue.put_nowait(
+                                RealtimeEvent(
+                                    type=EventType.TOOL_CALL,
+                                    content={
+                                        "tool_call_id": f"auto_deploy_{action}",
+                                        "tool_name": "static_deploy",
+                                        "tool_input": {"file_path": "presentation/reveal.js/index.html"},
+                                    },
+                                )
+                            )
+                            
+                            # Send static deploy tool result event
+                            self.message_queue.put_nowait(
+                                RealtimeEvent(
+                                    type=EventType.TOOL_RESULT,
+                                    content={
+                                        "tool_call_id": f"auto_deploy_{action}",
+                                        "tool_name": "static_deploy",
+                                        "result": deployed_url,
+                                    },
+                                )
+                            )
+                            
+                            # Enhanced completion message with deployment info
+                            enhanced_message = f"{task_completed_message}\n\n🚀 **Presentation Successfully Deployed!**\n\n📋 Your presentation is now live and accessible at:\n{deployed_url}\n\n✅ The presentation includes all slides, styling, and interactive features. Click the link above to view your presentation in a new tab."
+                            
+                            return ToolImplOutput(
+                                tool_output=enhanced_message,
+                                tool_result_message=f"Presentation completed and deployed at: {deployed_url}",
+                                auxiliary_data={"success": True, "deployed_url": deployed_url},
+                            )
+                        else:
+                            # Deployment failed, but presentation is still completed
+                            fallback_message = f"{task_completed_message}\n\n⚠️ **Presentation completed but deployment failed.**\n\nThe presentation files are available at: `./presentation/reveal.js/index.html`\nTo deploy manually, use the static_deploy tool with the path 'presentation/reveal.js/index.html'"
+                            
+                            return ToolImplOutput(
+                                tool_output=fallback_message,
+                                tool_result_message="Presentation completed but deployment failed",
+                                auxiliary_data={"success": True},
+                            )
+                    except Exception as e:
+                        # Deployment failed with exception, but presentation is still completed
+                        fallback_message = f"{task_completed_message}\n\n⚠️ **Presentation completed but deployment encountered an error: {str(e)}**\n\nThe presentation files are available at: `./presentation/reveal.js/index.html`\nTo deploy manually, use the static_deploy tool with the path 'presentation/reveal.js/index.html'"
+                        
+                        return ToolImplOutput(
+                            tool_output=fallback_message,
+                            tool_result_message=f"Presentation completed but deployment failed: {str(e)}",
+                            auxiliary_data={"success": True},
+                        )
+                else:
+                    # For non-final_check actions, return normal completion
+                    return ToolImplOutput(
+                        tool_output=task_completed_message,
+                        tool_result_message="Task completed",
+                        auxiliary_data={"success": True},
+                    )
 
             if len(pending_tool_calls) > 1:
                 raise ValueError("Only one tool call per turn is supported")

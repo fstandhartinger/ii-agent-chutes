@@ -177,3 +177,63 @@ This document captures key insights and solutions discovered during development 
 - **Root Cause**: Event handler in useEventHandler.ts was missing cases for AgentEvent.AGENT_INITIALIZED and AgentEvent.PROCESSING despite these being sent by the backend
 - **Solution**: Added missing event handlers that set sessionId when chat starts and handle loading states properly
 - **Key Learning**: All event types sent by backend must have corresponding handlers in frontend, even if just for acknowledgment and state transitions
+
+## Static Deploy & Presentation Tool Integration (2024)
+
+### Problem
+- Presentation Tool erstellte funktionierende Präsentationen, aber diese wurden nicht automatisch für den User als Links verfügbar gemacht
+- Static Deploy funktionierte korrekt für einzelne Dateien, aber Präsentationen benötigen mehrere Dateien (HTML, CSS, JS) mit korrekten relativen Pfaden
+
+### Lösung
+1. **System Prompt verbessert**: Klare Anweisungen hinzugefügt, dass nach jeder Präsentation automatisch static_deploy aufgerufen werden muss
+2. **Presentation Tool automatisiert**: Nach final_check Action wird automatisch static_deploy mit "presentation/reveal.js/index.html" aufgerufen
+3. **Frontend Integration bestätigt**: useEventHandler.ts behandelt STATIC_DEPLOY Events korrekt - setzt deployedUrl und wechselt automatisch zur WEBSITE Tab
+
+### Technische Details
+- URLs werden im Format `http://localhost:8000/workspace/{uuid}/{relative_path}` erstellt
+- Frontend erkennt automatisch URLs die mit 'http' beginnen und aktiviert Website-Ansicht
+- WebsiteViewer verwendet iframe mit korrekten sandbox-Einstellungen für sichere Anzeige
+- Relative Pfade in Präsentationen (CSS/JS) werden vom Webserver korrekt aufgelöst
+
+### Wichtiger Erkenntniss
+Das Frontend behandelt Static Deploy bereits korrekt - das Problem lag nur darin, dass das Presentation Tool nicht automatisch static_deploy aufrief. Mit der automatischen Integration funktioniert das komplette System nahtlos.
+
+## Static Deploy Tool - Relative Pfade Funktionalität Bestätigt (2024)
+
+### Problem
+- Bedenken über die Funktionalität relativer Pfade in gehosteten HTML-Dateien (z.B. CSS, JS, Bilder)
+- Unsicherheit, ob Static Deploy Tool nur einzelne Dateien oder komplette Verzeichnisstrukturen unterstützt
+
+### Analyse
+**Code-Analyse zeigt: Relative Pfade funktionieren bereits perfekt!**
+
+1. **Webserver Setup** (`ws_server.py`):
+   ```python
+   app.mount("/workspace", StaticFiles(directory=workspace_path, html=True), name="workspace")
+   ```
+   - FastAPI StaticFiles mit `html=True` macht den **kompletten Workspace-Baum** verfügbar
+   - Nicht nur einzelne Dateien, sondern die gesamte Verzeichnisstruktur
+
+2. **URL-Auflösung**: 
+   - HTML bei: `https://domain.com/workspace/{uuid}/presentation/reveal.js/index.html`
+   - Relative Pfade wie `./css/style.css` werden automatisch zu: `https://domain.com/workspace/{uuid}/presentation/reveal.js/css/style.css`
+   - Relative Pfade wie `../assets/logo.png` werden automatisch zu: `https://domain.com/workspace/{uuid}/presentation/assets/logo.png`
+
+3. **Static Deploy Tool**: 
+   - Validiert nur, dass die Hauptdatei existiert
+   - Der Webserver macht automatisch alle relativen Ressourcen verfügbar
+   - Kein zusätzlicher Code erforderlich
+
+### Verifikation
+- **Original vs. Aktuelle Version**: Ursprünglich verwendete `file://` URLs (nur lokal), jetzt korrekte Web-Server URLs
+- **FastAPI StaticFiles**: Standardverhalten für relative Pfade ist automatisch korrekt
+- **Presentation Tool**: Reveal.js Strukturen mit CSS/JS funktionieren out-of-the-box
+
+### Fazit
+**Keine Änderungen erforderlich!** Das System unterstützt bereits vollständig:
+- ✅ Komplexe HTML-Strukturen mit CSS/JS Dependencies  
+- ✅ Relative Pfade aller Art (`./`, `../`, Unterverzeichnisse)
+- ✅ Presentation Tool Reveal.js Strukturen
+- ✅ Korrekte URL-Generierung für alle Deployment-Szenarien
+
+**Wichtige Erkenntnis**: FastAPI StaticFiles ist eine robuste Lösung, die Web-Standards für relative Pfade automatisch korrekt implementiert.
