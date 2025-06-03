@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { PanelLeft, Clock, Loader2 } from "lucide-react";
+import { Clock, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import { ISession } from "@/typings/agent";
@@ -93,7 +93,7 @@ const SidebarButton = ({ className, workspaceInfo }: SidebarButtonProps) => {
           className
         )}
       >
-        <PanelLeft className="h-5 w-5 text-white" />
+        <Clock className="h-5 w-5 text-white" />
       </Button>
 
       <AnimatePresence>
@@ -119,7 +119,7 @@ const SidebarButton = ({ className, workspaceInfo }: SidebarButtonProps) => {
                   className="cursor-pointer flex items-center justify-center w-8 h-8 bg-[#2a2b30] rounded-md"
                   onClick={toggleSidebar}
                 >
-                  <PanelLeft className="h-5 w-5 text-white" />
+                  <Clock className="h-5 w-5 text-white" />
                 </div>
                 <div className="flex items-center gap-2">
                   <Image

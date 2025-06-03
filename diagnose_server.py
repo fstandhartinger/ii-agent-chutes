@@ -181,7 +181,7 @@ def get_database_stats() -> Dict[str, Any]:
             stats["total_pro_usage_records"] = cursor.fetchone()[0]
             
             cursor.execute("""
-                SELECT pro_key, SUM(premium_credits) as total_credits
+                SELECT pro_key, SUM(sonnet_requests) as total_credits
                 FROM pro_usage
                 GROUP BY pro_key
                 ORDER BY total_credits DESC

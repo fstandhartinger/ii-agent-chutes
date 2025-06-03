@@ -72,7 +72,6 @@ export const useEventHandler = ({
 }: UseEventHandlerProps) => {
   const [timeoutCheckInterval, setTimeoutCheckInterval] = useState<NodeJS.Timeout | null>(null);
   const [hasSetSessionId, setHasSetSessionId] = useState(false); // Track if sessionId has been set
-  const [pendingConnectionId, setPendingConnectionId] = useState<string | null>(null); // Store connection_id from CONNECTION_ESTABLISHED
   const [pendingSessionUuid, setPendingSessionUuid] = useState<string | null>(null); // Store session_uuid from CONNECTION_ESTABLISHED
 
   // Use refs for stable references to prevent unnecessary re-renders
@@ -107,7 +106,6 @@ export const useEventHandler = ({
   // Reset function to be called when a new chat starts
   const resetEventHandler = useCallback(() => {
     setHasSetSessionId(false);
-    setPendingConnectionId(null);
     setPendingSessionUuid(null);
     clearTimeoutCheck();
   }, [clearTimeoutCheck]);
@@ -142,8 +140,6 @@ export const useEventHandler = ({
         // Store the session UUID for when it's needed
         setPendingSessionUuid(sessionUuid);
         
-        // Store connection ID for potential cleanup
-        setPendingConnectionId(data.content.connection_id as string);
         break;
 
       case AgentEvent.AGENT_INITIALIZED:
@@ -450,7 +446,7 @@ export const useEventHandler = ({
     addMessage, updateLastMessage, setIsLoading, setIsCompleted, setFileContent,
     setShowUpgradePrompt, addUploadedFile, setActiveTab, setDeployedUrl,
     setWorkspaceInfo, setSessionId, handleClickAction, clearTimeoutCheck, 
-    hasSetSessionId, pendingConnectionId, pendingSessionUuid
+    hasSetSessionId, pendingSessionUuid, terminalRef
   ]);
 
   return { handleEvent, clearTimeoutCheck, resetEventHandler };

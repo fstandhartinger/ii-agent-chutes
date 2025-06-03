@@ -221,11 +221,11 @@ class DatabaseManager:
             
             if usage_record is None:
                 # Create new usage record
-                usage_record = ProUsage(pro_key=pro_key, month_year=current_month, premium_credits=credits_needed)
+                usage_record = ProUsage(pro_key=pro_key, month_year=current_month, sonnet_requests=credits_needed)
                 session.add(usage_record)
                 current_usage = credits_needed
             else:
-                current_usage = usage_record.premium_credits
+                current_usage = usage_record.sonnet_requests
                 
                 # Check if user would exceed limit with this request
                 if current_usage + credits_needed > monthly_limit:
@@ -246,7 +246,7 @@ class DatabaseManager:
                     print(f"📊 ALERT: Monitor this user closely - approaching monthly limit of {monthly_limit}")
                 
                 # Increment usage
-                usage_record.premium_credits += credits_needed
+                usage_record.sonnet_requests += credits_needed
                 usage_record.updated_at = datetime.utcnow()
                 current_usage += credits_needed
             
@@ -282,14 +282,14 @@ class DatabaseManager:
             if usage_record is None:
                 return {
                     "month": current_month,
-                    "premium_credits": 0,
+                    "sonnet_requests": 0,
                     "limit": 1000,
                     "remaining": 1000
                 }
             
             return {
                 "month": current_month,
-                "premium_credits": usage_record.premium_credits,
+                "sonnet_requests": usage_record.sonnet_requests,
                 "limit": 1000,
-                "remaining": max(0, 1000 - usage_record.premium_credits)
+                "remaining": max(0, 1000 - usage_record.sonnet_requests)
             }
