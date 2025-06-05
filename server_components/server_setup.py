@@ -17,6 +17,8 @@ from ii_agent.utils.constants import PERSISTENT_DATA_ROOT # For logging workspac
 from .config import app_config # Relative import
 # Import the periodic cleanup start/stop functions from websocket_manager
 from .websocket_manager import start_periodic_cleanup, stop_periodic_cleanup
+from ii_agent.db.manager import DatabaseManager
+from sqlalchemy import inspect, text
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +33,38 @@ class SwJsFilter(logging.Filter):
             if isinstance(path, str) and path.endswith("/sw.js"):
                 return False  # Do not log this record
         return True  # Log all other records
+
+def migrate_database():
+    """
+    Checks if the 'summary' column exists in the 'session' table
+    and adds it if it doesn't. This is an additive, non-destructive migration.
+    """
+    try:
+        logger.info("Checking database schema for necessary migrations...")
+        db_manager = DatabaseManager()
+        engine = db_manager.get_engine()
+        inspector = inspect(engine)
+
+        table_name = "session"
+        columns = [col['name'] for col in inspector.get_columns(table_name)]
+
+        if 'summary' not in columns:
+            logger.info(f"Column 'summary' not found in '{table_name}' table. Adding it now...")
+            with engine.connect() as connection:
+                # Use a transactional block
+                with connection.begin():
+                    # Use text() for cross-backend compatibility of the ALTER statement
+                    connection.execute(text(f'ALTER TABLE {table_name} ADD COLUMN summary VARCHAR'))
+            logger.info("Successfully added 'summary' column to 'session' table.")
+        else:
+            logger.info("'summary' column already exists. No migration needed.")
+            
+    except Exception as e:
+        # Catching specific exceptions like sqlalchemy.exc.NoSuchTableError might be better
+        # but a general catch is safer for this simple migration.
+        logger.error(f"An error occurred during database migration: {e}", exc_info=True)
+        # Depending on the error, you might want to exit the application.
+        # For now, we'll log it and continue.
 
 def setup_workspace_static_files(app: FastAPI, workspace_path_str: str):
     """
@@ -89,6 +123,9 @@ def main_server_start(app: FastAPI):
     # Store parsed args in the global AppConfig instance
     app_config.set_args(args)
     logger.info(f"Application arguments parsed and stored: {args}")
+
+    # Run database migration before starting the server
+    migrate_database()
 
     # Set STATIC_FILE_BASE_URL environment variable if not already set
     # This is used by some tools to construct full URLs to workspace files
