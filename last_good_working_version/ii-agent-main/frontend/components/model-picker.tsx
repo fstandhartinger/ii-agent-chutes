@@ -15,14 +15,26 @@ import { useRouter } from "next/navigation";
 
 // Define the available models with premium indicators
 const CHUTES_MODELS = [
-  { id: "deepseek-ai/DeepSeek-R1", name: "R1", isPremium: false },
-  { id: "deepseek-ai/DeepSeek-R1-0528", name: "R1 0528", isPremium: false },
-  { id: "deepseek-ai/DeepSeek-V3-0324", name: "DeepSeek V3", isPremium: false },
-  { id: "Qwen/Qwen3-235B-A22B", name: "Qwen3 235B", isPremium: false },
-  { id: "chutesai/Llama-4-Maverick-17B-128E-Instruct-FP8", name: "Llama 4 Maverick", isPremium: false },
-  { id: "nvidia/Llama-3_1-Nemotron-Ultra-253B-v1", name: "Nemotron Ultra", isPremium: false },
-  // Premium models - only Sonnet 4 is offered now
-  { id: "claude-sonnet-4-0", name: "Claude Sonnet 4", isPremium: true, hidden: false },
+  // { id: "deepseek-ai/DeepSeek-R1", name: "R1", isPremium: false },
+  // { id: "deepseek-ai/DeepSeek-R1-0528", name: "R1 0528", isPremium: false },
+  // { id: "deepseek-ai/DeepSeek-V3-0324", name: "DeepSeek V3", isPremium: false },
+  // { id: "Qwen/Qwen3-235B-A22B", name: "Qwen3 235B", isPremium: false },
+  // { id: "chutesai/Llama-4-Maverick-17B-128E-Instruct-FP8", name: "Llama 4 Maverick", isPremium: false },
+  // { id: "nvidia/Llama-3_1-Nemotron-Ultra-253B-v1", name: "Nemotron Ultra", isPremium: false },
+  
+  // Premium models - Pro plan exclusive
+  { id: "claude-sonnet-4-0", name: "Claude Sonnet 4", isPremium: true, hidden: false, provider: "anthropic", supportsVision: true },
+  { id: "claude-opus-4-0", name: "Claude Opus 4", isPremium: true, hidden: false, provider: "anthropic", supportsVision: true },
+  
+  // New PRO Models (cost 1 sonnet_request via OpenRouter)
+  { id: "google/gemini-2.5-pro-preview", name: "Gemini 2.5 Pro", isPremium: true, hidden: false, isOpenRouter: true, provider: "openrouter", supportsVision: true },
+  { id: "openai/gpt-4.1", name: "GPT-4.1", isPremium: true, hidden: false, isOpenRouter: true, provider: "openrouter", supportsVision: true },
+  { id: "google/gemini-2.5-flash-preview-05-20:thinking", name: "Gemini 2.5 Flash Thinking", isPremium: true, hidden: false, isOpenRouter: true, provider: "openrouter", supportsVision: true },
+
+  // Existing OpenRouter models (cost 0 sonnet_requests for Pro users)
+  { id: "qwen/qwen3-32b:fast", name: "Qwen3 32B Fast", isPremium: true, hidden: false, isOpenRouter: true, provider: "openrouter", supportsVision: true },
+  { id: "meta-llama/llama-4-maverick:fast", name: "Llama 4 Maverick Fast", isPremium: true, hidden: false, isOpenRouter: true, provider: "openrouter", supportsVision: true },
+  { id: "deepseek/deepseek-r1-distill-llama-70b:fast", name: "R1 Distill Llama 70B Fast", isPremium: true, hidden: false, isOpenRouter: true, provider: "openrouter", supportsVision: true },
 ];
 
 export default function ModelPicker() {
@@ -88,10 +100,10 @@ export default function ModelPicker() {
       }
       
       // Determine vision support
-      let supportsVision = model.id.includes("V3") || model.id.includes("Maverick");
-      // Claude 4 models support vision
-      if (modelId === "claude-sonnet-4-0") {
-        supportsVision = true;
+      let supportsVision = model.supportsVision !== undefined ? model.supportsVision : false;
+      // Fallback logic if supportsVision is not explicitly set (though it should be)
+      if (!model.supportsVision) {
+        supportsVision = model.id.includes("V3") || model.id.includes("Maverick") || model.id.startsWith("claude-") || model.isOpenRouter || model.id.includes("gemini") || model.id.includes("gpt-4");
       }
       
       // Find the full model object from the provider

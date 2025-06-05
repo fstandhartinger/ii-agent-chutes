@@ -38,7 +38,7 @@ export interface UseEventHandlerProps {
   selectedModel: LLMModel;
 
   // Utility functions (passed via Home props)
-  generateTaskSummaryFn: (firstUserMessage: string) => Promise<void>;
+  generateTaskSummaryFn: (firstUserMessage: string, sessionId: string) => Promise<void>;
   // getRemoteURLFn: (path: string | undefined) => string; // This was used for ImageBrowser, might be handled differently
   hasProAccessFn: () => boolean;
 
@@ -169,8 +169,11 @@ export const useEventHandler = ({
         const processingInterval = setInterval(() => {
           console.log("EVENT_HANDLER_DEBUG: Checking if agent is stuck after processing timeout");
           if (isLoadingRef.current) {
-            console.log("EVENT_HANDLER_DEBUG: Agent appears to be stuck, showing upgrade prompt");
+            console.log("EVENT_HANDLER_DEBUG: Agent appears to be stuck, stopping loading.");
+            toast.error("Agent timed out. Please try again.");
+            setIsLoading(false);
             
+            // Optionally show upgrade prompt
             const currentSelectedModel = selectedModelRef.current;
             const currentHasProAccess = hasProAccessRef.current;
             if (currentSelectedModel.id !== "claude-sonnet-4-0" && !currentHasProAccess()) {
@@ -187,10 +190,13 @@ export const useEventHandler = ({
         setIsLoading(true);
         // Set a timeout to check if the agent is stuck
         const interval = setInterval(() => {
-          console.log("EVENT_HANDLER_DEBUG: Checking if agent is stuck after 15 seconds");
+          console.log("EVENT_HANDLER_DEBUG: Checking if agent is stuck after thinking timeout");
           if (isLoadingRef.current) {
-            console.log("EVENT_HANDLER_DEBUG: Agent appears to be stuck, showing upgrade prompt");
-            
+            console.log("EVENT_HANDLER_DEBUG: Agent appears to be stuck, stopping loading.");
+            toast.error("Agent timed out. Please try again.");
+            setIsLoading(false);
+
+            // Optionally show upgrade prompt
             const currentSelectedModel = selectedModelRef.current;
             const currentHasProAccess = hasProAccessRef.current;
             if (currentSelectedModel.id !== "claude-sonnet-4-0" && !currentHasProAccess()) {
@@ -199,7 +205,7 @@ export const useEventHandler = ({
             clearInterval(interval);
             setTimeoutCheckInterval(null);
           }
-        }, 5000);
+        }, 15000); // 15 seconds timeout
         setTimeoutCheckInterval(interval);
         break;
 
@@ -377,8 +383,8 @@ export const useEventHandler = ({
         if (currentSelectedModel.id !== "claude-sonnet-4-0" && !currentHasProAccess()) {
           setShowUpgradePrompt("success");
         }
-        if (currentUserPrompt && !currentTaskSummary) {
-          currentGenerateTaskSummary(currentUserPrompt);
+        if (currentUserPrompt && !currentTaskSummary && pendingSessionUuid) {
+          currentGenerateTaskSummary(currentUserPrompt, pendingSessionUuid);
         }
         break;
 

@@ -206,9 +206,10 @@ export default function Home() {
   });
 
   // Generate task summary function
-  const generateTaskSummary = useCallback(async (firstUserMessage: string) => {
+  const generateTaskSummary = useCallback(async (firstUserMessage: string, sessionId: string) => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/generate-summary`, {
+      // First, get the summary
+      const summaryResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/generate-summary`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -219,15 +220,27 @@ export default function Home() {
         }),
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        setTaskSummary(data.summary || "Task in progress");
-      } else {
-        console.error("Error generating task summary:", response.statusText);
-        setTaskSummary("Task in progress");
+      if (!summaryResponse.ok) {
+        throw new Error(`Failed to generate summary: ${summaryResponse.statusText}`);
+      }
+
+      const summaryData = await summaryResponse.json();
+      const summary = summaryData.summary || "Task in progress";
+      setTaskSummary(summary);
+
+      // Then, save the summary to the session
+      if (sessionId && summary) {
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/sessions/${sessionId}/summary`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ summary }),
+        });
       }
     } catch (error) {
-      console.error("Error generating task summary:", error);
+      console.error("Error in generateTaskSummary:", error);
+      // Fallback to a default summary on the UI
       setTaskSummary("Task in progress");
     }
   }, [selectedModel.id, setTaskSummary]);

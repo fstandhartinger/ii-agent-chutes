@@ -113,6 +113,7 @@ export interface ISession {
   created_at: string;
   device_id: string;
   first_message: string;
+  summary: string | null;
 }
 
 export interface IEvent {

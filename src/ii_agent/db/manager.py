@@ -7,7 +7,13 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session as DBSession
 from ii_agent.db.models import Base, Session, Event, ProUsage
 from ii_agent.core.event import RealtimeEvent
-from ii_agent.utils.constants import PERSISTENT_DATA_ROOT, PERSISTENT_DB_PATH, OPUS_4, SONNET_4, QWEN3_32B_FAST, LLAMA_4_MAVERICK_FAST, R1_DISTILL_LLAMA_70B_FAST
+from ii_agent.utils.constants import (
+    PERSISTENT_DATA_ROOT, PERSISTENT_DB_PATH, 
+    OPUS_4, SONNET_4, 
+    GEMINI_2_5_PRO, GPT_4_1, GEMINI_2_5_FLASH_THINKING, # New Models
+    QWEN3_32B_FAST, LLAMA_4_MAVERICK_FAST, R1_DISTILL_LLAMA_70B_FAST,
+    NEW_PREMIUM_MODELS_ONE_CREDIT, GEMINI_2_5_FLASH_THINKING
+)
 from datetime import datetime
 
 
@@ -188,14 +194,19 @@ class DatabaseManager:
         """
         # Determine credit cost based on model
         credits_needed = 0
-        if model_name in [SONNET_4, "claude-sonnet-4-0", "claude-sonnet-4-0"]:
+        if model_name in [SONNET_4, "claude-sonnet-4-0"]:
             credits_needed = 1  # Sonnet 4 costs 1 credit
+        elif model_name in NEW_PREMIUM_MODELS_ONE_CREDIT:
+            credits_needed = 1  # New Google/OpenAI models cost 1 credit
         elif model_name in [OPUS_4, "claude-opus-4-0", "claude-opus-4-20250514"]:
             credits_needed = 4  # Opus 4 costs 4 credits (4x more expensive)
+        elif model_name in [GEMINI_2_5_PRO, GPT_4_1, GEMINI_2_5_FLASH_THINKING]:
+            credits_needed = 1 # New Pro models cost 1 credit
         elif model_name in [QWEN3_32B_FAST, LLAMA_4_MAVERICK_FAST, R1_DISTILL_LLAMA_70B_FAST]:
-            credits_needed = 0  # OpenRouter models are free for Pro users
+            credits_needed = 0  # These specific OpenRouter models are free for Pro users
         else:
-            credits_needed = 1  # Default for unknown premium models
+            # Default for other/unknown premium models, or if a new model ID isn't caught above
+            credits_needed = 1 
         
         # OpenRouter models are free, always allow
         if credits_needed == 0:

@@ -4,7 +4,7 @@ Handles API routes related to user sessions and events.
 import logging
 import time
 import json
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from sqlalchemy import asc, text, and_, func
 
 from ii_agent.db.manager import DatabaseManager
@@ -37,6 +37,7 @@ async def get_sessions_by_device_id(device_id: str):
                     "workspace_dir": sess_model.workspace_dir,
                     "created_at": sess_model.created_at.isoformat() if sess_model.created_at else None,
                     "device_id": sess_model.device_id,
+                    "summary": sess_model.summary,
                     "first_message": "",
                 }
                 sessions_data.append(session_item)
@@ -148,6 +149,37 @@ async def get_sessions_by_device_id(device_id: str):
         logger.error(f"Error retrieving sessions for device {device_id}: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=500, detail=f"Error retrieving sessions: {str(e)}"
+        )
+
+@router.post("/api/sessions/{session_id}/summary")
+async def update_session_summary(session_id: str, request: Request):
+    """Update the summary for a specific session."""
+    try:
+        data = await request.json()
+        summary = data.get("summary")
+
+        if not summary:
+            logger.error("Update Summary API: Summary is required")
+            return create_cors_response({"error": "Summary is required"}, 400)
+
+        db_manager = DatabaseManager()
+        with db_manager.get_session() as db_sess:
+            session = db_sess.query(Session).filter(Session.id == session_id).first()
+
+            if not session:
+                logger.error(f"Update Summary API: Session not found: {session_id}")
+                return create_cors_response({"error": "Session not found"}, 404)
+
+            session.summary = summary
+            db_sess.commit()
+
+            logger.info(f"Updated summary for session {session_id}")
+            return create_cors_response({"message": "Summary updated successfully"})
+
+    except Exception as e:
+        logger.error(f"Error updating summary for session {session_id}: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500, detail=f"Error updating summary: {str(e)}"
         )
 
 @router.get("/api/sessions/{session_id}/events")

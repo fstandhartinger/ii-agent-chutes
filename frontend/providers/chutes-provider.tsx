@@ -12,27 +12,76 @@ export interface LLMModel {
 
 // Define model categories for automatic selection
 export const TEXT_MODELS: LLMModel[] = [
+  // {
+  //   id: "deepseek-ai/DeepSeek-R1-0528",
+  //   name: "DeepSeek R1 0528",
+  //   provider: "chutes",
+  //   description: "DeepSeek R1 Snapshot vom 28.05.",
+  //   supportsVision: false
+  // },
+  // {
+  //   id: "qwen/qwen3-32b:fast",
+  //   name: "Qwen3 32B Fast",
+  //   provider: "openrouter",
+  //   description: "Fast Qwen3 model via OpenRouter",
+  //   supportsVision: true
+  // },
+  // {
+  //   id: "meta-llama/llama-4-maverick:fast", 
+  //   name: "Llama 4 Maverick Fast",
+  //   provider: "openrouter",
+  //   description: "Fast Llama 4 Maverick via OpenRouter",
+  //   supportsVision: true
+  // },
+  // {
+  //   id: "deepseek/deepseek-r1-distill-llama-70b:fast",
+  //   name: "R1 Distill Llama 70B Fast", 
+  //   provider: "openrouter",
+  //   description: "Fast R1 Distilled model via OpenRouter",
+  //   supportsVision: true
+  // }
   {
-    id: "deepseek-ai/DeepSeek-R1",
-    name: "DeepSeek R1",
-    provider: "chutes",
-    description: "Reasoning-optimized model",
-    supportsVision: false
+    id: "google/gemini-2.5-pro-preview",
+    name: "Gemini 2.5 Pro",
+    provider: "openrouter",
+    description: "Google Gemini 2.5 Pro Preview",
+    supportsVision: true
   },
   {
-    id: "deepseek-ai/DeepSeek-R1-0528",
-    name: "DeepSeek R1 0528",
-    provider: "chutes",
-    description: "DeepSeek R1 Snapshot vom 28.05.",
-    supportsVision: false
+    id: "openai/gpt-4.1",
+    name: "GPT-4.1",
+    provider: "openrouter",
+    description: "OpenAI GPT-4.1",
+    supportsVision: true
   },
   {
-    id: "nvidia/Llama-3_1-Nemotron-Ultra-253B-v1",
-    name: "Nemotron Ultra",
-    provider: "chutes",
-    description: "NVIDIA's ultra-powerful model",
-    supportsVision: false
+    id: "google/gemini-2.5-flash-preview-05-20:thinking",
+    name: "Gemini 2.5 Flash Thinking",
+    provider: "openrouter",
+    description: "Google Gemini 2.5 Flash Preview (Thinking)",
+    supportsVision: true
   },
+  // {
+  //   id: "deepseek-ai/DeepSeek-R1",
+  //   name: "DeepSeek R1",
+  //   provider: "chutes",
+  //   description: "Reasoning-optimized model",
+  //   supportsVision: false
+  // },
+  // {
+  //   id: "deepseek-ai/DeepSeek-R1-0528",
+  //   name: "DeepSeek R1 0528",
+  //   provider: "chutes",
+  //   description: "DeepSeek R1 Snapshot vom 28.05.",
+  //   supportsVision: false
+  // },
+  // {
+  //   id: "nvidia/Llama-3_1-Nemotron-Ultra-253B-v1",
+  //   name: "Nemotron Ultra",
+  //   provider: "chutes",
+  //   description: "NVIDIA's ultra-powerful model",
+  //   supportsVision: false
+  // },
   {
     id: "claude-opus-4-0",
     name: "Claude Opus 4",
@@ -47,14 +96,14 @@ export const TEXT_MODELS: LLMModel[] = [
     description: "Claude Sonnet 4 - High-performance model with vision",
     supportsVision: true
   },
-  {
-    id: "Qwen/Qwen3-235B-A22B",
-    name: "Qwen3 235B",
-    provider: "chutes", 
-    description: "Large-scale reasoning model",
-    supportsVision: false
-  },
-  // OpenRouter models
+  // {
+  //   id: "Qwen/Qwen3-235B-A22B",
+  //   name: "Qwen3 235B",
+  //   provider: "chutes", 
+  //   description: "Large-scale reasoning model",
+  //   supportsVision: false
+  // },
+  // OpenRouter models (cost 0 for Pro)
   {
     id: "qwen/qwen3-32b:fast",
     name: "Qwen3 32B Fast",
@@ -75,24 +124,60 @@ export const TEXT_MODELS: LLMModel[] = [
     provider: "openrouter",
     description: "Fast R1 Distilled model via OpenRouter",
     supportsVision: true
+  },
+  {
+    id: "google/gemini-2.5-pro-preview",
+    name: "Gemini 2.5 Pro",
+    provider: "openrouter",
+    description: "Google Gemini 2.5 Pro Preview",
+    supportsVision: true
+  },
+  {
+    id: "openai/gpt-4.1",
+    name: "GPT-4.1",
+    provider: "openrouter",
+    description: "OpenAI GPT-4.1",
+    supportsVision: true
   }
 ];
 
 export const VISION_MODELS: LLMModel[] = [
+  // New Pro Models (cost 1 sonnet_request)
   {
-    id: "deepseek-ai/DeepSeek-V3-0324",
-    name: "DeepSeek V3 0324",
-    provider: "chutes",
-    description: "Advanced reasoning model with vision",
+    id: "google/gemini-2.5-pro-preview",
+    name: "Gemini 2.5 Pro",
+    provider: "openrouter",
+    description: "Google Gemini 2.5 Pro with vision",
     supportsVision: true
   },
   {
-    id: "chutesai/Llama-4-Maverick-17B-128E-Instruct-FP8",
-    name: "Llama Maverick 4",
-    provider: "chutes",
-    description: "Efficient instruction-following model with vision",
+    id: "openai/gpt-4.1",
+    name: "GPT-4.1",
+    provider: "openrouter",
+    description: "OpenAI GPT-4.1 with vision",
     supportsVision: true
-  }
+  },
+  {
+    id: "google/gemini-2.5-flash-preview-05-20:thinking",
+    name: "Gemini 2.5 Flash Thinking",
+    provider: "openrouter",
+    description: "Google Gemini 2.5 Flash (Thinking) with vision",
+    supportsVision: true
+  },
+  // {
+  //   id: "deepseek-ai/DeepSeek-V3-0324",
+  //   name: "DeepSeek V3 0324",
+  //   provider: "chutes",
+  //   description: "Advanced reasoning model with vision",
+  //   supportsVision: true
+  // },
+  // {
+  //   id: "chutesai/Llama-4-Maverick-17B-128E-Instruct-FP8",
+  //   name: "Llama Maverick 4",
+  //   provider: "chutes",
+  //   description: "Efficient instruction-following model with vision",
+  //   supportsVision: true
+  // }
 ];
 
 // All available models (for display in selector)
@@ -142,7 +227,16 @@ export function ChutesProvider({ children }: { children: ReactNode }) {
       } else {
         console.warn("[CHUTES_PROVIDER_DEBUG] Saved model ID not found in AVAILABLE_MODELS, falling back to default");
         console.log("[CHUTES_PROVIDER_DEBUG] Available model IDs:", AVAILABLE_MODELS.map(m => m.id));
-        setSelectedModelState(VISION_MODELS[0]);
+        // Ensure VISION_MODELS is not empty before accessing VISION_MODELS[0]
+// Default to Gemini 2.5 Pro if available, otherwise first available vision model, or first text model.
+const defaultModel = VISION_MODELS.find(m => m.id === "google/gemini-2.5-pro-preview") || VISION_MODELS[0] || TEXT_MODELS[0];
+if (defaultModel) {
+  setSelectedModelState(defaultModel);
+} else {
+  // Fallback if all lists are empty (should not happen with new models)
+  console.error("[CHUTES_PROVIDER_DEBUG] No default model available!");
+  // setSelectedModelState(SOME_ABSOLUTE_FALLBACK_MODEL_IF_NEEDED); 
+}
       }
     } else {
       // Try to migrate from old useChutesLLM setting or set default to DeepSeek V3
@@ -151,11 +245,29 @@ export function ChutesProvider({ children }: { children: ReactNode }) {
       
       if (savedChutesValue === "true") {
         console.log("[CHUTES_PROVIDER_DEBUG] Setting default to DeepSeek V3 (migration from useChutesLLM)");
-        setSelectedModelState(VISION_MODELS[0]); // DeepSeek V3 is now default
+        // Ensure VISION_MODELS is not empty before accessing VISION_MODELS[0]
+// Default to Gemini 2.5 Pro if available, otherwise first available vision model, or first text model.
+const defaultModel = VISION_MODELS.find(m => m.id === "google/gemini-2.5-pro-preview") || VISION_MODELS[0] || TEXT_MODELS[0];
+if (defaultModel) {
+  setSelectedModelState(defaultModel);
+} else {
+  // Fallback if all lists are empty (should not happen with new models)
+  console.error("[CHUTES_PROVIDER_DEBUG] No default model available!");
+  // setSelectedModelState(SOME_ABSOLUTE_FALLBACK_MODEL_IF_NEEDED); 
+} // DeepSeek V3 is now default
       } else {
         // Default to DeepSeek V3 for new users
         console.log("[CHUTES_PROVIDER_DEBUG] Setting default to DeepSeek V3 (new user)");
-        setSelectedModelState(VISION_MODELS[0]);
+        // Ensure VISION_MODELS is not empty before accessing VISION_MODELS[0]
+// Default to Gemini 2.5 Pro if available, otherwise first available vision model, or first text model.
+const defaultModel = VISION_MODELS.find(m => m.id === "google/gemini-2.5-pro-preview") || VISION_MODELS[0] || TEXT_MODELS[0];
+if (defaultModel) {
+  setSelectedModelState(defaultModel);
+} else {
+  // Fallback if all lists are empty (should not happen with new models)
+  console.error("[CHUTES_PROVIDER_DEBUG] No default model available!");
+  // setSelectedModelState(SOME_ABSOLUTE_FALLBACK_MODEL_IF_NEEDED); 
+}
       }
     }
   }, []);

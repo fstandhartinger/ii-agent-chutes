@@ -90,11 +90,11 @@ class ChutesOpenAIClient(LLMClient):
                 "chutesai/Llama-4-Maverick-17B-128E-Instruct-FP8",  # Vision capable
                 "Qwen/Qwen2.5-VL-32B-Instruct",  # Vision capable
                 "deepseek-ai/DeepSeek-R1",  # Text only
-                "deepseek-ai/DeepSeek-R1-0528",  # Text only (new model)
-                "qwen/qwen3-32b:fast",  # NEU: Qwen3 32B Fast
-                "meta-llama/llama-4-maverick:fast",  # NEU: Llama Maverick 4 Fast
-                "deepseek/deepseek-r1-distill-llama-70b:fast",  # NEU: R1 Distill Llama
-                "claude-opus-4-0",  # NEU: Opus 4
+                "claude-opus-4-0",  # Opus 4
+                "google/gemini-2.5-pro-preview", # New
+                "openai/gpt-4.1", # New
+                "google/gemini-2.5-flash-preview-05-20:thinking" # New
+                "google/gemini-2.5-flash-preview-05-20:thinking",
             ]
         else:
             self.fallback_models = fallback_models
