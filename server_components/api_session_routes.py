@@ -67,7 +67,15 @@ async def get_sessions_by_device_id(device_id: str):
                     
                     for event in first_messages_results:
                         try:
-                            payload = json.loads(event.event_payload) if event.event_payload else {}
+                            # Handle both string and already deserialized dict payloads
+                            if isinstance(event.event_payload, str):
+                                payload = json.loads(event.event_payload) if event.event_payload else {}
+                            elif isinstance(event.event_payload, dict):
+                                payload = event.event_payload
+                            else:
+                                logger.warning(f"Unexpected payload type for event {event.id}: {type(event.event_payload)}")
+                                payload = {}
+                            
                             first_message_text = payload.get("content", {}).get("text", "")
                             first_messages_map[event.session_id] = first_message_text
                         except json.JSONDecodeError:
@@ -108,7 +116,15 @@ async def get_sessions_by_device_id(device_id: str):
                         
                         for row in result:
                             try:
-                                payload = json.loads(row.event_payload) if row.event_payload else {}
+                                # Handle both string and already deserialized dict payloads
+                                if isinstance(row.event_payload, str):
+                                    payload = json.loads(row.event_payload) if row.event_payload else {}
+                                elif isinstance(row.event_payload, dict):
+                                    payload = row.event_payload
+                                else:
+                                    logger.warning(f"Raw SQL: Unexpected payload type for session {row.session_id}: {type(row.event_payload)}")
+                                    payload = {}
+                                
                                 first_message_text = payload.get("content", {}).get("text", "")
                                 first_messages_map[row.session_id] = first_message_text
                             except json.JSONDecodeError:
@@ -129,7 +145,15 @@ async def get_sessions_by_device_id(device_id: str):
                                     Event.event_type == 'user_message'
                                 ).order_by(Event.timestamp.asc()).first()
                                 if first_event and first_event.event_payload:
-                                    payload = json.loads(first_event.event_payload)
+                                    # Handle both string and already deserialized dict payloads
+                                    if isinstance(first_event.event_payload, str):
+                                        payload = json.loads(first_event.event_payload)
+                                    elif isinstance(first_event.event_payload, dict):
+                                        payload = first_event.event_payload
+                                    else:
+                                        logger.warning(f"Fallback: Unexpected payload type for session {sess_item['id']}: {type(first_event.event_payload)}")
+                                        payload = {}
+                                    
                                     first_messages_map[sess_item["id"]] = payload.get("content", {}).get("text", "")
                                 else:
                                     first_messages_map[sess_item["id"]] = ""

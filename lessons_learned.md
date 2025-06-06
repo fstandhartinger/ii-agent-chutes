@@ -241,3 +241,11 @@ Das Frontend behandelt Static Deploy bereits korrekt - das Problem lag nur darin
 ## Database schema changes require manual migration logic if not using a migration tool. Added a simple migration runner to add the 'summary' column.
 
 ## Complex UI sorting can be handled cleanly on the frontend using `useMemo` to prevent re-computation on every render.
+
+## Bug Fixes - 2025-01-16
+
+1. **Frontend Timeout Issues**: 15-second timeouts cause false positive "agent stuck" messages - increase to 60 seconds for better UX
+2. **Summary API Model Mismatch**: Don't use user-selected models for internal APIs - use known working models instead
+3. **Backend JSON Serialization**: Always check payload type before JSON parsing - handle both strings and pre-deserialized dictionaries
+4. **Model Picker Duplicates**: Keep TEXT_MODELS and VISION_MODELS separate and unique to avoid duplicate entries in model selector
+5. **Premium Model Sorting**: Non-premium models should be listed first, then premium models for better user experience

@@ -165,12 +165,12 @@ export const useEventHandler = ({
           setHasSetSessionId(true);
         }
         
-        // Set a timeout to check if the agent is stuck
+        // Set a timeout to check if the agent is stuck - increased to 60 seconds to reduce false positives
         const processingInterval = setInterval(() => {
           console.log("EVENT_HANDLER_DEBUG: Checking if agent is stuck after processing timeout");
           if (isLoadingRef.current) {
-            console.log("EVENT_HANDLER_DEBUG: Agent appears to be stuck, stopping loading.");
-            toast.error("Agent timed out. Please try again.");
+            console.log("EVENT_HANDLER_DEBUG: Agent appears to be stuck after 60 seconds, stopping loading.");
+            toast.error("Agent is taking longer than expected. You can try sending 'continue' or refresh the page.");
             setIsLoading(false);
             
             // Optionally show upgrade prompt
@@ -182,18 +182,18 @@ export const useEventHandler = ({
             clearInterval(processingInterval);
             setTimeoutCheckInterval(null);
           }
-        }, 15000); // 15 seconds timeout
+        }, 60000); // Increased to 60 seconds to reduce false positives
         setTimeoutCheckInterval(processingInterval);
         break;
 
       case "thinking":
         setIsLoading(true);
-        // Set a timeout to check if the agent is stuck
+        // Set a timeout to check if the agent is stuck - increased to 60 seconds to reduce false positives
         const interval = setInterval(() => {
           console.log("EVENT_HANDLER_DEBUG: Checking if agent is stuck after thinking timeout");
           if (isLoadingRef.current) {
-            console.log("EVENT_HANDLER_DEBUG: Agent appears to be stuck, stopping loading.");
-            toast.error("Agent timed out. Please try again.");
+            console.log("EVENT_HANDLER_DEBUG: Agent appears to be stuck after 60 seconds, stopping loading.");
+            toast.error("Agent is taking longer than expected. You can try sending 'continue' or refresh the page.");
             setIsLoading(false);
 
             // Optionally show upgrade prompt
@@ -205,7 +205,7 @@ export const useEventHandler = ({
             clearInterval(interval);
             setTimeoutCheckInterval(null);
           }
-        }, 15000); // 15 seconds timeout
+        }, 60000); // Increased to 60 seconds to reduce false positives
         setTimeoutCheckInterval(interval);
         break;
 

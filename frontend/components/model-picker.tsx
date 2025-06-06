@@ -9,27 +9,26 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { hasProAccess } from "@/utils/pro-utils";
 import { useRouter } from "next/navigation";
 
 // Define the available models with premium indicators
 const CHUTES_MODELS = [
-  // { id: "deepseek-ai/DeepSeek-R1-0528", name: "R1 0528", isPremium: false },
-  // { id: "qwen/qwen3-32b:fast", name: "Qwen3 32B Fast", isPremium: true, hidden: false, isOpenRouter: true },
-  // { id: "meta-llama/llama-4-maverick:fast", name: "Llama 4 Maverick Fast", isPremium: true, hidden: false, isOpenRouter: true },
-  // { id: "deepseek/deepseek-r1-distill-llama-70b:fast", name: "R1 Distill Llama 70B Fast", isPremium: true, hidden: false, isOpenRouter: true },
-  { id: "google/gemini-2.5-pro-preview", name: "Gemini 2.5 Pro", isPremium: true, isOpenRouter: true },
-  { id: "openai/gpt-4.1", name: "GPT-4.1", isPremium: true, isOpenRouter: true },
-  { id: "google/gemini-2.5-flash-preview-05-20:thinking", name: "Gemini 2.5 Flash Thinking", isPremium: true, isOpenRouter: true },
-
+  // Free models (first)
   { id: "deepseek-ai/DeepSeek-R1", name: "R1", isPremium: false },
-
   { id: "deepseek-ai/DeepSeek-V3-0324", name: "DeepSeek V3", isPremium: false },
   { id: "Qwen/Qwen3-235B-A22B", name: "Qwen3 235B", isPremium: false },
   { id: "chutesai/Llama-4-Maverick-17B-128E-Instruct-FP8", name: "Llama 4 Maverick", isPremium: false },
   { id: "nvidia/Llama-3_1-Nemotron-Ultra-253B-v1", name: "Nemotron Ultra", isPremium: false },
-  // Premium models - Pro plan exclusive
+  
+  // Premium models (second) - Pro plan exclusive
+  { id: "google/gemini-2.5-pro-preview", name: "Gemini 2.5 Pro", isPremium: true, isOpenRouter: true },
+  { id: "openai/gpt-4.1", name: "GPT-4.1", isPremium: true, isOpenRouter: true },
+  { id: "google/gemini-2.5-flash-preview-05-20:thinking", name: "Gemini 2.5 Flash Thinking", isPremium: true, isOpenRouter: true },
+  { id: "qwen/qwen3-32b:fast", name: "Qwen3 32B Fast", isPremium: true, isOpenRouter: true },
+  { id: "meta-llama/llama-4-maverick:fast", name: "Llama 4 Maverick Fast", isPremium: true, isOpenRouter: true },
+  { id: "deepseek/deepseek-r1-distill-llama-70b:fast", name: "R1 Distill Llama 70B Fast", isPremium: true, isOpenRouter: true },
   { id: "claude-sonnet-4-0", name: "Claude Sonnet 4", isPremium: true, hidden: false },
   { id: "claude-opus-4-0", name: "Claude Opus 4", isPremium: true, hidden: false },
   // OpenRouter models - Free for Pro users
@@ -85,8 +84,24 @@ export default function ModelPicker() {
     }
   }, [selectedModel.id, setSelectedModel, hasAutoSwitched]);
 
+  // Sort models to show non-premium first, then premium
+  const sortedModels = useMemo(() => {
+    return [...CHUTES_MODELS].sort((a, b) => {
+      // If a is premium and b is not, b should come first
+      if (a.isPremium && !b.isPremium) {
+        return 1;
+      }
+      // If b is premium and a is not, a should come first
+      if (!a.isPremium && b.isPremium) {
+        return -1;
+      }
+      // Otherwise, maintain original order
+      return 0;
+    });
+  }, []);
+
   // Filter models - show all models including Sonnet 4
-  const visibleModels = CHUTES_MODELS;
+  const visibleModels = sortedModels;
   console.log("[MODEL_PICKER_DEBUG] Visible models:", visibleModels.map(m => ({ id: m.id, name: m.name, isPremium: m.isPremium })));
 
   // Find the current model name or default to R1

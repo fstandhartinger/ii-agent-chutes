@@ -174,7 +174,8 @@ async def generate_summary_endpoint(request: Request):
     try:
         data = await request.json()
         message = data.get("message")
-        model_id = data.get("modelId", "deepseek-ai/DeepSeek-V3-0324") # Default model
+        # Always use a known supported model for summary generation
+        model_id = "deepseek-ai/DeepSeek-V3-0324" # Use a model we know works with Chutes API
 
         if not message:
             logger.error("Generate Summary API: Message is required")
