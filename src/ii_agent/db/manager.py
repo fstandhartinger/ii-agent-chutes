@@ -3,8 +3,9 @@ from typing import Optional, Generator
 import uuid
 import os
 from pathlib import Path
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, Session as DBSession
+from sqlalchemy import inspect as sqlalchemy_inspect
 from ii_agent.db.models import Base, Session, Event, ProUsage
 from ii_agent.core.event import RealtimeEvent
 from ii_agent.utils.constants import (
@@ -42,8 +43,30 @@ class DatabaseManager:
         self.engine = create_engine(f"sqlite:///{self.db_path}")
         self.SessionFactory = sessionmaker(bind=self.engine)
 
+        # Run migrations before creating tables
+        self._run_migrations()
+
         # Create tables if they don't exist
         Base.metadata.create_all(self.engine)
+
+    def _run_migrations(self):
+        """Run database migrations."""
+        inspector = sqlalchemy_inspect(self.engine)
+        
+        with self.engine.connect() as connection:
+            # Using a transaction for migrations
+            with connection.begin():
+                columns = [col["name"] for col in inspector.get_columns("session", connection=connection)]
+                if "summary" not in columns:
+                    print("Running migration: Adding 'summary' column to 'session' table")
+                    connection.execute(text("ALTER TABLE session ADD COLUMN summary VARCHAR"))
+                
+                # Add other migrations here in the future
+                # Example:
+                # if "new_column" not in columns:
+                #     columns = [col["name"] for col in inspector.get_columns("session", connection=connection)]
+                #     if "new_column" not in columns:
+                #         connection.execute(text("ALTER TABLE session ADD COLUMN new_column VARCHAR"))
 
     @contextmanager
     def get_session(self) -> Generator[DBSession, None, None]:
