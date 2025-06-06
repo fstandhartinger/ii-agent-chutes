@@ -237,3 +237,7 @@ Das Frontend behandelt Static Deploy bereits korrekt - das Problem lag nur darin
 - ✅ Korrekte URL-Generierung für alle Deployment-Szenarien
 
 **Wichtige Erkenntnis**: FastAPI StaticFiles ist eine robuste Lösung, die Web-Standards für relative Pfade automatisch korrekt implementiert.
+
+## Database schema changes require manual migration logic if not using a migration tool. Added a simple migration runner to add the 'summary' column.
+
+## Complex UI sorting can be handled cleanly on the frontend using `useMemo` to prevent re-computation on every render.
