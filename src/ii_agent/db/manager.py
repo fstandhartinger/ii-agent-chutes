@@ -51,22 +51,22 @@ class DatabaseManager:
 
     def _run_migrations(self):
         """Run database migrations."""
-        inspector = sqlalchemy_inspect(self.engine)
-        
         with self.engine.connect() as connection:
+            inspector = sqlalchemy_inspect(connection)
             # Using a transaction for migrations
             with connection.begin():
-                columns = [col["name"] for col in inspector.get_columns("session", connection=connection)]
+                columns = [col["name"] for col in inspector.get_columns("session")]
+
                 if "summary" not in columns:
                     print("Running migration: Adding 'summary' column to 'session' table")
                     connection.execute(text("ALTER TABLE session ADD COLUMN summary VARCHAR"))
-                
+
                 # Add other migrations here in the future
-                # Example:
+                # Example for adding another column:
                 # if "new_column" not in columns:
-                #     columns = [col["name"] for col in inspector.get_columns("session", connection=connection)]
-                #     if "new_column" not in columns:
-                #         connection.execute(text("ALTER TABLE session ADD COLUMN new_column VARCHAR"))
+                #     connection.execute(
+                #         text("ALTER TABLE session ADD COLUMN new_column VARCHAR")
+                #     )
 
     @contextmanager
     def get_session(self) -> Generator[DBSession, None, None]:
