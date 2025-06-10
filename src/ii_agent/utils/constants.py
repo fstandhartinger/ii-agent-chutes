@@ -19,11 +19,11 @@ NEW_PREMIUM_MODELS_ONE_CREDIT = [
     GEMINI_2_5_PRO,
     GPT_4_1,
     GEMINI_2_5_FLASH_THINKING,
+    OPENAI_O3,
 ]
 
 # List of premium models that cost 3 credits
 NEW_PREMIUM_MODELS_THREE_CREDITS = [
-    OPENAI_O3,
 ]
 
 # Persistent data paths for render.com deployment
