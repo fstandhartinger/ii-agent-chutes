@@ -148,32 +148,34 @@ export const useWebSocketManager = ({
     console.log("WEBSOCKET_DEBUG: Starting WebSocket connection process");
     clearAllTimeouts();
     
-    let wsUrl = `${process.env.NEXT_PUBLIC_API_URL || 'https://ii-agent-chutes.onrender.com'}/ws`.replace(/^http/, 'ws');
-    wsUrl += `?device_id=${deviceId}`;
+    const wsUrl = new URL(`${process.env.NEXT_PUBLIC_API_URL || 'https://ii-agent-chutes.onrender.com'}/ws`.replace(/^http/, 'ws'));
+    wsUrl.searchParams.append('device_id', deviceId);
     
     const currentSelectedModel = selectedModelRef.current;
     const currentUseNativeToolCalling = useNativeToolCallingRef.current;
     const currentGetProKey = getProKeyRef.current;
 
     if (currentSelectedModel.provider === 'anthropic') {
-      wsUrl += `&model_id=${encodeURIComponent(currentSelectedModel.id)}`;
+      wsUrl.searchParams.append('model_id', currentSelectedModel.id);
     } else if (currentSelectedModel.provider === 'openrouter') {
-      wsUrl += `&use_openrouter=true&model_id=${encodeURIComponent(currentSelectedModel.id)}`;
+      wsUrl.searchParams.append('use_openrouter', 'true');
+      wsUrl.searchParams.append('model_id', currentSelectedModel.id);
     } else { // Default to 'chutes'
-      wsUrl += `&use_chutes=true&model_id=${encodeURIComponent(currentSelectedModel.id)}`;
+      wsUrl.searchParams.append('use_chutes', 'true');
+      wsUrl.searchParams.append('model_id', currentSelectedModel.id);
     }
     
     if (currentUseNativeToolCalling) {
-      wsUrl += `&use_native_tool_calling=true`;
+      wsUrl.searchParams.append('use_native_tool_calling', 'true');
     }
     
     const proKey = currentGetProKey();
     if (proKey) {
-      wsUrl += `&pro_user_key=${encodeURIComponent(proKey)}`;
+      wsUrl.searchParams.append('pro_user_key', proKey);
     }
     
-    console.log(`WEBSOCKET_DEBUG: Connecting to: ${wsUrl}`);
-    const wsInstance = new WebSocket(wsUrl);
+    console.log(`WEBSOCKET_DEBUG: Connecting to: ${wsUrl.toString()}`);
+    const wsInstance = new WebSocket(wsUrl.toString());
 
     // Set up connection timeout
     connectionTimeoutRef.current = setTimeout(() => {
@@ -201,12 +203,19 @@ export const useWebSocketManager = ({
       console.log("WEBSOCKET_DEBUG: Received message:", event.data);
       try {
         const data = JSON.parse(event.data as string);
-        
-        if (data.type === "connection_established" || data.type === "workspace_info") {
-          console.log("WEBSOCKET_DEBUG: Server ready signal received");
-          setIsSocketReady(true);
+        const { type, content } = data;
+
+        switch (type) {
+          case "connection_established":
+          case "workspace_info":
+            console.log("WEBSOCKET_DEBUG: Server ready signal received");
+            setIsSocketReady(true);
+            break;
+          // Other cases will be handled by the generic event receiver below
         }
+        
         onEventReceivedRef.current({ ...data, id: data.id || uuidv4() });
+
       } catch (error) {
         console.error("WEBSOCKET_DEBUG: Error parsing WebSocket data:", error);
         handleWebSocketError(error, "message_parsing");

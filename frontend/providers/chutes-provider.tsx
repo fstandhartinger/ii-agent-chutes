@@ -53,6 +53,13 @@ export const VISION_MODELS: LLMModel[] = [
     supportsVision: true
   },
   {
+    id: "openai/o3",
+    name: "OpenAI o3",
+    provider: "openrouter",
+    description: "OpenAI o3 reasoning model with vision",
+    supportsVision: true
+  },
+  {
     id: "google/gemini-2.5-flash-preview-05-20:thinking",
     name: "Gemini 2.5 Flash Thinking",
     provider: "openrouter",

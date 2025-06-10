@@ -12,12 +12,18 @@ R1_DISTILL_LLAMA_70B_FAST = "deepseek/deepseek-r1-distill-llama-70b:fast"
 GEMINI_2_5_PRO = "google/gemini-2.5-pro-preview"
 GPT_4_1 = "openai/gpt-4.1"
 GEMINI_2_5_FLASH_THINKING = "google/gemini-2.5-flash-preview-05-20:thinking"
+OPENAI_O3 = "openai/o3"
 
 # List of new premium models that cost 1 credit
 NEW_PREMIUM_MODELS_ONE_CREDIT = [
     GEMINI_2_5_PRO,
     GPT_4_1,
     GEMINI_2_5_FLASH_THINKING,
+]
+
+# List of premium models that cost 3 credits
+NEW_PREMIUM_MODELS_THREE_CREDITS = [
+    OPENAI_O3,
 ]
 
 # Persistent data paths for render.com deployment

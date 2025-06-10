@@ -13,7 +13,7 @@ from ii_agent.utils.constants import (
     OPUS_4, SONNET_4, 
     GEMINI_2_5_PRO, GPT_4_1, GEMINI_2_5_FLASH_THINKING, # New Models
     QWEN3_32B_FAST, LLAMA_4_MAVERICK_FAST, R1_DISTILL_LLAMA_70B_FAST,
-    NEW_PREMIUM_MODELS_ONE_CREDIT, GEMINI_2_5_FLASH_THINKING
+    NEW_PREMIUM_MODELS_ONE_CREDIT, NEW_PREMIUM_MODELS_THREE_CREDITS, OPENAI_O3
 )
 from datetime import datetime
 
@@ -227,6 +227,8 @@ class DatabaseManager:
             credits_needed = 1 # New Pro models cost 1 credit
         elif model_name in [QWEN3_32B_FAST, LLAMA_4_MAVERICK_FAST, R1_DISTILL_LLAMA_70B_FAST]:
             credits_needed = 0  # These specific OpenRouter models are free for Pro users
+        elif model_name in NEW_PREMIUM_MODELS_THREE_CREDITS:
+            credits_needed = 3  # New 3-credit models like OpenAI o3 cost 3 credits
         else:
             # Default for other/unknown premium models, or if a new model ID isn't caught above
             credits_needed = 1 

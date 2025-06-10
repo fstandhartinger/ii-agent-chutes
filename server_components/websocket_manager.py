@@ -504,47 +504,6 @@ async def websocket_endpoint(websocket: WebSocket):
                         ).model_dump(), str(connection_id))
                         continue
 
-                elif msg_type == EventType.QUERY.value:
-                    if websocket in active_tasks and not active_tasks[websocket].done():
-                        logger.warning(f"WS_PROCESS ({connection_id}): Query rejected, another is active.")
-                        await safe_websocket_send_json(websocket, RealtimeEvent(
-                            type=EventType.ERROR,
-                            content={"message": "A query is already being processed", "error_code": "QUERY_IN_PROGRESS"}
-                        ).model_dump(), str(connection_id))
-                        continue
-
-                    if websocket not in active_agents: # Auto-initialize if not done explicitly
-                        logger.info(f"WS_PROCESS ({connection_id}): Agent not initialized for query. Auto-initializing.")
-                        # Extract tool_args from query content if available
-                        tool_args_for_auto_init = content.get("tool_args", {})
-                        agent = create_agent_for_connection(
-                            session_uuid_for_connection, workspace_manager, websocket, tool_args_for_auto_init
-                        )
-                        active_agents[websocket] = agent
-                        message_processors[websocket] = agent.start_message_processing()
-                        await safe_websocket_send_json(websocket, RealtimeEvent( # Inform client about auto-init
-                            type=EventType.AGENT_INITIALIZED,
-                            content={"message": "Agent auto-initialized", "server_ready": True}
-                        ).model_dump(), str(connection_id))
-                        # Small delay to ensure agent is fully ready after auto-init
-                        await asyncio.sleep(0.1)
-
-
-                    user_input_text = content.get("text", "")
-                    resume_flag = content.get("resume", False)
-                    files_list = content.get("files", [])
-                    
-                    await safe_websocket_send_json(websocket, RealtimeEvent( # Acknowledge query receipt
-                        type=EventType.PROCESSING,
-                        content={"message": "Query received, processing started."}
-                    ).model_dump(), str(connection_id))
-
-                    # Create and store the agent execution task
-                    agent_task = asyncio.create_task(
-                        run_agent_async(websocket, user_input_text, resume_flag, files_list)
-                    )
-                    active_tasks[websocket] = agent_task
-
                 elif msg_type == EventType.WORKSPACE_INFO_REQUEST.value: # Assuming an enum value for this
                     # This provides info about the specific session's workspace
                     await safe_websocket_send_json(websocket, RealtimeEvent(
@@ -557,10 +516,8 @@ async def websocket_endpoint(websocket: WebSocket):
                         }
                     ).model_dump(), str(connection_id))
                 
-                elif msg_type == EventType.USER_MESSAGE.value: # Handle USER_MESSAGE as alias for QUERY
-                    # Treat USER_MESSAGE the same as QUERY for backward compatibility
-                    logger.info(f"WS_PROCESS ({connection_id}): Received USER_MESSAGE, treating as QUERY.")
-                    
+                elif msg_type in [EventType.QUERY.value, EventType.USER_MESSAGE.value]:
+                    logger.info(f"WS_PROCESS ({connection_id}): Received {msg_type}, treating as QUERY.")
                     if websocket in active_tasks and not active_tasks[websocket].done():
                         logger.warning(f"WS_PROCESS ({connection_id}): Query rejected, another is active.")
                         await safe_websocket_send_json(websocket, RealtimeEvent(
@@ -570,31 +527,28 @@ async def websocket_endpoint(websocket: WebSocket):
                         continue
 
                     if websocket not in active_agents: # Auto-initialize if not done explicitly
-                        logger.info(f"WS_PROCESS ({connection_id}): Agent not initialized for user message. Auto-initializing.")
-                        # Extract tool_args from content if available
+                        logger.info(f"WS_PROCESS ({connection_id}): Agent not initialized. Auto-initializing.")
                         tool_args_for_auto_init = content.get("tool_args", {})
                         agent = create_agent_for_connection(
                             session_uuid_for_connection, workspace_manager, websocket, tool_args_for_auto_init
                         )
                         active_agents[websocket] = agent
                         message_processors[websocket] = agent.start_message_processing()
-                        await safe_websocket_send_json(websocket, RealtimeEvent( # Inform client about auto-init
+                        await safe_websocket_send_json(websocket, RealtimeEvent(
                             type=EventType.AGENT_INITIALIZED,
                             content={"message": "Agent auto-initialized", "server_ready": True}
                         ).model_dump(), str(connection_id))
-                        # Small delay to ensure agent is fully ready after auto-init
                         await asyncio.sleep(0.1)
 
                     user_input_text = content.get("text", "")
                     resume_flag = content.get("resume", False)
                     files_list = content.get("files", [])
                     
-                    await safe_websocket_send_json(websocket, RealtimeEvent( # Acknowledge user message receipt
+                    await safe_websocket_send_json(websocket, RealtimeEvent(
                         type=EventType.PROCESSING,
-                        content={"message": "User message received, processing started."}
+                        content={"message": "Query received, processing started."}
                     ).model_dump(), str(connection_id))
 
-                    # Create and store the agent execution task
                     agent_task = asyncio.create_task(
                         run_agent_async(websocket, user_input_text, resume_flag, files_list)
                     )
@@ -615,54 +569,65 @@ async def websocket_endpoint(websocket: WebSocket):
                     await safe_websocket_send_json(websocket, {"type": "pong"}, str(connection_id))
 
                 elif msg_type == EventType.TERMINAL_COMMAND.value:
-                    # Handle terminal command execution
-                    command = content.get("command", "")
+                    content = message_json.get("content", {})
+                    command = content.get("command")
                     if not command:
+                        logger.error(f"WS_PROCESS ({connection_id}): No command provided for TERMINAL_COMMAND.")
                         await safe_websocket_send_json(websocket, RealtimeEvent(
                             type=EventType.ERROR,
                             content={"message": "Terminal command is required", "error_code": "MISSING_COMMAND"}
                         ).model_dump(), str(connection_id))
                         continue
-                    
-                    logger.info(f"WS_PROCESS ({connection_id}): Executing terminal command: {command}")
-                    
-                    # Execute the command using the bash tool if available
-                    if websocket in active_agents:
-                        agent = active_agents[websocket]
-                        try:
-                            # Create a bash tool instance to execute the command
-                            from ii_agent.tools.bash_tool import BashTool
-                            bash_tool = BashTool(workspace_manager=workspace_manager)
-                            
-                            # Execute the command
-                            result = await anyio.to_thread.run_sync(
-                                bash_tool.run_impl, {"command": command}
-                            )
-                            
-                            # Send the result back to the client
-                            await safe_websocket_send_json(websocket, RealtimeEvent(
-                                type=EventType.TERMINAL_OUTPUT,
-                                content={
-                                    "command": command,
-                                    "output": result.output if hasattr(result, 'output') else str(result),
-                                    "success": True
-                                }
-                            ).model_dump(), str(connection_id))
-                            
-                        except Exception as e_terminal:
-                            logger.error(f"WS_PROCESS ({connection_id}): Error executing terminal command '{command}': {e_terminal}")
-                            await safe_websocket_send_json(websocket, RealtimeEvent(
-                                type=EventType.TERMINAL_OUTPUT,
-                                content={
-                                    "command": command,
-                                    "output": f"Error: {str(e_terminal)}",
-                                    "success": False
-                                }
-                            ).model_dump(), str(connection_id))
-                    else:
+
+                    if websocket not in active_agents:
+                        logger.error(f"WS_PROCESS ({connection_id}): Agent not initialized for TERMINAL_COMMAND.")
                         await safe_websocket_send_json(websocket, RealtimeEvent(
                             type=EventType.ERROR,
                             content={"message": "Agent not initialized for terminal commands", "error_code": "AGENT_NOT_INITIALIZED"}
+                        ).model_dump(), str(connection_id))
+                        continue
+
+                    agent = active_agents[websocket]
+                    bash_tool = next((tool for tool in agent.tools if tool.name.lower() == 'bash'), None)
+
+                    if not bash_tool:
+                        logger.error(f"WS_PROCESS ({connection_id}): Bash tool not found in agent's tools.")
+                        await safe_websocket_send_json(websocket, RealtimeEvent(
+                            type=EventType.ERROR,
+                            content={"message": "Terminal functionality is not available", "error_code": "BASH_TOOL_UNAVAILABLE"}
+                        ).model_dump(), str(connection_id))
+                        continue
+                    
+                    logger.info(f"WS_PROCESS ({connection_id}): Executing terminal command via agent's bash tool: {command}")
+                    
+                    try:
+                        # The tool's run method might be async or sync. We assume it can be awaited.
+                        # If run_impl is synchronous, it should be wrapped with to_thread.run_sync
+                        # Based on tool definition, it seems to be sync. Let's stick to that.
+                        result = await anyio.to_thread.run_sync(
+                            bash_tool.run_impl, {"command": command}
+                        )
+                        
+                        output_content = result.output if hasattr(result, 'output') else str(result)
+                        
+                        await safe_websocket_send_json(websocket, RealtimeEvent(
+                            type=EventType.TERMINAL_OUTPUT,
+                            content={
+                                "command": command,
+                                "output": output_content,
+                                "success": True # Assuming run_impl would raise exception on failure
+                            }
+                        ).model_dump(), str(connection_id))
+                        
+                    except Exception as e_terminal:
+                        logger.error(f"WS_PROCESS ({connection_id}): Error executing terminal command '{command}': {e_terminal}", exc_info=True)
+                        await safe_websocket_send_json(websocket, RealtimeEvent(
+                            type=EventType.TERMINAL_OUTPUT,
+                            content={
+                                "command": command,
+                                "output": f"Error: {str(e_terminal)}",
+                                "success": False
+                            }
                         ).model_dump(), str(connection_id))
 
                 else:
