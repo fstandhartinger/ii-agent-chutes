@@ -111,7 +111,6 @@ class OpenRouterOpenAIClient(LLMClient):
                 "claude-opus-4-0",  # Opus 4
                 "google/gemini-2.5-pro-preview", # New
                 "openai/gpt-4.1", # New
-                "openai/o3", # OpenAI o3 reasoning model
                 "google/gemini-2.5-flash-preview-05-20:thinking" # New
             ]
         else:

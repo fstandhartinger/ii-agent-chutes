@@ -13,7 +13,7 @@ from ii_agent.utils.constants import (
     OPUS_4, SONNET_4, 
     GEMINI_2_5_PRO, GPT_4_1, GEMINI_2_5_FLASH_THINKING, # New Models
     QWEN3_32B_FAST, LLAMA_4_MAVERICK_FAST, R1_DISTILL_LLAMA_70B_FAST,
-    NEW_PREMIUM_MODELS_ONE_CREDIT, OPENAI_O3
+    NEW_PREMIUM_MODELS_ONE_CREDIT
 )
 from datetime import datetime
 
