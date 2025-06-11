@@ -281,9 +281,11 @@ action = init
                 # If this was a final_check action, automatically deploy the presentation
                 if action == "final_check":
                     try:
-                        # Deploy the presentation using static_deploy
+                        # Deploy the ENTIRE presentation directory so that all
+                        # assets (CSS/JS/images/slide HTML) are accessible and
+                        # relative links continue to work after deployment
                         deploy_result = self.static_deploy_tool.run_impl({
-                            "file_path": "presentation/reveal.js/index.html"
+                            "file_path": "presentation/reveal.js"
                         })
                         
                         if deploy_result.auxiliary_data.get("success", True):  # StaticDeployTool doesn't set success=False for errors
@@ -296,7 +298,7 @@ action = init
                                     content={
                                         "tool_call_id": f"auto_deploy_{action}",
                                         "tool_name": "static_deploy",
-                                        "tool_input": {"file_path": "presentation/reveal.js/index.html"},
+                                        "tool_input": {"file_path": "presentation/reveal.js"},
                                     },
                                 )
                             )
@@ -323,7 +325,7 @@ action = init
                             )
                         else:
                             # Deployment failed, but presentation is still completed
-                            fallback_message = f"{task_completed_message}\n\n⚠️ **Presentation completed but deployment failed.**\n\nThe presentation files are available at: `./presentation/reveal.js/index.html`\nTo deploy manually, use the static_deploy tool with the path 'presentation/reveal.js/index.html'"
+                            fallback_message = f"{task_completed_message}\n\n⚠️ **Presentation completed but deployment failed.**\n\nThe presentation files are available at: `./presentation/reveal.js/index.html`\nTo deploy manually, use the static_deploy tool with the path 'presentation/reveal.js'"
                             
                             return ToolImplOutput(
                                 tool_output=fallback_message,
@@ -332,7 +334,7 @@ action = init
                             )
                     except Exception as e:
                         # Deployment failed with exception, but presentation is still completed
-                        fallback_message = f"{task_completed_message}\n\n⚠️ **Presentation completed but deployment encountered an error: {str(e)}**\n\nThe presentation files are available at: `./presentation/reveal.js/index.html`\nTo deploy manually, use the static_deploy tool with the path 'presentation/reveal.js/index.html'"
+                        fallback_message = f"{task_completed_message}\n\n⚠️ **Presentation completed but deployment encountered an error: {str(e)}**\n\nThe presentation files are available at: `./presentation/reveal.js/index.html`\nTo deploy manually, use the static_deploy tool with the path 'presentation/reveal.js'"
                         
                         return ToolImplOutput(
                             tool_output=fallback_message,

@@ -102,6 +102,7 @@ class OpenRouterOpenAIClient(LLMClient):
             # Paid models that support tools (affordable options)
             self.tool_capable_models = [
                 "openai/gpt-4o-mini",  # Most affordable GPT model with tools
+                "openai/o3",  # OpenAI O3 multimodal model
                 "anthropic/claude-3-haiku",  # Fast and affordable Claude with tools
                 "google/gemini-flash-1.5",  # Google's fast model with tools
                 "mistralai/mistral-7b-instruct",  # Affordable Mistral with tools
