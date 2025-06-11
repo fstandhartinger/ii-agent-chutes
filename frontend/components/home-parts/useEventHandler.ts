@@ -170,7 +170,8 @@ export const useEventHandler = ({
           console.log("EVENT_HANDLER_DEBUG: Checking if agent is stuck after processing timeout");
           if (isLoadingRef.current) {
             console.log("EVENT_HANDLER_DEBUG: Agent appears to be stuck after 60 seconds, stopping loading.");
-            toast.error("Agent is taking longer than expected. You can try sending 'continue' or refresh the page.");
+            // Removed noisy toast per user request – keep console log for debugging
+            // toast.error("Agent is taking longer than expected. You can try sending 'continue' or refresh the page.");
             setIsLoading(false);
             
             // Optionally show upgrade prompt
@@ -193,7 +194,8 @@ export const useEventHandler = ({
           console.log("EVENT_HANDLER_DEBUG: Checking if agent is stuck after thinking timeout");
           if (isLoadingRef.current) {
             console.log("EVENT_HANDLER_DEBUG: Agent appears to be stuck after 60 seconds, stopping loading.");
-            toast.error("Agent is taking longer than expected. You can try sending 'continue' or refresh the page.");
+            // Removed noisy toast per user request – keep console log for debugging
+            // toast.error("Agent is taking longer than expected. You can try sending 'continue' or refresh the page.");
             setIsLoading(false);
 
             // Optionally show upgrade prompt

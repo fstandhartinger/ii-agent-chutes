@@ -79,13 +79,19 @@ class MessageHistory:
                     # Create a unique key based on tool name and arguments
                     # Handle both dict and list types for tool_input more safely
                     if isinstance(message.tool_input, dict):
-                        # Convert tool_input dict to a sorted tuple for consistent hashing
+                        # Recursively convert dict (and any nested lists) into a hashable representation
                         try:
-                            tool_key = (
-                                message.tool_name,
-                                tuple(sorted(message.tool_input.items()))
-                            )
-                            logger.debug(f"[MESSAGE_HISTORY_DEBUG] Created dict-based tool_key for {message.tool_name}")
+                            def make_hashable(obj):
+                                """Recursively convert unhashable structures (list, dict) into hashable tuples."""
+                                if isinstance(obj, list):
+                                    return tuple(make_hashable(item) for item in obj)
+                                if isinstance(obj, dict):
+                                    return tuple(sorted((k, make_hashable(v)) for k, v in obj.items()))
+                                return obj
+
+                            hashable_dict = make_hashable(message.tool_input)
+                            tool_key = (message.tool_name, hashable_dict)
+                            logger.debug(f"[MESSAGE_HISTORY_DEBUG] Created hashable dict-based tool_key for {message.tool_name}")
                         except Exception as e:
                             logger.error(f"[MESSAGE_HISTORY_DEBUG] Error creating dict-based tool_key for {message.tool_name}: {e}")
                             # Fallback to string representation

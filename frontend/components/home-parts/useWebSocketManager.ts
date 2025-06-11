@@ -298,8 +298,8 @@ export const useWebSocketManager = ({
       }
       
       thinkingTimeoutRef.current = setTimeout(() => {
-        console.warn("WEBSOCKET_DEBUG: Thinking timeout reached (1 minute)");
-        toast.info("Taking longer than expected. You can try sending 'continue' or refresh the page.");
+        // Removed taking longer info toast per user request
+        // toast.info("Taking longer than expected. You can try sending 'continue' or refresh the page.");
       }, 60000); // 60 seconds
     } else {
       if (thinkingTimeoutRef.current) {
