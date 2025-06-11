@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
 import type { LLMModel } from '@/providers/chutes-provider'; // Corrected type
 import type { WebSocketMessage } from '@/typings/agent'; // Corrected import path
+import { AgentEvent } from '@/typings/agent';
 
 // Props for the hook
 interface UseWebSocketManagerProps {
@@ -40,6 +41,7 @@ export const useWebSocketManager = ({
   const [messageQueue, setMessageQueue] = useState<WebSocketMessage[]>([]);
   const thinkingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const connectionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Refs for callbacks and props to avoid stale closures in WebSocket event handlers
   const onEventReceivedRef = useRef(onEventReceived);
@@ -315,6 +317,29 @@ export const useWebSocketManager = ({
       }
     };
   }, [isLoading, isSocketConnected]);
+
+  // Effect: start/stop periodic ping to server
+  useEffect(() => {
+    if (isSocketConnected) {
+      // Send first ping immediately to establish activity
+      sendMessage({ type: AgentEvent.PING, content: {} });
+      pingIntervalRef.current = setInterval(() => {
+        sendMessage({ type: AgentEvent.PING, content: {} });
+      }, 120000); // 2 minutes
+    } else {
+      if (pingIntervalRef.current) {
+        clearInterval(pingIntervalRef.current);
+        pingIntervalRef.current = null;
+      }
+    }
+
+    return () => {
+      if (pingIntervalRef.current) {
+        clearInterval(pingIntervalRef.current);
+        pingIntervalRef.current = null;
+      }
+    };
+  }, [isSocketConnected, sendMessage]);
 
   // Cleanup on unmount
   useEffect(() => {
