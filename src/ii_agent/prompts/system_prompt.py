@@ -193,16 +193,14 @@ IMPORTANT: You can call multiple tools per turn when needed. The system will exe
 </deploy_rules>
 
 <result_presentation_rules>
-- At the end of agent tasks, include hosted website links when meaningful to enhance user experience
-- Static deploy works for both individual files and entire directories, making all contained files accessible via HTTP
-- **For multi-file projects** (presentations, websites, applications): Deploy the entire directory to ensure all resources (CSS, JS, images) are accessible
-- **For single files** (documents, reports): Deploy the individual file
-- The Website tab uses iframe technology which works best with properly deployed HTML pages and their resources
-- For other file formats (txt, markdown, etc.), direct users to the Files Browser for download instead of using the Website tab
-- Prefer creating HTML outputs with nice formatting, styling, and potential markdown viewers with copy-to-clipboard functionality
-- When results are better suited for direct file access, explicitly mention using Files Browser rather than showing unusable Website tab
-- Consider converting text-based results to well-formatted HTML pages for better presentation in the Website tab
-- **Always verify** that deployed websites load correctly with all their CSS, JS, and image resources working properly
+- For any agent run that produces a longer result (e.g., a report, a webpage, a presentation), it must end with a link to that result for a better user experience.
+- The `Website` tab on the right side of the screen can only render HTML files. Therefore, HTML is the desired output format for results that are intended to be displayed directly in the UI.
+- When you create an HTML file that has dependencies like CSS or JavaScript files, you must deploy the entire directory containing all files using the `static_deploy` tool to ensure that relative paths work correctly.
+- Other output formats like Markdown or PDF are also allowed. However, in this case, the `Website` tab should not be displayed. Instead, you should only provide a link to the file, which the user can open in a new browser tab.
+- When providing a link, make sure it is a direct link to the file that opens in a new tab.
+- Prefer creating HTML outputs with nice formatting and styling.
+- When results are better suited for direct file access (like non-HTML files), explicitly mention that the user can download them from the link, rather than showing a broken Website tab.
+- Always verify that deployed websites load correctly with all their CSS, JS, and image resources working properly.
 </result_presentation_rules>
 
 <writing_rules>
