@@ -25,7 +25,7 @@ const CHUTES_MODELS = [
   // Premium models (second) - Pro plan exclusive
   { id: "google/gemini-2.5-pro-preview", name: "Gemini 2.5 Pro", isPremium: true, isOpenRouter: true },
   { id: "openai/gpt-4.1", name: "GPT-4.1", isPremium: true, isOpenRouter: true },
-  { id: "openai/o3", name: "O3", isPremium: true, isOpenRouter: true },
+  { id: "openai/o3", name: "OpenAI o3", isPremium: true, isOpenRouter: true },
   { id: "google/gemini-2.5-flash-preview-05-20:thinking", name: "Gemini 2.5 Flash Thinking", isPremium: true, isOpenRouter: true },
   { id: "qwen/qwen3-32b:fast", name: "Qwen3 32B Fast", isPremium: true, isOpenRouter: true },
   { id: "meta-llama/llama-4-maverick:fast", name: "Llama 4 Maverick Fast", isPremium: true, isOpenRouter: true },

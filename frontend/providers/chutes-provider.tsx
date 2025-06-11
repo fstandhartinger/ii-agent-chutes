@@ -82,7 +82,7 @@ export const VISION_MODELS: LLMModel[] = [
   },
   {
     id: "openai/o3",
-    name: "O3",
+    name: "OpenAI o3",
     provider: "openrouter",
     description: "OpenAI O3 multimodal model via OpenRouter",
     supportsVision: true
