@@ -60,6 +60,7 @@ const Terminal = (
             selectionForeground: undefined,
           },
           allowTransparency: true,
+          convertEol: true,
         });
 
         const fitAddon = new FitAddon();

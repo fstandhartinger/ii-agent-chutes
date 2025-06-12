@@ -73,6 +73,7 @@ export const useEventHandler = ({
   const [timeoutCheckInterval, setTimeoutCheckInterval] = useState<NodeJS.Timeout | null>(null);
   const [hasSetSessionId, setHasSetSessionId] = useState(false); // Track if sessionId has been set
   const [pendingSessionUuid, setPendingSessionUuid] = useState<string | null>(null); // Store session_uuid from CONNECTION_ESTABLISHED
+  const [processedEventIds, setProcessedEventIds] = useState(new Set<string>());
 
   // Use refs for stable references to prevent unnecessary re-renders
   const selectedModelRef = useRef(selectedModel);
@@ -107,10 +108,17 @@ export const useEventHandler = ({
   const resetEventHandler = useCallback(() => {
     setHasSetSessionId(false);
     setPendingSessionUuid(null);
+    setProcessedEventIds(new Set<string>());
     clearTimeoutCheck();
   }, [clearTimeoutCheck]);
 
   const handleEvent = useCallback((data: { id: string; type: string; content: Record<string, unknown> }) => {
+    if (processedEventIds.has(data.id)) {
+      console.log("EVENT_HANDLER_DEBUG: Skipping already processed event:", data.id, data.type);
+      return;
+    }
+    setProcessedEventIds(prev => new Set(prev).add(data.id));
+
     console.log("EVENT_HANDLER_DEBUG: Received event type:", data.type, data);
     
     switch (data.type) {
@@ -445,7 +453,7 @@ export const useEventHandler = ({
     addMessage, updateLastMessage, setIsLoading, setIsCompleted, setFileContent,
     setShowUpgradePrompt, addUploadedFile, setActiveTab, setDeployedUrl,
     setWorkspaceInfo, setSessionId, handleClickAction, clearTimeoutCheck, 
-    hasSetSessionId, pendingSessionUuid, terminalRef
+    hasSetSessionId, pendingSessionUuid, terminalRef, processedEventIds
   ]);
 
   return { handleEvent, clearTimeoutCheck, resetEventHandler };

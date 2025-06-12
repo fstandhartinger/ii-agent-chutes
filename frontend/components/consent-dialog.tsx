@@ -29,18 +29,7 @@ export default function ConsentDialog({ isOpen, onAccept, onCancel }: ConsentDia
             <h2 className="text-xl font-semibold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent mb-2">
               Terms and Privacy Agreement
             </h2>
-            <p className="text-muted-foreground text-sm">
-              Before using fubea, please review and accept our terms and privacy policy.
-            </p>
-          </div>
-          
-          <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4">
-            <p className="text-yellow-200 font-medium mb-2">⚠️ Important Notice</p>
-            <p className="text-sm text-muted-foreground">
-              By using fubea, your data will be processed by third-party AI services via Render.com and Chutes.ai. 
-              This is necessary for the service to function.
-            </p>
-          </div>
+          </div>          
           
           <p className="text-sm text-muted-foreground">
             By clicking &ldquo;Accept and Continue&rdquo;, you agree to our{" "}

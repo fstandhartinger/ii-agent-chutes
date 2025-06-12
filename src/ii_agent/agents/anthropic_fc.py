@@ -93,7 +93,7 @@ try breaking down the task into smaller steps. After call this tool to update or
 
         # Round counter for tracking consecutive LLM calls
         self.round_counter = 0
-        self.max_rounds = 50
+        self.max_rounds = 150
 
     async def _process_messages(self):
         try:
