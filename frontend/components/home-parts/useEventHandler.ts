@@ -317,6 +317,12 @@ export const useEventHandler = ({
             if (result && result.startsWith('http')) {
               setDeployedUrl(result);
               setActiveTab(TAB.WEBSITE);
+              addMessage({
+                id: `${data.id}-static-deploy`,
+                role: "assistant",
+                content: `🔗 **Download your file here:** [${result}](${result})`,
+                timestamp: Date.now(),
+              });
             }
           }
           
