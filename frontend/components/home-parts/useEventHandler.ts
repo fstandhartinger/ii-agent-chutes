@@ -328,7 +328,7 @@ export const useEventHandler = ({
               addMessage({
                 id: `${data.id}-static-deploy`,
                 role: "assistant",
-                content: `🔗 **Download your file here:** [${result}](${result})`,
+                content: `I have hosted your result 🔗 [here](${result})`,
                 timestamp: Date.now(),
               });
             }
