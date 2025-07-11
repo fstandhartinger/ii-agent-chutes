@@ -55,6 +55,11 @@ class DatabaseManager:
             inspector = sqlalchemy_inspect(connection)
             # Using a transaction for migrations
             with connection.begin():
+                # Check if session table exists first
+                if not inspector.has_table("session"):
+                    print("Session table doesn't exist yet, skipping migrations")
+                    return
+                    
                 columns = [col["name"] for col in inspector.get_columns("session")]
 
                 if "summary" not in columns:
@@ -90,7 +95,7 @@ class DatabaseManager:
         session_uuid: uuid.UUID,
         workspace_path: Path,
         device_id: Optional[str] = None,
-    ) -> None:
+    ) -> tuple[uuid.UUID, Path]:
         """Create a new session with a UUID-based workspace directory.
 
         Args:

@@ -44,6 +44,11 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Skip chrome-extension and other unsupported schemes
+  if (!event.request.url.startsWith('http')) {
+    return;
+  }
+
   if (event.request.destination === 'document') {
     // Network first for HTML
     event.respondWith(
