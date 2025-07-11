@@ -21,6 +21,7 @@ const CHUTES_MODELS = [
   { id: "Qwen/Qwen3-235B-A22B", name: "Qwen3 235B", isPremium: false },
   { id: "chutesai/Llama-4-Maverick-17B-128E-Instruct-FP8", name: "Llama 4 Maverick", isPremium: false },
   { id: "nvidia/Llama-3_1-Nemotron-Ultra-253B-v1", name: "Nemotron Ultra", isPremium: false },
+  { id: "kimi-k2", name: "Kimi K2", isPremium: false, isMoonshot: true },
   
   // Premium models (second) - Pro plan exclusive
   { id: "google/gemini-2.5-pro-preview", name: "Gemini 2.5 Pro", isPremium: true, isOpenRouter: true },
@@ -131,11 +132,13 @@ export default function ModelPicker() {
       console.log("[MODEL_PICKER_DEBUG] Set userManuallySwitchedModel flag to true");
 
       // Determine the provider based on the model ID
-      let provider: "anthropic" | "chutes" | "openrouter" = "chutes";
+      let provider: "anthropic" | "chutes" | "openrouter" | "moonshot" = "chutes";
       if (modelId.startsWith("claude-")) {
         provider = "anthropic";
       } else if (model.isOpenRouter) {
         provider = "openrouter";
+      } else if (model.isMoonshot) {
+        provider = "moonshot";
       }
       console.log("[MODEL_PICKER_DEBUG] Determined provider:", provider);
       

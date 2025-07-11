@@ -162,6 +162,9 @@ export const useWebSocketManager = ({
     } else if (currentSelectedModel.provider === 'openrouter') {
       wsUrl.searchParams.append('use_openrouter', 'true');
       wsUrl.searchParams.append('model_id', currentSelectedModel.id);
+    } else if (currentSelectedModel.provider === 'moonshot') {
+      wsUrl.searchParams.append('use_moonshot', 'true');
+      wsUrl.searchParams.append('model_id', currentSelectedModel.id);
     } else { // Default to 'chutes'
       wsUrl.searchParams.append('use_chutes', 'true');
       wsUrl.searchParams.append('model_id', currentSelectedModel.id);

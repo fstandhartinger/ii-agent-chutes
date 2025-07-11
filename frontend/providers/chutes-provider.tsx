@@ -5,7 +5,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from "react
 export interface LLMModel {
   id: string;
   name: string;
-  provider: "anthropic" | "chutes" | "openrouter";
+  provider: "anthropic" | "chutes" | "openrouter" | "moonshot";
   description?: string;
   supportsVision?: boolean;
 }
@@ -26,6 +26,13 @@ export const TEXT_MODELS: LLMModel[] = [
     provider: "chutes",
     description: "Advanced reasoning model",
     supportsVision: false
+  },
+  {
+    id: "kimi-k2",
+    name: "Kimi K2",
+    provider: "moonshot",
+    description: "Free Anthropic-compatible model from Moonshot",
+    supportsVision: true
   },
   {
     id: "claude-sonnet-4-0",

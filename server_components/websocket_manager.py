@@ -224,6 +224,9 @@ def create_agent_for_connection(
     
     use_openrouter_str = websocket.query_params.get("use_openrouter", "false")
     use_openrouter = use_openrouter_str.lower() == "true"
+    
+    use_moonshot_str = websocket.query_params.get("use_moonshot", "false")
+    use_moonshot = use_moonshot_str.lower() == "true"
 
     use_native_tool_calling_str = websocket.query_params.get("use_native_tool_calling", "false")
     use_native_tool_calling = use_native_tool_calling_str.lower() == "true"
@@ -235,7 +238,9 @@ def create_agent_for_connection(
     
     # Model selection logic
     anthropic_models = ["claude-3-5-sonnet-20241022", "claude-3-opus-20240229", "claude-3-haiku-20240307", "claude-sonnet-4-0", "claude-opus-4-0"]
+    moonshot_models = ["kimi-k2"]
     is_anthropic_model_selected = model_id_param in anthropic_models
+    is_moonshot_model_selected = model_id_param in moonshot_models
     
     # Determine provider and final model_id
     llm_provider_type = "anthropic-direct" # Default
@@ -253,6 +258,10 @@ def create_agent_for_connection(
     elif use_openrouter:
         llm_provider_type = "openrouter-openai"
         # final_model_id is already model_id_param
+    elif use_moonshot or is_moonshot_model_selected:
+        llm_provider_type = "moonshot-direct"
+        # For Moonshot, we use the default model they specify
+        final_model_id = "claude-opus-4-20250514"  # Default model as specified by user
     elif is_anthropic_model_selected:
         llm_provider_type = "anthropic-direct"
         # final_model_id is already model_id_param
